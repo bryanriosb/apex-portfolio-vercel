@@ -1,0 +1,33 @@
+// index.ts - Exportaciones del wizard de campañas
+
+// Main component
+export { CreationWizard } from './CreationWizard'
+
+// Step components
+export { Step1Content } from './Step1Content'
+export { Step2Content } from './Step2Content'
+export { Step3Content } from './Step3Content'
+
+// Sidebar component
+export { CampaignInfoSidebar } from './CampaignInfoSidebar'
+
+// Types
+export type {
+  WizardStep,
+  Invoice,
+  GroupedClient,
+  FileData,
+  EmailConfig,
+  StrategyType,
+  StrategyOption,
+} from './types'
+
+export {
+  WIZARD_STEPS,
+  REQUIRED_COLUMNS,
+  TEMPLATE_DATA,
+  STRATEGY_OPTIONS,
+} from './types'
+
+// Utilities
+export { parseInvoiceFile } from './utils'

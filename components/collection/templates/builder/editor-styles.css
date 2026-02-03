@@ -1,0 +1,248 @@
+/* Editor Table Styles */
+/* Target both .tiptap-table class and direct ProseMirror tables */
+.tiptap-table,
+.ProseMirror table,
+.preview-content table {
+    border-collapse: collapse;
+    margin: 1rem 0;
+    width: 100%;
+    table-layout: fixed;
+    border: 1px solid #d1d5db;
+}
+
+.table-align-left {
+    margin-right: auto !important;
+    margin-left: 0 !important;
+    width: auto !important;
+}
+
+.table-align-center {
+    margin-left: auto !important;
+    margin-right: auto !important;
+    width: auto !important;
+}
+
+.table-align-right {
+    margin-left: auto !important;
+    margin-right: 0 !important;
+    width: auto !important;
+}
+
+.table-full-width {
+    width: 100% !important;
+}
+
+.dark .tiptap-table,
+.dark .ProseMirror table,
+.dark .preview-content table {
+    border-color: #4b5563;
+}
+
+.tiptap-table td,
+.tiptap-table th,
+.ProseMirror table td,
+.ProseMirror table th,
+.preview-content table td,
+.preview-content table th {
+    border: 1px solid #e5e7eb;
+    padding: 0.5rem 0.75rem;
+    vertical-align: top;
+    min-width: 80px;
+    position: relative;
+}
+
+.dark .tiptap-table td,
+.dark .tiptap-table th,
+.dark .ProseMirror table td,
+.dark .ProseMirror table th,
+.dark .preview-content table td,
+.dark .preview-content table th {
+    border-color: #374151;
+}
+
+.tiptap-table th,
+.ProseMirror table th,
+.preview-content table th {
+    background-color: #f9fafb;
+    font-weight: 600;
+    text-align: left;
+}
+
+.dark .tiptap-table th,
+.dark .ProseMirror table th {
+    background-color: #1f2937;
+    color: #f3f4f6;
+}
+
+.tiptap-table tr:hover,
+.ProseMirror table tr:hover {
+    background-color: #f9fafb;
+}
+
+.dark .tiptap-table tr:hover,
+.dark .ProseMirror table tr:hover {
+    background-color: #1f2937;
+}
+
+/* Selected cell/row */
+.tiptap-table .selectedCell,
+.ProseMirror table .selectedCell {
+    background-color: #dbeafe;
+}
+
+.dark .tiptap-table .selectedCell,
+.dark .ProseMirror table .selectedCell {
+    background-color: #1e3a8a;
+}
+
+/* Column resize handle */
+.ProseMirror .column-resize-handle {
+    position: absolute;
+    right: -2px;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: #3b82f6;
+    pointer-events: none;
+}
+
+/* Make empty cells visible */
+.ProseMirror table td:empty::before,
+.ProseMirror table th:empty::before {
+    content: '';
+    display: inline-block;
+    min-height: 1em;
+}
+
+/* Link styles */
+.ProseMirror a {
+    color: #2563eb;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.ProseMirror a:hover {
+    color: #1d4ed8;
+}
+
+.dark .ProseMirror a {
+    color: #60a5fa;
+}
+
+.dark .ProseMirror a:hover {
+    color: #3b82f6;
+}
+
+/* Image styles */
+.ProseMirror img,
+.preview-content img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1rem 0;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.dark .ProseMirror img {
+    border-color: #374151;
+}
+
+.ProseMirror img:hover {
+    border-color: #9ca3af;
+}
+
+.dark .ProseMirror img:hover {
+    border-color: #6b7280;
+}
+
+.ProseMirror img.ProseMirror-selectednode {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+    border-color: #3b82f6;
+}
+
+.dark .ProseMirror img.ProseMirror-selectednode {
+    outline-color: #60a5fa;
+    border-color: #60a5fa;
+}
+
+/* Editor content dark mode */
+.dark .ProseMirror,
+.dark .preview-content {
+    color: #f3f4f6;
+}
+
+/* Ensure line breaks and spacing are respected */
+.ProseMirror p,
+.preview-content p {
+    margin-bottom: 0.75em;
+    min-height: 1em;
+}
+
+.ProseMirror p:last-child,
+.preview-content p:last-child {
+    margin-bottom: 0;
+}
+
+/* Fix for empty paragraphs which Tiptap uses for spacing */
+.ProseMirror p:empty::before,
+.preview-content p:empty::before {
+    content: "\00a0";
+}
+
+/* Blockquote styles */
+.ProseMirror blockquote,
+.preview-content blockquote {
+    border-left: 3px solid #e5e7eb;
+    padding-left: 1rem;
+    font-style: italic;
+    color: #4b5563;
+    margin: 1rem 0;
+}
+
+.dark .ProseMirror blockquote,
+.dark .preview-content blockquote {
+    border-left-color: #4b5563;
+    color: #9ca3af;
+}
+
+/* Dark mode text overrides for better visibility (especially pasted content) */
+.dark .ProseMirror p,
+.dark .ProseMirror span,
+.dark .ProseMirror div,
+.dark .ProseMirror ul,
+.dark .ProseMirror ol,
+.dark .ProseMirror li,
+.dark .preview-content p,
+.dark .preview-content span,
+.dark .preview-content div,
+.dark .preview-content ul,
+.dark .preview-content ol,
+.dark .preview-content li {
+    color: #f3f4f6 !important;
+}
+
+.dark .ProseMirror strong,
+.dark .ProseMirror b,
+.dark .preview-content strong,
+.dark .preview-content b {
+    color: #fff !important;
+}
+
+/* No Borders Table Variant */
+.tiptap-table.table-no-borders,
+.ProseMirror table.table-no-borders,
+.preview-content table.table-no-borders {
+    border: none !important;
+}
+
+.tiptap-table.table-no-borders td,
+.tiptap-table.table-no-borders th,
+.ProseMirror table.table-no-borders td,
+.ProseMirror table.table-no-borders th,
+.preview-content table.table-no-borders td,
+.preview-content table.table-no-borders th {
+    border: none !important;
+}
