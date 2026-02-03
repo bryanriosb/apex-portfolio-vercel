@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { LogOut, User, ChevronUp, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { useSidebar } from './ui/sidebar'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { USER_ROLES } from '@/const/roles'
@@ -26,19 +27,15 @@ export default function SidebarFooter() {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const { reset: resetActiveBusinessStore } = useActiveBusinessStore()
 
-  // Verificar si el tutorial está activo para deshabilitar el dropdown
   const { isActive: isTutorialActive, getCurrentStep } = useTutorialStore()
   const { isMobile } = useSidebar()
 
-  // Cerrar dropdown cuando el tutorial se activa
   useEffect(() => {
     if (isTutorialActive) {
       setDropdownOpen(false)
     }
   }, [isTutorialActive])
 
-  // Determinar si debemos ocultar el footer durante el tutorial en móvil
-  // Lo ocultamos cuando el tutorial apunta a elementos del sidebar
   const currentStep = getCurrentStep()
   const shouldHideFooter =
     isTutorialActive && isMobile && currentStep?.target?.includes('-menu')
@@ -53,13 +50,11 @@ export default function SidebarFooter() {
     event.preventDefault()
     setIsLoggingOut(true)
     try {
-      // Limpiar el store de negocio activo antes de cerrar sesión
       resetActiveBusinessStore()
       await signOut({ redirect: false })
       router.push('/auth/sign-in')
     } catch (error) {
       console.error('Error al cerrar sesión:', error)
-      // Incluso si hay error, redirigir al login
       router.push('/auth/sign-in')
     } finally {
       setIsLoggingOut(false)
@@ -68,9 +63,7 @@ export default function SidebarFooter() {
 
   const displayEmail = user?.email || ''
 
-  // Handler para controlar apertura del dropdown
   const handleOpenChange = (open: boolean) => {
-    // No permitir abrir el dropdown si el tutorial está activo
     if (isTutorialActive && open) {
       return
     }
@@ -84,10 +77,11 @@ export default function SidebarFooter() {
         data-darkreader-ignore
       >
         <DropdownMenu open={dropdownOpen} onOpenChange={handleOpenChange}>
-          <DropdownMenuTrigger
-            asChild
-            disabled={isTutorialActive}
-          ></DropdownMenuTrigger>
+          <DropdownMenuTrigger asChild disabled={isTutorialActive}>
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <User className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
           <DropdownMenuContent side="right" align="end" className="w-56">
             {isProfessional && (
               <DropdownMenuItem onClick={handleOpenProfile}>
@@ -112,10 +106,12 @@ export default function SidebarFooter() {
   return (
     <footer className="p-2 border-t">
       <DropdownMenu open={dropdownOpen} onOpenChange={handleOpenChange}>
-        <DropdownMenuTrigger
-          asChild
-          disabled={isTutorialActive}
-        ></DropdownMenuTrigger>
+        <DropdownMenuTrigger asChild disabled={isTutorialActive}>
+          <Button variant="ghost" className="w-full justify-start gap-2 h-9 px-2">
+            <User className="h-4 w-4" />
+            <span className="truncate text-sm">{displayEmail}</span>
+          </Button>
+        </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="start" className="w-56">
           {isProfessional && (
             <>
