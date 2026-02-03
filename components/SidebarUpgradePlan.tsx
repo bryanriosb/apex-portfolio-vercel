@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useSidebar } from './ui/sidebar'
-import BeautyLogo from './BeautyLogo'
+import Logo from './Logo'
 
 export default function SidebarUpgradePlan() {
   const { state } = useSidebar()
@@ -16,8 +16,8 @@ export default function SidebarUpgradePlan() {
     <div className="h-full flex items-end py-6">
       <div className="grid gap-4 w-full h-fit p-3 bg-slate-200 rounded-lg text-xs dark:bg-black dark:border dark:border-sidebar-border">
         <div className="relative mb-2">
-          <BeautyLogo className="rotate-10 relative -top-0.5 -right-1" />
-          <BeautyLogo className="bg-radial-[at_50%_75%]  from-slate-200 to-slate-400 absolute bottom-[-1px] left-0" />
+          <Logo className="rotate-10 relative -top-0.5 -right-1" />
+          <Logo className="bg-radial-[at_50%_75%]  from-slate-200 to-slate-400 absolute bottom-[-1px] left-0" />
         </div>
         <div className="grid gap-2">
           <span className="font-bold">Activa todas las funcionalidaes</span>
