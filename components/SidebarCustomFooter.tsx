@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { Button } from './ui/button'
 import { LogOut, User, ChevronUp, Loader2 } from 'lucide-react'
 import { useSidebar } from './ui/sidebar'
 import { useCurrentUser } from '@/hooks/use-current-user'
@@ -15,9 +14,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu'
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
-import SpecialistService from '@/lib/services/specialist/specialist-service'
-import type { Specialist } from '@/lib/models/specialist/specialist'
 import { useTutorialStore } from '@/lib/store/tutorial-store'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 
@@ -26,7 +22,6 @@ export default function SidebarFooter() {
   const { state } = useSidebar()
   const isCollapsed = state === 'collapsed'
   const { user, role, specialistId } = useCurrentUser()
-  const [specialist, setSpecialist] = useState<Specialist | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const { reset: resetActiveBusinessStore } = useActiveBusinessStore()
@@ -50,23 +45,6 @@ export default function SidebarFooter() {
 
   const isProfessional = role === USER_ROLES.PROFESSIONAL
 
-  const loadSpecialist = useCallback(async () => {
-    if (!specialistId) return
-    const service = new SpecialistService()
-    try {
-      const result = await service.fetchItem(specialistId)
-      if (result.success && result.data) {
-        setSpecialist(result.data)
-      }
-    } catch (error) {
-      console.error('Error loading specialist:', error)
-    }
-  }, [specialistId])
-
-  useEffect(() => {
-    loadSpecialist()
-  }, [loadSpecialist])
-
   const handleOpenProfile = () => {
     router.push('/admin/profile')
   }
@@ -88,20 +66,7 @@ export default function SidebarFooter() {
     }
   }
 
-  const displayName = specialist
-    ? `${specialist.first_name} ${specialist.last_name || ''}`.trim()
-    : user?.name || 'Usuario'
-
   const displayEmail = user?.email || ''
-
-  const avatarUrl = specialist?.profile_picture_url || null
-
-  const initials = displayName
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
 
   // Handler para controlar apertura del dropdown
   const handleOpenChange = (open: boolean) => {
@@ -119,40 +84,18 @@ export default function SidebarFooter() {
         data-darkreader-ignore
       >
         <DropdownMenu open={dropdownOpen} onOpenChange={handleOpenChange}>
-          <DropdownMenuTrigger asChild disabled={isTutorialActive}>
-            <Button variant="ghost" size="icon" title={displayName}>
-              <Avatar className="h-8 w-8">
-                {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
-                <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
+          <DropdownMenuTrigger
+            asChild
+            disabled={isTutorialActive}
+          ></DropdownMenuTrigger>
           <DropdownMenuContent side="right" align="end" className="w-56">
-            <div className="flex items-center gap-2 p-2">
-              <Avatar className="h-8 w-8">
-                {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
-                <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col min-w-0">
-                <span className="font-medium text-sm truncate">
-                  {displayName}
-                </span>
-                <span className="text-xs text-muted-foreground truncate">
-                  {displayEmail}
-                </span>
-              </div>
-            </div>
-            <DropdownMenuSeparator />
             {isProfessional && (
               <DropdownMenuItem onClick={handleOpenProfile}>
                 <User className="mr-2 h-4 w-4" />
                 Perfil
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem 
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-            >
+            <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut}>
               {isLoggingOut ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -169,28 +112,10 @@ export default function SidebarFooter() {
   return (
     <footer className="p-2 border-t">
       <DropdownMenu open={dropdownOpen} onOpenChange={handleOpenChange}>
-        <DropdownMenuTrigger asChild disabled={isTutorialActive}>
-          <button
-            className="flex items-center justify-between w-full p-2 rounded-md hover:bg-accent transition-colors"
-            style={{ pointerEvents: isTutorialActive ? 'none' : 'auto' }}
-          >
-            <div className="flex gap-2 items-center min-w-0">
-              <Avatar className="h-8 w-8 flex-shrink-0">
-                {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
-                <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col min-w-0 overflow-hidden text-left">
-                <span className="font-medium text-sm truncate">
-                  {displayName}
-                </span>
-                <span className="text-xs text-muted-foreground truncate">
-                  {displayEmail}
-                </span>
-              </div>
-            </div>
-            <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          </button>
-        </DropdownMenuTrigger>
+        <DropdownMenuTrigger
+          asChild
+          disabled={isTutorialActive}
+        ></DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="start" className="w-56">
           {isProfessional && (
             <>
@@ -201,10 +126,7 @@ export default function SidebarFooter() {
               <DropdownMenuSeparator />
             </>
           )}
-          <DropdownMenuItem 
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-          >
+          <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut}>
             {isLoggingOut ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (

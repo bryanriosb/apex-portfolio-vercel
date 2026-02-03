@@ -1,7 +1,6 @@
 import { jsPDF } from 'jspdf'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import type { AppointmentPaymentWithCreator } from '@/lib/models/appointment-payment/appointment-payment'
 import type { PaymentMethod } from '@/lib/types/enums'
 
 const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
@@ -12,7 +11,7 @@ const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 }
 
 export interface PaymentReceiptData {
-  payment: AppointmentPaymentWithCreator
+  payment: any
   businessName: string
   businessAddress?: string
   businessPhone?: string
@@ -39,7 +38,9 @@ export function generatePaymentReceiptPDF(data: PaymentReceiptData): jsPDF {
 
   doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
-  doc.text(data.businessName.toUpperCase(), pageWidth / 2, y, { align: 'center' })
+  doc.text(data.businessName.toUpperCase(), pageWidth / 2, y, {
+    align: 'center',
+  })
   y += 5
 
   doc.setFontSize(8)
@@ -49,7 +50,9 @@ export function generatePaymentReceiptPDF(data: PaymentReceiptData): jsPDF {
     y += 4
   }
   if (data.businessPhone) {
-    doc.text(`Tel: ${data.businessPhone}`, pageWidth / 2, y, { align: 'center' })
+    doc.text(`Tel: ${data.businessPhone}`, pageWidth / 2, y, {
+      align: 'center',
+    })
     y += 4
   }
   if (data.businessNit) {
@@ -70,13 +73,21 @@ export function generatePaymentReceiptPDF(data: PaymentReceiptData): jsPDF {
   doc.setFontSize(8)
   doc.setFont('helvetica', 'normal')
 
-  const paymentDate = format(new Date(data.payment.payment_date), "d 'de' MMMM yyyy, HH:mm", {
-    locale: es,
-  })
+  const paymentDate = format(
+    new Date(data.payment.payment_date),
+    "d 'de' MMMM yyyy, HH:mm",
+    {
+      locale: es,
+    }
+  )
   doc.text(`Fecha: ${paymentDate}`, margin, y)
   y += 4
 
-  doc.text(`No. Recibo: ${data.payment.id.slice(0, 8).toUpperCase()}`, margin, y)
+  doc.text(
+    `No. Recibo: ${data.payment.id.slice(0, 8).toUpperCase()}`,
+    margin,
+    y
+  )
   y += 6
 
   doc.line(margin, y, pageWidth - margin, y)
@@ -93,9 +104,13 @@ export function generatePaymentReceiptPDF(data: PaymentReceiptData): jsPDF {
   doc.text('CITA', margin, y)
   y += 4
   doc.setFont('helvetica', 'normal')
-  const appointmentDate = format(new Date(data.appointmentDate), "d 'de' MMMM yyyy", {
-    locale: es,
-  })
+  const appointmentDate = format(
+    new Date(data.appointmentDate),
+    "d 'de' MMMM yyyy",
+    {
+      locale: es,
+    }
+  )
   doc.text(appointmentDate, margin, y)
   y += 6
 
@@ -128,22 +143,37 @@ export function generatePaymentReceiptPDF(data: PaymentReceiptData): jsPDF {
   y += 4
 
   doc.text('Total servicios:', margin, y)
-  doc.text(`$${(data.totalPriceCents / 100).toLocaleString('es-CO')}`, pageWidth - margin, y, {
-    align: 'right',
-  })
+  doc.text(
+    `$${(data.totalPriceCents / 100).toLocaleString('es-CO')}`,
+    pageWidth - margin,
+    y,
+    {
+      align: 'right',
+    }
+  )
   y += 4
 
   doc.text('Total abonado:', margin, y)
-  doc.text(`$${(data.totalPaidCents / 100).toLocaleString('es-CO')}`, pageWidth - margin, y, {
-    align: 'right',
-  })
+  doc.text(
+    `$${(data.totalPaidCents / 100).toLocaleString('es-CO')}`,
+    pageWidth - margin,
+    y,
+    {
+      align: 'right',
+    }
+  )
   y += 4
 
   doc.setFont('helvetica', 'bold')
   doc.text('Saldo pendiente:', margin, y)
-  doc.text(`$${(data.balanceDueCents / 100).toLocaleString('es-CO')}`, pageWidth - margin, y, {
-    align: 'right',
-  })
+  doc.text(
+    `$${(data.balanceDueCents / 100).toLocaleString('es-CO')}`,
+    pageWidth - margin,
+    y,
+    {
+      align: 'right',
+    }
+  )
   y += 6
 
   doc.line(margin, y, pageWidth - margin, y)
@@ -154,16 +184,26 @@ export function generatePaymentReceiptPDF(data: PaymentReceiptData): jsPDF {
   y += 5
 
   doc.setFontSize(12)
-  doc.text(`$${(data.payment.amount_cents / 100).toLocaleString('es-CO')}`, pageWidth / 2, y, {
-    align: 'center',
-  })
+  doc.text(
+    `$${(data.payment.amount_cents / 100).toLocaleString('es-CO')}`,
+    pageWidth / 2,
+    y,
+    {
+      align: 'center',
+    }
+  )
   y += 5
 
   doc.setFontSize(8)
   doc.setFont('helvetica', 'normal')
-  doc.text(`Método: ${PAYMENT_METHOD_LABELS[data.payment.payment_method]}`, pageWidth / 2, y, {
-    align: 'center',
-  })
+  doc.text(
+    `Método: ${PAYMENT_METHOD_LABELS[data.payment.payment_method as PaymentMethod]}`,
+    pageWidth / 2,
+    y,
+    {
+      align: 'center',
+    }
+  )
   y += 4
 
   if (data.payment.notes) {
@@ -178,7 +218,9 @@ export function generatePaymentReceiptPDF(data: PaymentReceiptData): jsPDF {
   y += 4
 
   doc.setFontSize(7)
-  doc.text('Este documento es un comprobante de abono.', pageWidth / 2, y, { align: 'center' })
+  doc.text('Este documento es un comprobante de abono.', pageWidth / 2, y, {
+    align: 'center',
+  })
   y += 3
   doc.text('Gracias por su preferencia.', pageWidth / 2, y, { align: 'center' })
 
@@ -194,14 +236,24 @@ export function downloadPaymentReceiptPDF(data: PaymentReceiptData): void {
   doc.save(filename)
 }
 
-export function generatePaymentReceiptWhatsAppMessage(data: PaymentReceiptData): string {
-  const paymentDate = format(new Date(data.payment.payment_date), "d 'de' MMMM yyyy, HH:mm", {
-    locale: es,
-  })
+export function generatePaymentReceiptWhatsAppMessage(
+  data: PaymentReceiptData
+): string {
+  const paymentDate = format(
+    new Date(data.payment.payment_date),
+    "d 'de' MMMM yyyy, HH:mm",
+    {
+      locale: es,
+    }
+  )
 
-  const appointmentDate = format(new Date(data.appointmentDate), "d 'de' MMMM yyyy", {
-    locale: es,
-  })
+  const appointmentDate = format(
+    new Date(data.appointmentDate),
+    "d 'de' MMMM yyyy",
+    {
+      locale: es,
+    }
+  )
 
   const servicesList = data.services.map((s) => `   • ${s.name}`).join('\n')
 
@@ -236,7 +288,7 @@ Total abonado: $${(data.totalPaidCents / 100).toLocaleString('es-CO')}
 ✅ *ABONO REGISTRADO*
 
 💵 *Monto: $${(data.payment.amount_cents / 100).toLocaleString('es-CO')}*
-📝 Método: ${PAYMENT_METHOD_LABELS[data.payment.payment_method]}${data.payment.notes ? `\n📌 Nota: ${data.payment.notes}` : ''}
+📝 Método: ${PAYMENT_METHOD_LABELS[data.payment.payment_method as PaymentMethod]}${data.payment.notes ? `\n📌 Nota: ${data.payment.notes}` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━
 

@@ -1,5 +1,0 @@
-export * from './product'
-export * from './service-supply'
-export * from './appointment-supply'
-export * from './appointment-product'
-export * from './inventory-movement'

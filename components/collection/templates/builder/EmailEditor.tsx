@@ -138,12 +138,20 @@ const StylePreserver = Extension.create({
   addGlobalAttributes() {
     return [
       {
-        types: ['paragraph', 'heading', 'image', 'blockquote', 'bulletList', 'orderedList', 'listItem'],
+        types: [
+          'paragraph',
+          'heading',
+          'image',
+          'blockquote',
+          'bulletList',
+          'orderedList',
+          'listItem',
+        ],
         attributes: {
           style: {
             default: null,
-            parseHTML: element => element.getAttribute('style'),
-            renderHTML: attributes => {
+            parseHTML: (element) => element.getAttribute('style'),
+            renderHTML: (attributes) => {
               if (!attributes.style) return {}
               return { style: attributes.style }
             },
@@ -194,8 +202,8 @@ export function EmailEditor({
             },
             style: {
               default: null,
-              parseHTML: element => element.getAttribute('style'),
-              renderHTML: attributes => {
+              parseHTML: (element) => element.getAttribute('style'),
+              renderHTML: (attributes) => {
                 if (!attributes.style) return {}
                 return { style: attributes.style }
               },
@@ -208,14 +216,14 @@ export function EmailEditor({
           return {
             style: {
               default: null,
-              parseHTML: element => element.getAttribute('style'),
-              renderHTML: attributes => {
+              parseHTML: (element) => element.getAttribute('style'),
+              renderHTML: (attributes) => {
                 if (!attributes.style) return {}
                 return { style: attributes.style }
               },
             },
           }
-        }
+        },
       }),
       TableCell.extend({
         addAttributes() {
@@ -223,8 +231,8 @@ export function EmailEditor({
             ...this.parent?.(),
             style: {
               default: null,
-              parseHTML: element => element.getAttribute('style'),
-              renderHTML: attributes => {
+              parseHTML: (element) => element.getAttribute('style'),
+              renderHTML: (attributes) => {
                 if (!attributes.style) return {}
                 return { style: attributes.style }
               },
@@ -273,14 +281,14 @@ export function EmailEditor({
           return {
             style: {
               default: null,
-              parseHTML: element => element.getAttribute('style'),
-              renderHTML: attributes => {
+              parseHTML: (element) => element.getAttribute('style'),
+              renderHTML: (attributes) => {
                 if (!attributes.style) return {}
                 return { style: attributes.style }
               },
             },
           }
-        }
+        },
       }),
       TextAlign.configure({
         types: ['heading', 'paragraph'],
@@ -292,8 +300,8 @@ export function EmailEditor({
             ...this.parent?.(),
             style: {
               default: null,
-              parseHTML: element => element.getAttribute('style'),
-              renderHTML: attributes => {
+              parseHTML: (element) => element.getAttribute('style'),
+              renderHTML: (attributes) => {
                 if (!attributes.style) return {}
                 return { style: attributes.style }
               },
@@ -336,7 +344,7 @@ export function EmailEditor({
   })
 
   const onHtmlSave = (newHtml: string) => {
-    editor?.commands.setContent(newHtml, { preserveWhitespace: true })
+    editor?.commands.setContent(newHtml)
     onContentChange(newHtml)
   }
 

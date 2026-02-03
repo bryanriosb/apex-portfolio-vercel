@@ -15,7 +15,6 @@ import { MoreHorizontal, Pencil, Trash2, Users, Eye, Clock } from 'lucide-react'
 import BusinessAccountService from '@/lib/services/business-account/business-account-service'
 import { BUSINESS_ACCOUNTS_COLUMNS } from '@/lib/models/business-account/const/data-table/business-accounts-columns'
 import { BusinessAccountModal } from '@/components/business-accounts/BusinessAccountModal'
-import { BusinessAccountMembersModal } from '@/components/business-accounts/BusinessAccountMembersModal'
 import { BusinessAccountDetailModal } from '@/components/business-accounts/BusinessAccountDetailModal'
 import { TrialAssignmentModal } from '@/components/trial'
 import { useRef, useMemo, useState } from 'react'
@@ -132,9 +131,8 @@ export default function BusinessAccountsPage() {
     if (!accountsToDelete.length) return
 
     try {
-      const result = await businessAccountService.deleteAccounts(
-        accountsToDelete
-      )
+      const result =
+        await businessAccountService.deleteAccounts(accountsToDelete)
       if (result.success) {
         toast.success(`${result.deletedCount} cuenta(s) eliminada(s)`)
         dataTableRef.current?.refreshData()
@@ -216,9 +214,7 @@ export default function BusinessAccountsPage() {
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => handleViewDetail(account)}
-                  >
+                  <DropdownMenuItem onClick={() => handleViewDetail(account)}>
                     <Eye className="mr-2 h-4 w-4" />
                     Ver detalle
                   </DropdownMenuItem>
@@ -307,17 +303,6 @@ export default function BusinessAccountsPage() {
         account={selectedAccount}
         onSave={handleSaveAccount}
       />
-
-      {selectedAccountForMembers && (
-        <BusinessAccountMembersModal
-          open={membersModalOpen}
-          onOpenChange={setMembersModalOpen}
-          accountId={selectedAccountForMembers.id}
-          accountName={selectedAccountForMembers.name}
-          contactName={selectedAccountForMembers.contactName}
-          contactEmail={selectedAccountForMembers.contactEmail}
-        />
-      )}
 
       <BusinessAccountDetailModal
         open={detailModalOpen}

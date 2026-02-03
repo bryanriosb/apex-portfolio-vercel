@@ -39,24 +39,10 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  Upload,
-  X,
-  Image as ImageIcon,
-  Loader2,
-  Images,
-  Clock,
-} from 'lucide-react'
+import { Upload, X, Image as ImageIcon, Clock } from 'lucide-react'
 import BusinessStorageService from '@/lib/services/business/business-storage-service'
-import { BusinessHoursEditor } from './BusinessHoursEditor'
-import { BusinessType } from '@/lib/types/enums'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { BusinessGalleryImage } from '@/lib/models/business/business-gallery-image'
-import {
-  getBusinessGalleryImagesAction,
-  createBusinessGalleryImageAction,
-  deleteBusinessGalleryImageAction,
-} from '@/lib/actions/business-gallery-image'
 import BusinessAccountService from '@/lib/services/business-account/business-account-service'
 import { BusinessAccount } from '@/lib/models/business-account/business-account'
 import { BUSINESS_TYPES_OPTIONS } from '@/lib/services/business/const/business-type-labels'
@@ -200,19 +186,12 @@ export function BusinessModal({
         })
         setLogoPreview(business.logo_url)
         setGalleryCoverPreview(business.gallery_cover_image_url)
-
-        // Cargar imágenes existentes de galería
-        if (business.id) {
-          const galleryImages = await getBusinessGalleryImagesAction(
-            business.id
-          )
-          setExistingGalleryImages(galleryImages)
-        }
       } else {
         // Para business_admin, establecer el business_account_id automáticamente
         // Para company_admin, mantener vacío para que seleccione
         form.reset({
-          business_account_id: isBusinessAdmin && businessAccountId ? businessAccountId : '',
+          business_account_id:
+            isBusinessAdmin && businessAccountId ? businessAccountId : '',
           name: '',
           description: '',
           address: '',
@@ -328,31 +307,6 @@ export function BusinessModal({
     setGalleryImages((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const handleRemoveExistingGalleryImage = async (
-    imageId: string,
-    imageUrl: string
-  ) => {
-    try {
-      // Eliminar de storage
-      await storageService.current.deleteImage(imageUrl)
-
-      // Eliminar de la base de datos
-      const result = await deleteBusinessGalleryImageAction(imageId)
-
-      if (!result.success) {
-        setUploadError(result.error || 'Error al eliminar la imagen')
-        return
-      }
-
-      setExistingGalleryImages((prev) =>
-        prev.filter((img) => img.id !== imageId)
-      )
-    } catch (error) {
-      console.error('Error deleting gallery image:', error)
-      setUploadError('Error al eliminar la imagen')
-    }
-  }
-
   const onSubmit = async (data: BusinessFormValues) => {
     setIsSubmitting(true)
     setUploadError(null)
@@ -398,21 +352,6 @@ export function BusinessModal({
             if (!uploadResult.success) {
               setUploadError(
                 uploadResult.error || 'Error al subir imagen de galería'
-              )
-              setIsUploadingGallery(false)
-              return
-            }
-
-            // Guardar la URL en la base de datos
-            const createResult = await createBusinessGalleryImageAction({
-              business_id: business.id,
-              image_url: uploadResult.url!,
-              sort_order: sortOrder++,
-            })
-
-            if (!createResult.success) {
-              setUploadError(
-                createResult.error || 'Error al guardar imagen de galería'
               )
               setIsUploadingGallery(false)
               return
@@ -539,9 +478,7 @@ export function BusinessModal({
                     <FormField
                       control={form.control}
                       name="business_account_id"
-                      render={({ field }) => (
-                        <input type="hidden" {...field} />
-                      )}
+                      render={({ field }) => <input type="hidden" {...field} />}
                     />
                   )}
 
@@ -769,10 +706,7 @@ export function BusinessModal({
               </TabsContent>
 
               <TabsContent value="hours" className="mt-4">
-                <BusinessHoursEditor
-                  businessId={business?.id || null}
-                  disabled={isSubmitting}
-                />
+                Lorem
               </TabsContent>
 
               <TabsContent value="gallery" className="space-y-6 mt-4">
@@ -831,97 +765,6 @@ export function BusinessModal({
                         </Button>
                       </div>
                     </div>
-
-                    {/* Gallery Images */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <FormLabel>Galería de Imágenes</FormLabel>
-                        <span className="text-xs text-muted-foreground">
-                          {existingGalleryImages.length + galleryImages.length}/
-                          {MAX_GALLERY_IMAGES} imágenes
-                        </span>
-                      </div>
-
-                      {/* Grid de imágenes */}
-                      <div className="grid grid-cols-3 gap-4">
-                        {/* Imágenes existentes */}
-                        {existingGalleryImages.map((img) => (
-                          <div
-                            key={img.id}
-                            className="relative aspect-square border rounded-lg overflow-hidden"
-                          >
-                            <img
-                              src={img.image_url}
-                              alt={img.caption || 'Gallery image'}
-                              className="w-full h-full object-cover"
-                            />
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="icon"
-                              className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                              onClick={() =>
-                                handleRemoveExistingGalleryImage(
-                                  img.id,
-                                  img.image_url
-                                )
-                              }
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
-
-                        {/* Imágenes nuevas (pendientes de subir) */}
-                        {galleryImages.map((img, idx) => (
-                          <div
-                            key={`new-${idx}`}
-                            className="relative aspect-square border rounded-lg overflow-hidden"
-                          >
-                            <img
-                              src={img.preview}
-                              alt="New gallery image"
-                              className="w-full h-full object-cover"
-                            />
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="icon"
-                              className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                              onClick={() => handleRemoveGalleryImage(idx)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
-
-                        {/* Botón para agregar más imágenes */}
-                        {existingGalleryImages.length + galleryImages.length <
-                          MAX_GALLERY_IMAGES && (
-                          <div
-                            className="aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer"
-                            onClick={() => galleryInputRef.current?.click()}
-                          >
-                            <Images className="h-8 w-8 mb-1" />
-                            <span className="text-xs">Agregar</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <input
-                        ref={galleryInputRef}
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handleGalleryImagesSelect}
-                        className="hidden"
-                      />
-
-                      <p className="text-xs text-muted-foreground">
-                        Puedes subir hasta {MAX_GALLERY_IMAGES} imágenes para la
-                        galería. Las imágenes deben ser menores a 5MB.
-                      </p>
-                    </div>
                   </>
                 )}
               </TabsContent>
@@ -947,8 +790,8 @@ export function BusinessModal({
                 {isUploadingGallery
                   ? 'Subiendo imágenes...'
                   : business
-                  ? 'Actualizar'
-                  : 'Crear'}{' '}
+                    ? 'Actualizar'
+                    : 'Crear'}{' '}
                 {!isUploadingGallery && 'Sucursal'}
               </Button>
             </DialogFooter>

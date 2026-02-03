@@ -8,11 +8,11 @@ import {
   deleteRecord,
   deleteRecords,
 } from '@/lib/actions/supabase'
-import { createDefaultBusinessHoursAction } from '@/lib/actions/business-hours'
-import type { Business, BusinessInsert, BusinessWithAccount } from '@/lib/models/business/business'
-import type { BusinessAccount } from '@/lib/models/business-account/business-account'
-import { getCurrentUser } from '@/lib/services/auth/supabase-auth'
-import { USER_ROLES } from '@/const/roles'
+import type {
+  Business,
+  BusinessInsert,
+  BusinessWithAccount,
+} from '@/lib/models/business/business'
 import { getSupabaseClient } from './supabase'
 
 export interface BusinessListResponse {
@@ -24,17 +24,21 @@ export interface BusinessListResponse {
 /**
  * Valida si un business account puede crear más sucursales según su plan
  */
-async function validateBusinessLimitsForAccount(businessAccountId: string): Promise<{ isValid: boolean; error?: string }> {
+async function validateBusinessLimitsForAccount(
+  businessAccountId: string
+): Promise<{ isValid: boolean; error?: string }> {
   try {
     // Obtener información del business account y su plan
     const client = await getSupabaseClient()
-    
+
     const { data: account, error: accountError } = await client
       .from('business_accounts')
-      .select(`
+      .select(
+        `
         *,
         plan:plans(*)
-      `)
+      `
+      )
       .eq('id', businessAccountId)
       .single()
 
@@ -54,16 +58,19 @@ async function validateBusinessLimitsForAccount(businessAccountId: string): Prom
       .eq('business_account_id', businessAccountId)
 
     if (countError) {
-      return { isValid: false, error: 'Error al verificar sucursales existentes' }
+      return {
+        isValid: false,
+        error: 'Error al verificar sucursales existentes',
+      }
     }
 
     const currentCount = count || 0
     const maxAllowed = account.plan.max_businesses
 
     if (currentCount >= maxAllowed) {
-      return { 
-        isValid: false, 
-        error: `Has alcanzado el límite de ${maxAllowed} sucursales para tu plan ${account.plan.name}` 
+      return {
+        isValid: false,
+        error: `Has alcanzado el límite de ${maxAllowed} sucursales para tu plan ${account.plan.name}`,
       }
     }
 
@@ -133,7 +140,9 @@ export async function fetchBusinessesAction(params?: {
 /**
  * Obtiene un negocio por ID
  */
-export async function getBusinessByIdAction(id: string): Promise<Business | null> {
+export async function getBusinessByIdAction(
+  id: string
+): Promise<Business | null> {
   try {
     return await getRecordById<Business>('businesses', id)
   } catch (error) {
@@ -145,13 +154,20 @@ export async function getBusinessByIdAction(id: string): Promise<Business | null
 /**
  * Crea un nuevo negocio con validación de límites del plan
  */
-export async function createBusinessAction(data: BusinessInsert): Promise<{ success: boolean; data?: Business; error?: string }> {
+export async function createBusinessAction(
+  data: BusinessInsert
+): Promise<{ success: boolean; data?: Business; error?: string }> {
   try {
     // Validar límites del plan antes de crear
-    const limitValidation = await validateBusinessLimitsForAccount(data.business_account_id)
-    
+    const limitValidation = await validateBusinessLimitsForAccount(
+      data.business_account_id
+    )
+
     if (!limitValidation.isValid) {
-      return { success: false, error: limitValidation.error || 'Límite de sucursales alcanzado' }
+      return {
+        success: false,
+        error: limitValidation.error || 'Límite de sucursales alcanzado',
+      }
     }
 
     const business = await insertRecord<Business>('businesses', data)
@@ -159,9 +175,6 @@ export async function createBusinessAction(data: BusinessInsert): Promise<{ succ
     if (!business) {
       return { success: false, error: 'Error al crear el negocio' }
     }
-
-    // Crear horarios por defecto para el nuevo negocio
-    await createDefaultBusinessHoursAction(business.id)
 
     return { success: true, data: business }
   } catch (error: any) {
