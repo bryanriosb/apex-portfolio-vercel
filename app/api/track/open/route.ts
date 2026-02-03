@@ -8,7 +8,8 @@ export async function GET(request: NextRequest) {
   const messageId = searchParams.get('message_id')
 
   if (!clientId) {
-    return new NextResponse(trackPixelResponse(), {
+    const transparent = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+    return new NextResponse(Buffer.from(transparent, 'base64'), {
       headers: {
         'Content-Type': 'image/gif',
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -63,7 +64,8 @@ export async function GET(request: NextRequest) {
     console.error('Error tracking open:', error)
   }
 
-  return new NextResponse(trackPixelResponse(), {
+  const transparent = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+  return new NextResponse(Buffer.from(transparent, 'base64'), {
     headers: {
       'Content-Type': 'image/gif',
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -73,9 +75,7 @@ export async function GET(request: NextRequest) {
   })
 }
 
-function trackPixelResponse(): string {
-  const width = 1
-  const height = 1
+function trackPixelResponse(): Uint8Array {
   const transparent = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
-  return Buffer.from(transparent, 'base64').toString('binary')
+  return Buffer.from(transparent, 'base64')
 }
