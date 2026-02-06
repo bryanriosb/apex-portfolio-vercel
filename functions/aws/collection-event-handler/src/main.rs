@@ -70,17 +70,14 @@ async fn func(event: LambdaEvent<Value>) -> Result<Value, Error> {
                                     details.insert("bounce_sub_type".to_string(), Value::String(bounce.bounce_sub_type.clone()));
                                 }
                                 let _ = supabase.update_client_status(&client_id, "bounced", Some(Value::Object(details))).await;
-                                let _ = supabase.increment_execution_counter(&client_id, "emails_bounced").await;
                                 processed += 1;
                             }
                             "Delivery" => {
                                 let _ = supabase.update_client_status(&client_id, "delivered", None).await;
-                                let _ = supabase.increment_execution_counter(&client_id, "emails_delivered").await;
                                 processed += 1;
                             }
                             "Open" => {
                                 let _ = supabase.update_client_status(&client_id, "opened", None).await;
-                                let _ = supabase.increment_execution_counter(&client_id, "emails_opened").await;
                                 processed += 1;
                             }
                             "Send" => {
@@ -88,7 +85,6 @@ async fn func(event: LambdaEvent<Value>) -> Result<Value, Error> {
                             }
                             "Reject" => {
                                 let _ = supabase.update_client_status(&client_id, "failed", None).await;
-                                let _ = supabase.increment_execution_counter(&client_id, "emails_failed").await;
                                 processed += 1;
                             }
                             "Complaint" => {

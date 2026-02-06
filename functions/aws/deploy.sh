@@ -1,17 +1,49 @@
-# 1. Exportar credenciales
+#!/bin/bash
+set -e  # Exit on error
+
+echo "🔧 Loading environment variables from .env..."
+
+# Verificar que existe .env
+if [ ! -f .env ]; then
+    echo "❌ Error: .env file not found!"
+    exit 1
+fi
+
+# 1. Exportar credenciales para AWS CLI
 export $(grep -v '^#' .env | xargs)
 
-# 2. Recompilar (para incluir los cambios de modelos y snake_case)
+# 2. Construir env-vars string desde .env
+# Filtra comentarios y líneas vacías, convierte a formato KEY=VALUE,KEY2=VALUE2
+ENV_VARS=$(grep -v '^#' .env | grep -v '^$' | tr '\n' ',' | sed 's/,$//')
+
+# Agregar variables adicionales que no están en .env pero son necesarias
+ADDITIONAL_VARS="APP_ENV=dev,SES_CONFIGURATION_SET=borls-collection-config,SES_SOURCE_EMAIL=manager@borls.com,API_BASE_URL=https://apex.borls.com"
+
+# Combinar variables
+ALL_ENV_VARS="${ENV_VARS},${ADDITIONAL_VARS}"
+
+echo "✅ Environment variables loaded"
+echo "📦 Building Lambda functions..."
+
+# 3. Recompilar
 cargo lambda build --release --arm64
 
-# 3. Desplegar Email Worker
+echo "🚀 Deploying Lambda functions..."
+
+# 4. Desplegar Email Worker
+echo "  → Deploying collection-email-worker..."
 cargo lambda deploy \
   --iam-role arn:aws:iam::399699578521:role/borls-lambda-role \
-  --env-vars APP_ENV=dev,TRACKING_URL=https://apex.borls.com,SUPABASE_URL=https://eecssalgotbcknehikof.supabase.co,SUPABASE_SECRET_KEY=sb_secret_XuAdsWGCgtGgedvgiYcB_Q_y8VJVu7C \
+  --env-vars "${ALL_ENV_VARS}" \
   collection-email-worker
 
-# 4. Desplegar Event Handler
+# 5. Desplegar Event Handler
+echo "  → Deploying collection-event-handler..."
 cargo lambda deploy \
   --iam-role arn:aws:iam::399699578521:role/borls-lambda-role \
-  --env-vars APP_ENV=dev,SUPABASE_URL=https://eecssalgotbcknehikof.supabase.co,SUPABASE_SECRET_KEY=sb_secret_XuAdsWGCgtGgedvgiYcB_Q_y8VJVu7C \
+  --env-vars "${ALL_ENV_VARS}" \
   collection-event-handler
+
+echo "✅ Deployment completed successfully!"
+echo ""
+echo "📋 Active email provider: ${EMAIL_PROVIDER:-ses (default)}"

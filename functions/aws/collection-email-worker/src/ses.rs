@@ -7,16 +7,16 @@ use mail_builder::MessageBuilder;
 
 pub struct SesService {
     client: Client,
-    tracking_url: String,
+    configuration_set: String,
 }
 
 impl SesService {
     pub async fn new() -> Self {
         let config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
         let client = Client::new(&config);
-        let tracking_url = std::env::var("TRACKING_URL")
-            .unwrap_or_else(|_| "https://apex-portfolio.vercel.app".to_string());
-        Self { client, tracking_url }
+        let configuration_set = std::env::var("SES_CONFIGURATION_SET")
+            .unwrap_or_else(|_| "apex-collection-tracking".to_string());
+        Self { client, configuration_set }
     }
 
     pub async fn send_email(
@@ -31,7 +31,7 @@ impl SesService {
         execution_id: Option<&str>,
         message_id: Option<&str>,
     ) -> Result<String, Box<dyn Error + Send + Sync>> {
-        let html_with_pixel = self.inject_tracking_pixel(html_body, client_id, execution_id, message_id);
+        let html_with_pixel = self.add_client_tracking(html_body, client_id, execution_id, message_id);
 
         let mut builder = MessageBuilder::new()
             .from(source)
@@ -43,8 +43,8 @@ impl SesService {
         if let Some(attachments) = attachments {
             log::info!("Adding {} attachments to email", attachments.len());
             for attachment in attachments {
-                log::info!("Adding attachment: {} ({} bytes, type: {:?})", 
-                    attachment.name, 
+                log::info!("Adding attachment: {} ({} bytes, type: {:?})",
+                    attachment.name,
                     attachment.data.len(),
                     attachment.file_type
                 );
@@ -60,22 +60,28 @@ impl SesService {
 
         let raw_email = builder.write_to_vec()?;
         log::info!("Generated raw email of {} bytes", raw_email.len());
-        
-        let output = self.client
+        log::info!("Using Configuration Set: {} (SES will add tracking pixel automatically)", self.configuration_set);
+
+        let mut send_request = self.client
             .send_raw_email()
             .raw_message(
                 RawMessage::builder()
                     .data(Blob::new(raw_email))
                     .build()?
-            )
-            .send()
-            .await?;
-        
-        log::info!("Email sent successfully, message_id: {}", output.message_id);
-        Ok(output.message_id)
+            );
+
+        if !self.configuration_set.is_empty() {
+            send_request = send_request.configuration_set_name(&self.configuration_set);
+        }
+
+        let output = send_request.send().await?;
+
+        let message_id = output.message_id;
+        log::info!("Email sent successfully, message_id: {}", message_id);
+        Ok(message_id)
     }
 
-    fn inject_tracking_pixel(&self, html: &str, client_id: Option<&str>, execution_id: Option<&str>, message_id: Option<&str>) -> String {
+    fn add_client_tracking(&self, html: &str, client_id: Option<&str>, execution_id: Option<&str>, message_id: Option<&str>) -> String {
         if client_id.is_none() || execution_id.is_none() {
             return html.to_string();
         }
@@ -84,24 +90,13 @@ impl SesService {
         let execution_id = execution_id.unwrap();
         let msg_id = message_id.unwrap_or("");
 
-        let pixel_url = format!(
-            "{}/api/track/open?client_id={}&execution_id={}&message_id={}",
-            self.tracking_url, client_id, execution_id, msg_id
+        let tracking_url = format!(
+            "?client_id={}&execution_id={}&message_id={}",
+            client_id, execution_id, msg_id
         );
 
-        log::info!("Injecting tracking pixel: {}", pixel_url);
+        log::info!("Client tracking params: {}", tracking_url);
 
-        let pixel = format!(
-            r###"<img src="{}" alt="" width="1" height="1" style="display:none;" />"###,
-            pixel_url
-        );
-
-        if html.contains("</body>") {
-            html.replace("</body>", &format!("{}</body>", pixel))
-        } else if html.contains("</html>") {
-            html.replace("</html>", &format!("{}</html>", pixel))
-        } else {
-            format!("{}{}", html, pixel)
-        }
+        html.to_string()
     }
 }

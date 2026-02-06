@@ -1,48 +1,28 @@
 import type { Metadata } from 'next'
-import {
-  Navbar,
-  Hero,
-  TrustBadges,
-  Features,
-  About,
-  Testimonials,
-  Services,
-  Pricing,
-  FAQ,
-  CTA,
-  Footer,
-} from '@/components/landing'
-import { JsonLd } from '@/components/seo/JsonLd'
-import { LANDING_IMAGES } from '@/lib/config/supabase-images'
+import { ScrollyLanding } from '@/components/landing/modern/ScrollyLanding'
+import { ModernFeatures } from '@/components/landing/modern/ModernFeatures'
+import { ModernFooter } from '@/components/landing/modern/ModernFooter'
+import { ModernJsonLd } from '@/components/seo/ModernJsonLd'
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://beluvio.borls.com'
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://your-project.supabase.co'
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://apex.borls.com'
 
 export const metadata: Metadata = {
-  title:
-    'Beluvio | Software de Gestión para Negocios de Belleza, Estéticas y Spas',
+  title: 'APEX | Sistema Operativo de Cobranza Inteligente',
   description:
-    'Plataforma todo-en-uno para gestionar tu estética, spa, barbería o centro de belleza. Agenda inteligente, WhatsApp integrado, asistente IA 24/7, control de inventario y reportes avanzados. Prueba gratis.',
+    'Plataforma de recuperación de cartera serverless. Procesamiento masivo, orquestación de notificaciones multi-canal y tracking en tiempo real.',
   keywords: [
-    'software estética',
-    'software spa',
-    'software barbería',
-    'software centro de belleza',
-    'gestión salón de belleza',
-    'agenda citas belleza',
-    'software peluquería',
-    'programa gestión estética',
-    'app para estéticas',
-    'sistema citas belleza',
-    'software clínica estética',
-    'gestión negocios belleza',
-    'agenda online belleza',
-    'crm estética',
-    'facturación estética',
+    'APEX',
+    'software cobranza',
+    'recuperacion cartera',
+    'aws serverless',
+    'cobranza automatizada',
+    'fintech collection',
+    'sistema de cobros',
+    'gestion de deuda'
   ],
-  authors: [{ name: 'Beluvio', url: siteUrl }],
-  creator: 'Beluvio',
-  publisher: 'Beluvio',
+  authors: [{ name: 'APEX', url: siteUrl }],
+  creator: 'APEX',
+  publisher: 'APEX',
   robots: {
     index: true,
     follow: true,
@@ -54,63 +34,42 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  alternates: {
-    canonical: siteUrl,
-    languages: {
-      'es-ES': siteUrl,
-      'es-CO': siteUrl,
-      'es-MX': siteUrl,
-      'es-AR': siteUrl,
-    },
-  },
   openGraph: {
     type: 'website',
     locale: 'es_ES',
     url: siteUrl,
-    siteName: 'Beluvio',
-    title: 'Beluvio | Software de Gestión para Negocios de Belleza',
+    siteName: 'APEX',
+    title: 'APEX | Cobranza Inteligente & Ejecución Implacable',
     description:
-      'Plataforma todo-en-uno para gestionar tu estética, spa o centro de belleza. Agenda inteligente, WhatsApp integrado y asistente IA 24/7. Prueba gratis.',
+      'Infraestructura de cobranza para la era moderna. Escala tus operaciones de recuperación con nuestra arquitectura serverless.',
     images: [
       {
-        url: `${supabaseUrl}/storage/v1/object/public/landing/salon-de-belleza-moderno-beluvio/salon-de-belleza-moderno-beluvio-desktop.webp`,
+        url: '/og-image.webp',
         width: 1200,
-        height: 900,
-        alt: 'Beluvio - Software de Gestión para Negocios de Belleza',
-        type: 'image/webp',
+        height: 630,
+        alt: 'APEX Collection System',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Beluvio | Software de Gestión para Negocios de Belleza',
+    title: 'APEX | Sistema de Cobranza',
     description:
-      'Plataforma todo-en-uno para gestionar tu estética, spa o centro de belleza. Agenda inteligente, WhatsApp integrado y asistente IA 24/7.',
-    images: [`${supabaseUrl}/storage/v1/object/public/landing/salon-de-belleza-moderno-beluvio/salon-de-belleza-moderno-beluvio-desktop.webp`],
-    creator: '@beluvio',
-  },
-  category: 'Software',
-  verification: {
-    google: 'tu-codigo-de-verificacion-google',
+      'Recuperación de cartera automatizada con tracking en tiempo real.',
+    creator: '@apex_collection',
   },
 }
 
 export default function Home() {
   return (
     <>
-      <JsonLd type="all" />
-      <main className="min-h-screen">
-        <Navbar />
-        <Hero />
-        <TrustBadges />
-        <Features />
-        <About />
-        <Services />
-        <Pricing />
-        <FAQ />
-        <CTA />
-        <Footer />
+      <ModernJsonLd type="organization" /> 
+      <main className="min-h-screen bg-black text-white selection:bg-blue-500/30">
+        <ScrollyLanding />
+        <ModernFeatures />
+        <ModernFooter />
       </main>
     </>
   )
 }
+

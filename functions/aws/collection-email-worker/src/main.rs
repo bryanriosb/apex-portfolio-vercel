@@ -11,10 +11,13 @@ use css_inline::{CSSInliner, InlineOptions};
 mod models;
 mod supabase;
 mod ses;
+mod email_provider;
+mod factory;
+mod providers;
 
 use models::{LambdaEvent as CollectionEvent, SqsEvent, BatchMessage};
 use supabase::SupabaseService;
-use ses::SesService;
+use email_provider::{EmailProvider, EmailMessage};
 
 #[tokio::main]
 async fn main() -> Result<(), lambda_runtime::Error> {
@@ -199,20 +202,20 @@ async fn func(event: LambdaEvent<Value>) -> Result<Value, lambda_runtime::Error>
     let sqs_event: Result<SqsEvent, _> = serde_json::from_value(payload.clone());
     
     if let Ok(sqs) = sqs_event {
-        info!("Received SQS event with {} records", sqs.Records.len());
+            info!("Received SQS event with {} records", sqs.records.len());
         
         let supabase = SupabaseService::new();
-        let ses = SesService::new().await;
+        let provider = factory::create_email_provider().await;
         
         let mut processed_count = 0;
         let mut failed_count = 0;
         
-        for sqs_message in sqs.Records {
+            for sqs_message in sqs.records {
             if let Some(body) = &sqs_message.body {
                 if let Some(batch_msg) = BatchMessage::from_body(body) {
                     info!("Processing batch {} for execution {}", batch_msg.batch_id, batch_msg.execution_id);
                     
-                    let result = process_batch(&supabase, &ses, &batch_msg).await;
+                    let result = process_batch(&supabase, provider.as_ref(), &batch_msg).await;
                     
                     match result {
                         Ok(_) => {
@@ -255,7 +258,7 @@ async fn func(event: LambdaEvent<Value>) -> Result<Value, lambda_runtime::Error>
 
 async fn process_batch(
     supabase: &SupabaseService,
-    ses: &SesService,
+    provider: &dyn EmailProvider,
     batch_msg: &BatchMessage,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let execution = supabase.get_execution(&batch_msg.execution_id).await?;
@@ -284,8 +287,8 @@ async fn process_batch(
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             }
             
-            if let Some(email) = client.email() {
-                let result = send_client_email(supabase, ses, &template, &client, &attachments, &batch_msg.execution_id).await;
+            if let Some(_email) = client.email() {
+                let result = send_client_email(supabase, provider, &template, &client, &attachments, &batch_msg.execution_id).await;
                 
                 match result {
                     Ok(message_id) => {
@@ -343,7 +346,7 @@ async fn check_and_complete_execution(supabase: &SupabaseService, execution_id: 
 
 async fn process_execution(execution_id: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
     let supabase = SupabaseService::new();
-    let ses = SesService::new().await;
+    let provider = factory::create_email_provider().await;
     
     let execution = supabase.get_execution(execution_id).await?;
     
@@ -368,8 +371,8 @@ async fn process_execution(execution_id: &str) -> Result<(), Box<dyn Error + Sen
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             }
             
-            if let Some(email) = client.email() {
-                let result = send_client_email(&supabase, &ses, &template, &client, &attachments, execution_id).await;
+            if let Some(_email) = client.email() {
+                let result = send_client_email(&supabase, provider.as_ref(), &template, &client, &attachments, execution_id).await;
                 
                 match result {
                     Ok(message_id) => {
@@ -399,8 +402,8 @@ async fn process_execution(execution_id: &str) -> Result<(), Box<dyn Error + Sen
 }
 
 async fn send_client_email(
-    supabase: &SupabaseService,
-    ses: &SesService,
+    _supabase: &SupabaseService,
+    provider: &dyn EmailProvider,
     template: &models::EmailTemplate,
     client: &models::CollectionClient,
     attachments: &[models::Attachment],
@@ -454,20 +457,23 @@ async fn send_client_email(
     let text_body = "Por favor habilite HTML para ver este correo.";
     
     let email = client.email().unwrap_or("");
-    let attachments_vec = attachments.to_vec();
-    let result = ses.send_email(
-        email,
-        &template.subject,
-        &html_body,
-        text_body,
-        "manager@borls.com",
-        Some(&attachments_vec),
-        Some(&client.id),
-        Some(execution_id),
-        None,
-    ).await?;
     
-    Ok(result)
+    // Construir EmailMessage para el provider
+    let email_message = EmailMessage {
+        to: email.to_string(),
+        subject: template.subject.clone(),
+        html_body: html_body.clone(),
+        text_body: text_body.to_string(),
+        from: "manager@borls.com".to_string(),
+        attachments: attachments.to_vec(),
+        client_id: Some(client.id.clone()),
+        execution_id: Some(execution_id.to_string()),
+        message_id: None,
+    };
+    
+    let result = provider.send_email(email_message).await?;
+    
+    Ok(result.message_id)
 }
 
 #[cfg(test)]

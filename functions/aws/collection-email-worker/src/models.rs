@@ -63,13 +63,15 @@ pub struct LambdaEvent {
 // SQS Event Models - AWS SQS events use "Records" with capital R
 #[derive(Deserialize, Debug, Clone)]
 pub struct SqsMessage {
+    #[allow(dead_code)]
     pub message_id: Option<String>,
     pub body: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct SqsEvent {
-    pub Records: Vec<SqsMessage>,
+    #[serde(rename = "Records")]
+    pub records: Vec<SqsMessage>,
 }
 
 // Batch message from SQS
