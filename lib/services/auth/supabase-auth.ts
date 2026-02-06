@@ -23,6 +23,7 @@ export interface AuthUser {
     name: string
     business_account_id: string
   }> | null
+  accessToken?: string | null
 }
 
 /**
@@ -94,7 +95,7 @@ export async function authenticateWithSupabase(
     const supabase = await getSupabaseAdminClient()
     const { email, password } = credentials
 
-    console.log('Attempting authentication for:', email)
+
 
     // Sign in with Supabase Auth
     const { data: authData, error: authError } =
@@ -108,23 +109,23 @@ export async function authenticateWithSupabase(
       return null
     }
 
-    console.log('Auth successful, user ID:', authData.user.id)
+
 
     // Obtener role desde metadata del usuario de Supabase Auth
     const userRole = authData.user.user_metadata?.role || 'customer'
-    
+
     // Bloquear acceso a usuarios con rol customer
     if (userRole === 'customer') {
-      console.log('Customer role detected - access denied')
+
       return null // Retornar null simula credenciales inválidas
     }
 
-    console.log('User role from metadata:', userRole)
+
 
     // Para business relationships, seguir usando las tablas existentes por ahora
     // Obtener user_profile_id desde metadata o buscarlo
     let userProfileId = authData.user.user_metadata?.user_profile_id
-    
+
     if (!userProfileId) {
       // Si no existe en metadata, buscar en la tabla users_profile (compatibilidad)
       const { data: legacyProfile } = await supabase
@@ -132,7 +133,7 @@ export async function authenticateWithSupabase(
         .select('id')
         .eq('user_id', authData.user.id)
         .single()
-      
+
       userProfileId = legacyProfile?.id || null
     }
 
@@ -149,8 +150,8 @@ export async function authenticateWithSupabase(
 
       membership = memberships?.[0] || null
     }
-    
-    console.log('Membership found:', membership ? 'Yes' : 'No')
+
+
 
     // Si el usuario es business_admin y tiene una cuenta asociada, obtener sus negocios
     let businesses = null
@@ -160,9 +161,9 @@ export async function authenticateWithSupabase(
     let subscriptionPlan: string | null = null
 
     if (userRole === 'business_admin' && membership?.business_account_id) {
-      console.log('Fetching businesses for business_admin...')
+
       businesses = await getAccountBusinesses(membership.business_account_id)
-      console.log('Businesses found:', businesses?.length || 0)
+
 
       // Obtener el tipo de negocio del primer negocio y el plan de la cuenta
       if (businesses && businesses.length > 0) {
@@ -191,13 +192,13 @@ export async function authenticateWithSupabase(
 
     // Si el usuario es professional, obtener su specialist_id y business_id
     if (userRole === 'professional' && userProfileId) {
-      console.log('Fetching specialist data for professional, userProfileId:', userProfileId)
+
       const specialist = await getSpecialistForProfessional(userProfileId)
-      console.log('Specialist query result:', specialist)
+
       if (specialist) {
         specialistId = specialist.id
         businessId = specialist.business_id
-        console.log('Specialist found, id:', specialistId, 'business_id:', businessId)
+
 
         // Obtener el business para el profesional
         if (businessId) {
@@ -241,6 +242,7 @@ export async function authenticateWithSupabase(
       businesses,
       user_profile_id: userProfileId,
       specialist_id: specialistId,
+      accessToken: authData.session?.access_token || null,
     }
   } catch (err) {
     console.error('Cannot sign in:', err)
@@ -289,14 +291,14 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     // Get user from Supabase Auth usando el email de la sesión
     // Primero listar usuarios para encontrar por email (no hay método directo por email en admin)
     const { data: { users }, error: listError } = await supabase.auth.admin.listUsers()
-    
+
     if (listError) {
       console.error('Error listing users:', listError?.message)
       return null
     }
 
     const authUser = users.find(u => u.email === user.email)
-    
+
     if (!authUser) {
       console.error('User not found in auth system')
       return null
@@ -304,11 +306,11 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
     // Obtener role desde metadata del usuario de Supabase Auth
     const userRole = authUser.user_metadata?.role || 'customer'
-    
+
     // Para business relationships, seguir usando las tablas existentes por ahora
     // Obtener user_profile_id desde metadata o buscarlo
     let userProfileId = authUser.user_metadata?.user_profile_id
-    
+
     if (!userProfileId) {
       // Si no existe en metadata, buscar en la tabla users_profile (compatibilidad)
       const { data: legacyProfile } = await supabase
@@ -316,7 +318,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
         .select('id')
         .eq('user_id', authUser.id)
         .single()
-      
+
       userProfileId = legacyProfile?.id || null
     }
 

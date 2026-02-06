@@ -35,6 +35,7 @@ export async function authenticate(
       businesses: user.businesses,
       user_profile_id: user.user_profile_id,
       specialist_id: user.specialist_id || null,
+      accessToken: user.accessToken,
     }
 
     return userSessionData

@@ -1,11 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { useEffect, useState, useCallback } from 'react'
+import { useAuthenticatedSupabaseClient } from '@/lib/supabase/client'
 import { CollectionExecution, CollectionClient } from '@/lib/models/collection'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 interface ClientStats {
     total: number
@@ -40,8 +37,8 @@ export function useRealtimeExecution(
     const [clientStats, setClientStats] = useState<ClientStats>(initialClientStats)
     const [recentClients, setRecentClients] = useState<CollectionClient[]>([])
 
-    // Memoize supabase client to prevent re-creating on every render
-    const supabase = useMemo(() => createClient(supabaseUrl, supabaseAnonKey), [])
+    // Use authenticated client with user session context for RLS
+    const supabase = useAuthenticatedSupabaseClient()
 
     // Reset state when initial execution changes
     useEffect(() => {

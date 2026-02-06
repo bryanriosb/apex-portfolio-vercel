@@ -1,12 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import NotificationService from '@/lib/services/notification/notification-service'
 import type { Notification } from '@/lib/models/notification/notification'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseSecretKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
 
 export function useNotifications(userId: string | undefined) {
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -40,7 +39,7 @@ export function useNotifications(userId: string | undefined) {
 
     fetchNotifications()
 
-    const supabase = createClient(supabaseUrl, supabaseSecretKey)
+    const supabase = getSupabaseBrowserClient()
 
     const channel = supabase
       .channel('notifications')

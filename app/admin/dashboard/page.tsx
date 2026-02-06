@@ -24,7 +24,9 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { AlertCircle, AlertTriangle } from 'lucide-react'
+import { RealtimeDashboardService } from '@/lib/services/collection/realtime-dashboard-service'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
+import { useSession } from 'next-auth/react'
 import {
   getDashboardStatsAction,
   getActiveExecutionsAction,
@@ -41,11 +43,8 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { createClient } from '@supabase/supabase-js'
+import { useAuthenticatedSupabaseClient } from '@/lib/supabase/client'
 import type { EmailReputationProfile } from '@/lib/models/collection/email-reputation'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 interface DashboardStats {
   total_executions: number
@@ -90,6 +89,7 @@ interface ActiveExecution {
 }
 
 export default function DashboardPage() {
+  const { data: session } = useSession()
   const { activeBusiness } = useActiveBusinessStore()
   const [reputationProfiles, setReputationProfiles] = useState<
     EmailReputationProfile[]
@@ -106,7 +106,8 @@ export default function DashboardPage() {
   const [isPolling, setIsPolling] = useState(false)
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  const supabase = useMemo(() => createClient(supabaseUrl, supabaseAnonKey), [])
+  // Use authenticated client with user session context for RLS
+  const supabase = useAuthenticatedSupabaseClient()
 
   const today = format(new Date(), "EEEE, d 'de' MMMM", { locale: es })
 
@@ -194,77 +195,57 @@ export default function DashboardPage() {
     return () => stopPolling()
   }, [activeExecutions.length, statsLoading, startPolling, stopPolling])
 
+  // useMemo to keep the service instance stable
+  const realtimeService = useMemo(() => new RealtimeDashboardService(), [])
+
+  // Use a ref for activeExecutions to avoid dependency loop in Realtime effect
+  const activeExecutionsRef = useRef(activeExecutions)
+  useEffect(() => {
+    activeExecutionsRef.current = activeExecutions
+  }, [activeExecutions])
+
   // Realtime subscriptions
   useEffect(() => {
     if (!activeBusiness?.id) return
 
-    const channel = supabase
-      .channel('dashboard-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'collection_executions',
-          // Removed filter to rely on RLS and avoid type casting issues
+    const setupRealtime = async () => {
+      const user = session?.user as any
+      if (user?.accessToken) {
+        await realtimeService.authenticate(user.accessToken)
+      }
+
+      realtimeService.subscribeToBusinessChanges(
+        activeBusiness.id,
+        (payload) => {
+          getDashboardStatsAction(activeBusiness.id).then(setStats).catch(console.error)
+          getActiveExecutionsAction(activeBusiness.id).then(setActiveExecutions).catch(console.error)
+          getRecentExecutionsAction(activeBusiness.id, 5).then(setRecentExecutions).catch(console.error)
         },
-        () => {
-          console.log('Dashboard: Execution change detected')
-          toast.info('Actualizando tablero...')
-          getDashboardStatsAction(activeBusiness.id)
-            .then(setStats)
-            .catch(console.error)
-          getActiveExecutionsAction(activeBusiness.id)
-            .then(setActiveExecutions)
-            .catch(console.error)
-          getRecentExecutionsAction(activeBusiness.id, 5)
-            .then(setRecentExecutions)
-            .catch(console.error)
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'collection_clients' },
         async (payload) => {
-          console.log('Dashboard: Client change detected', payload)
-          toast.info('Nueva actividad detectada')
+          getDashboardStatsAction(activeBusiness.id).then(setStats).catch(console.error)
+          getRecentExecutionsAction(activeBusiness.id, 5).then(setRecentExecutions).catch(console.error)
 
-          // Refresh global stats (Totals, Rates)
-          getDashboardStatsAction(activeBusiness.id)
-            .then(setStats)
-            .catch(console.error)
-
-          // Refresh recent executions list
-          getRecentExecutionsAction(activeBusiness.id, 5)
-            .then(setRecentExecutions)
-            .catch(console.error)
-
-          // Refresh client stats for active executions
-          for (const exec of activeExecutions) {
+          // Refresh client stats for active executions using the ref
+          for (const exec of activeExecutionsRef.current) {
             const clientStats = await getExecutionClientsAction(exec.id)
             setActiveExecutionClientStats(exec.id, clientStats)
           }
+        },
+        (status) => {
+          if (status === 'SUBSCRIBED') {
+
+          }
         }
       )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Realtime connected')
-        }
-        if (status === 'CHANNEL_ERROR') {
-          console.error('Realtime connection error')
-          toast.error('Error de conexión con el servidor de actualizaciones')
-        }
-        if (status === 'TIMED_OUT') {
-          console.error('Realtime connection timeout')
-          toast.warning('La conexión en tiempo real está tardando...')
-        }
-      })
+    }
+
+    setupRealtime()
 
     return () => {
-      supabase.removeChannel(channel)
+      realtimeService.unsubscribe()
       stopPolling()
     }
-  }, [activeBusiness?.id, supabase, activeExecutions, stopPolling])
+  }, [activeBusiness?.id, realtimeService, stopPolling, session])
 
   const setActiveExecutionClientStats = (
     executionId: string,

@@ -25,27 +25,27 @@ export interface DashboardStats {
   processing_executions: number
   completed_executions: number
   failed_executions: number
-  
+
   // Email stats
   total_emails_sent: number
   total_emails_delivered: number
   total_emails_opened: number
   total_emails_bounced: number
   total_emails_failed: number
-  
+
   // Rates
   avg_open_rate: number
   avg_bounce_rate: number
   avg_delivery_rate: number
-  
+
   // Timestamps
   last_execution_date: string | null
   last_email_sent_date: string | null
-  
+
   // Today's stats
   today_emails_sent: number
   today_emails_delivered: number
-  
+
   // By strategy
   by_strategy: Record<string, { count: number; sent: number }>
 }
@@ -200,8 +200,8 @@ export async function getActiveExecutionsAction(businessId: string): Promise<Act
     if (error) throw error
 
     return (executions || []).map((exec: CollectionExecution) => {
-      const progress = exec.total_clients > 0 
-        ? Math.round((exec.emails_sent / exec.total_clients) * 100) 
+      const progress = exec.total_clients > 0
+        ? Math.round((exec.emails_sent / exec.total_clients) * 100)
         : 0
 
       return {
@@ -216,6 +216,10 @@ export async function getActiveExecutionsAction(businessId: string): Promise<Act
         emails_opened: exec.emails_opened,
         progress_percent: progress,
         strategy_type: exec.execution_mode || 'unknown',
+        open_rate: exec.emails_sent > 0 ? (exec.emails_opened / exec.emails_sent) * 100 : 0,
+        bounce_rate: exec.emails_sent > 0 ? (exec.emails_bounced / exec.emails_sent) * 100 : 0,
+        delivery_rate: exec.emails_sent > 0 ? (exec.emails_delivered / exec.emails_sent) * 100 : 0,
+        avg_open_rate: exec.emails_sent > 0 ? (exec.emails_opened / exec.emails_sent) * 100 : 0,
       }
     })
   } catch (error) {
@@ -240,7 +244,26 @@ export async function getRecentExecutionsAction(businessId: string, limit = 5): 
 
     if (error) throw error
 
-    return data || []
+    return (data || []).map((exec: any) => {
+      const openRate = exec.emails_sent > 0
+        ? (exec.emails_opened / exec.emails_sent) * 100
+        : 0
+      const bounceRate = exec.emails_sent > 0
+        ? (exec.emails_bounced / exec.emails_sent) * 100
+        : 0
+      const deliveryRate = exec.emails_sent > 0
+        ? (exec.emails_delivered / exec.emails_sent) * 100
+        : 0
+
+      return {
+        ...exec,
+        open_rate: openRate,
+        bounce_rate: bounceRate,
+        delivery_rate: deliveryRate,
+        // Compability with UI typo if any
+        avg_open_rate: openRate
+      }
+    })
   } catch (error) {
     console.error('Error fetching recent executions:', error)
     return []
