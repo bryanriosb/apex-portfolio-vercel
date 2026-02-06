@@ -29,6 +29,10 @@ export function parseBrevoEvent(body: any): EmailEvent | null {
             case 'unique_opened':
                 normalizedEventType = 'opened'
                 break
+            case 'click':
+            case 'clicked':
+                normalizedEventType = 'clicked'
+                break
             case 'error':
             case 'deferred':
                 normalizedEventType = 'failed'
@@ -48,6 +52,7 @@ export function parseBrevoEvent(body: any): EmailEvent | null {
                 reason: body.reason,
                 tag: body.tag,
                 subject: body.subject,
+                link: body.link, // URL del link clickeado (para eventos click)
             },
         }
     } catch (error) {

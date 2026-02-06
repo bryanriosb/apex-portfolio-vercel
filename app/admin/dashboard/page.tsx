@@ -353,7 +353,7 @@ export default function DashboardPage() {
           </h2>
           <div className="grid gap-4 md:grid-cols-2">
             {activeExecutions.map((exec) => (
-              <Card key={exec.id} className="border-l-4 border-l-blue-500">
+              <Card key={exec.id} className="rounded-none border border-l-4 border-l-blue-500">
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between">
                     <div>
@@ -420,7 +420,7 @@ export default function DashboardPage() {
 
       {/* Main Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="rounded-none border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Total Enviados
@@ -455,7 +455,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-none border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Tasa de Apertura
@@ -478,7 +478,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-none border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Tasa de Entrega
@@ -502,7 +502,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-none border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Tasa de Rebote
@@ -531,7 +531,7 @@ export default function DashboardPage() {
 
       {/* Secondary Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="rounded-none border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Ejecuciones Totales
@@ -561,7 +561,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-none border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">En Progreso</CardTitle>
             <Zap className="h-4 w-4 text-muted-foreground" />
@@ -582,7 +582,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-none border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Última Ejecución
@@ -607,7 +607,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-none border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Dominios Activos
@@ -634,130 +634,78 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Quick Access & Recent Executions */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-4">
+      {/* Recent Executions */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold tracking-tight">
-            Acciones Rápidas
+            Ejecuciones Recientes
           </h2>
-          <div className="grid gap-4">
-            <Card className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <CardTitle className="text-base">Nueva Campaña</CardTitle>
-                <CardDescription>Inicia un nuevo envío masivo</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Link href="/admin/collection/campaing">
-                  <Button className="w-full">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Crear Campaña
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <CardTitle className="text-base">Ver Ejecuciones</CardTitle>
-                <CardDescription>Historial completo</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Link href="/admin/collection/executions">
-                  <Button variant="outline" className="w-full">
-                    Ver Todas
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <CardTitle className="text-base">Plantillas</CardTitle>
-                <CardDescription>Gestionar templates</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Link href="/admin/collection/templates">
-                  <Button variant="outline" className="w-full">
-                    Administrar
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          </div>
+          <Link href="/admin/collection/executions">
+            <Button variant="outline" size="sm">
+              Ver Todas
+            </Button>
+          </Link>
         </div>
 
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold tracking-tight">
-              Ejecuciones Recientes
-            </h2>
-            <Link href="/admin/collection/executions">
-              <Button variant="outline" size="sm">
-                Ver Todas
-              </Button>
-            </Link>
+        {recentLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="rounded-none border">
+                <CardContent className="pt-4">
+                  <Skeleton className="h-16 w-full" />
+                </CardContent>
+              </Card>
+            ))}
           </div>
-
-          {recentLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <Card key={i}>
-                  <CardContent className="pt-4">
-                    <Skeleton className="h-16 w-full" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : recentExecutions.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="py-8 text-center">
-                <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
-                  Sin ejecuciones aún
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  Crea tu primera campaña de cobro
-                </p>
-                <Link href="/admin/collection/campaing">
-                  <Button>Crear Campaña</Button>
-                </Link>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {recentExecutions.map((exec) => (
-                <Card key={exec.id}>
-                  <CardContent className="pt-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold truncate">
-                            {exec.name}
-                          </h3>
-                          <Badge
-                            className={`text-xs ${getStatusColor(exec.status)}`}
-                          >
-                            {exec.status}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {exec.total_clients} clientes • {exec.emails_sent}{' '}
-                          enviados • {exec.emails_opened || 0} abiertos
-                        </p>
+        ) : recentExecutions.length === 0 ? (
+          <Card className="rounded-none border border-dashed">
+            <CardContent className="py-8 text-center">
+              <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">
+                Sin ejecuciones aún
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                Crea tu primera campaña de cobro
+              </p>
+              <Link href="/admin/collection/campaing">
+                <Button>Crear Campaña</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {recentExecutions.map((exec) => (
+              <Card key={exec.id} className="rounded-none border">
+                <CardContent className="pt-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold truncate">
+                          {exec.name}
+                        </h3>
+                        <Badge
+                          className={`text-xs ${getStatusColor(exec.status)}`}
+                        >
+                          {exec.status}
+                        </Badge>
                       </div>
-                      <div className="text-right text-sm text-muted-foreground">
-                        <p>{formatDate(exec.created_at)}</p>
-                        <p className="text-green-600">
-                          {exec.avg_open_rate?.toFixed(1) || 0}% opens
-                        </p>
-                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {exec.total_clients} clientes • {exec.emails_sent}{' '}
+                        enviados • {exec.emails_opened || 0} abiertos
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
+                    <div className="text-right text-sm text-muted-foreground">
+                      <p>{formatDate(exec.created_at)}</p>
+                      <p className="text-green-600">
+                        {exec.avg_open_rate?.toFixed(1) || 0}% opens
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Reputation Section */}
@@ -777,7 +725,7 @@ export default function DashboardPage() {
         {reputationLoading ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
-              <Card key={i}>
+              <Card key={i} className="rounded-none border">
                 <CardHeader className="pb-2">
                   <Skeleton className="h-5 w-32" />
                   <Skeleton className="h-4 w-24" />
@@ -794,7 +742,7 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : reputationProfiles.length === 0 ? (
-          <Card className="border-dashed">
+          <Card className="rounded-none border border-dashed">
             <CardContent className="py-8 text-center">
               <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">
@@ -815,7 +763,7 @@ export default function DashboardPage() {
               <Card
                 key={profile.id}
                 className={
-                  profile.has_reputation_issues ? 'border-red-300' : ''
+                  profile.has_reputation_issues ? 'rounded-none border border-red-300' : 'rounded-none border'
                 }
               >
                 <CardHeader className="pb-2">

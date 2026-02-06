@@ -57,6 +57,15 @@ export async function POST(
 
         // Manejar eventos de Brevo
         if (provider === 'brevo') {
+            // Validar autenticación del webhook
+            const webhookKey = request.headers.get('x-webhook-key') || request.headers.get('authorization')
+            const expectedKey = process.env.BREVO_WEBHOOK_KEY
+
+            if (expectedKey && webhookKey !== expectedKey) {
+                console.error('Invalid Brevo webhook authentication')
+                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            }
+
             const event = parseBrevoEvent(body)
 
             if (!event) {

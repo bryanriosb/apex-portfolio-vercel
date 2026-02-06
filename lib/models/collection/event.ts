@@ -46,6 +46,7 @@ export interface CollectionEventInsert {
     error_details?: string | null
     aws_request_id?: string | null
     lambda_function_name?: string | null
+    timestamp?: string
 }
 
 // Helper function to create event

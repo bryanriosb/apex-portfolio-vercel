@@ -36,14 +36,15 @@ export async function processEmailEvent(
             execution_id: client?.execution_id,
             client_id: client?.id,
             event_type: event.eventType,
-            provider: provider,
-            message_id: event.messageId,
+            event_status: 'success',
             event_data: {
+                provider: provider,
+                message_id: event.messageId,
                 email: event.email,
                 timestamp: event.timestamp,
                 metadata: event.metadata,
             },
-            created_at: new Date().toISOString(),
+            timestamp: event.timestamp,
         })
 
         if (eventError) {
@@ -70,6 +71,13 @@ export async function processEmailEvent(
                     if (client.status === 'sent' || client.status === 'delivered') {
                         newStatus = 'opened'
                     }
+                    break
+                case 'clicked':
+                    // Click indica alto engagement, actualizar a 'opened' si aún no lo está
+                    if (client.status === 'sent' || client.status === 'delivered') {
+                        newStatus = 'opened'
+                    }
+                    // No cambiamos el status si ya está en 'opened', solo registramos el evento
                     break
                 case 'failed':
                     newStatus = 'failed'
