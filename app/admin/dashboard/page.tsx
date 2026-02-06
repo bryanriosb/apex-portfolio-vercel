@@ -35,6 +35,8 @@ import {
   getReputationSummaryAction,
 } from '@/lib/actions/collection/email-strategies'
 import { Skeleton } from '@/components/ui/skeleton'
+import { formatCurrency } from '@/lib/utils/currency'
+import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Badge } from '@/components/ui/badge'
@@ -204,10 +206,11 @@ export default function DashboardPage() {
           event: '*',
           schema: 'public',
           table: 'collection_executions',
-          filter: `business_id=eq.${activeBusiness.id}`,
+          // Removed filter to rely on RLS and avoid type casting issues
         },
         () => {
           console.log('Dashboard: Execution change detected')
+          toast.info('Actualizando tablero...')
           getDashboardStatsAction(activeBusiness.id)
             .then(setStats)
             .catch(console.error)
@@ -224,6 +227,7 @@ export default function DashboardPage() {
         { event: '*', schema: 'public', table: 'collection_clients' },
         async (payload) => {
           console.log('Dashboard: Client change detected', payload)
+          toast.info('Nueva actividad detectada')
 
           // Refresh global stats (Totals, Rates)
           getDashboardStatsAction(activeBusiness.id)
@@ -242,7 +246,19 @@ export default function DashboardPage() {
           }
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Realtime connected')
+        }
+        if (status === 'CHANNEL_ERROR') {
+          console.error('Realtime connection error')
+          toast.error('Error de conexión con el servidor de actualizaciones')
+        }
+        if (status === 'TIMED_OUT') {
+          console.error('Realtime connection timeout')
+          toast.warning('La conexión en tiempo real está tardando...')
+        }
+      })
 
     return () => {
       supabase.removeChannel(channel)
