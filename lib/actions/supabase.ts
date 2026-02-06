@@ -52,6 +52,11 @@ export async function getSupabaseAdminClient() {
           persistSession: false,
           autoRefreshToken: false,
         },
+        global: {
+          fetch: (url, options) => {
+            return fetch(url, { ...options, cache: 'no-store' })
+          },
+        },
       }
     )
   }
