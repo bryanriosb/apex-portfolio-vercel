@@ -15,6 +15,13 @@ import {
   Info,
   Database,
 } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { FileData, EmailConfig, StrategyType, DatabaseStrategy } from './types'
 
 interface Step3ContentProps {
@@ -35,6 +42,7 @@ interface Step3ContentProps {
   onAdvancedOptionsChange: (show: boolean) => void
   customBatchSize: number | undefined
   onCustomBatchSizeChange: (size: number | undefined) => void
+  availableDomains: string[]
 }
 
 export function Step3Content({
@@ -55,6 +63,7 @@ export function Step3Content({
   onAdvancedOptionsChange,
   customBatchSize,
   onCustomBatchSizeChange,
+  availableDomains,
 }: Step3ContentProps) {
   if (!fileData) return null
 
@@ -186,17 +195,51 @@ export function Step3Content({
             Dominio Remitente
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
-          <Input
-            id="senderDomain"
-            type="text"
-            placeholder="ejemplo.com"
-            value={senderDomain}
-            onChange={(e) => onDomainChange(e.target.value)}
-          />
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Seleccionar Dominio</Label>
+            <div className="flex gap-2">
+              <Select
+                value={senderDomain}
+                onValueChange={(value: string) => {
+                  if (value === 'custom') {
+                    onDomainChange('')
+                  } else {
+                    onDomainChange(value)
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccionar un dominio verificado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="custom">✍️ Usar otro dominio...</SelectItem>
+                  {availableDomains.length > 0 && <div className="h-px bg-muted my-1" />}
+                  {availableDomains.map((domain) => (
+                    <SelectItem key={domain} value={domain}>
+                      {domain}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {(senderDomain === '' || !availableDomains.includes(senderDomain)) && (
+            <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+              <Label htmlFor="customDomain">Escribir Dominio</Label>
+              <Input
+                id="customDomain"
+                type="text"
+                placeholder="ejemplo.com"
+                value={senderDomain}
+                onChange={(e) => onDomainChange(e.target.value)}
+              />
+            </div>
+          )}
+
           <p className="text-xs text-muted-foreground">
-            Dominio que aparecerá como remitente de los correos electrónicos.
-            Este dominio será monitoreado para métricas de reputación.
+            Dominio que aparecerá como remitente. Los dominios nuevos comenzarán a generar reputación desde cero.
           </p>
         </CardContent>
       </Card>

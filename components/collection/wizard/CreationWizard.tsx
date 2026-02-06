@@ -17,7 +17,10 @@ import { toast } from 'sonner'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import { createExecutionWithClientsAction } from '@/lib/actions/collection/execution-workflow'
 import { getCurrentUser } from '@/lib/services/auth/supabase-auth'
-import { getBusinessStrategiesAction } from '@/lib/actions/collection/email-strategies'
+import {
+  getBusinessStrategiesAction,
+  getBusinessDomainsAction,
+} from '@/lib/actions/collection/email-strategies'
 import * as XLSX from 'xlsx'
 
 // Import components
@@ -64,6 +67,7 @@ export function CreationWizard() {
   )
   const [strategies, setStrategies] = useState<DatabaseStrategy[]>([])
   const [senderDomain, setSenderDomain] = useState('')
+  const [availableDomains, setAvailableDomains] = useState<string[]>([])
   const [customBatchSize, setCustomBatchSize] = useState<number | undefined>(
     undefined
   )
@@ -78,10 +82,13 @@ export function CreationWizard() {
       if (!activeBusiness?.id) return
 
       try {
-        const businessStrategies = await getBusinessStrategiesAction(
-          activeBusiness.id
-        )
+        const [businessStrategies, businessDomains] = await Promise.all([
+          getBusinessStrategiesAction(activeBusiness.id),
+          getBusinessDomainsAction(activeBusiness.id),
+        ])
+
         setStrategies(businessStrategies)
+        setAvailableDomains(businessDomains)
 
         // Select default strategy if available
         const defaultStrategy = businessStrategies.find((s) => s.is_default)
@@ -90,9 +97,14 @@ export function CreationWizard() {
         } else if (businessStrategies.length > 0) {
           setSelectedStrategyId(businessStrategies[0].id)
         }
+
+        // Pre-select domain if available
+        if (businessDomains.length > 0 && !senderDomain) {
+          setSenderDomain(businessDomains[0])
+        }
       } catch (error) {
-        console.error('Error loading strategies:', error)
-        toast.error('Error al cargar estrategias de envío')
+        console.error('Error loading strategies/domains:', error)
+        toast.error('Error al cargar configuración de envío')
       }
     }
 
@@ -303,6 +315,7 @@ export function CreationWizard() {
               onAdvancedOptionsChange={setShowAdvancedOptions}
               customBatchSize={customBatchSize}
               onCustomBatchSizeChange={setCustomBatchSize}
+              availableDomains={availableDomains}
             />
           )}
         </CardContent>
@@ -348,11 +361,11 @@ function StepIndicator({
                 className={cn(
                   'w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors',
                   isActive &&
-                    'border-primary bg-primary text-primary-foreground',
+                  'border-primary bg-primary text-primary-foreground',
                   isCompleted && 'border-green-500 bg-green-500 text-white',
                   !isActive &&
-                    !isCompleted &&
-                    'border-gray-300 bg-white text-gray-400'
+                  !isCompleted &&
+                  'border-gray-300 bg-white text-gray-400'
                 )}
               >
                 {isCompleted ? (

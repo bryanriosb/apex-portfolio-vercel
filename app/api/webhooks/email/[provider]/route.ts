@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { parseSesEvent } from '@/lib/webhooks/parsers/ses-parser'
 import { parseBrevoEvent } from '@/lib/webhooks/parsers/brevo-parser'
 import { processEmailEvent } from '@/lib/webhooks/handlers/email-webhook-handler'
+import { isIpInCidr } from '@/lib/utils/network'
 
 /**
  * Webhook endpoint para eventos de email de múltiples proveedores
@@ -57,12 +58,42 @@ export async function POST(
 
         // Manejar eventos de Brevo
         if (provider === 'brevo') {
+            // Validar whitelist de IPs de Brevo
+            const BREVO_IPS = [
+                '1.179.112.0/20',
+                '172.246.240.0/20'
+            ]
+
+            // Obtener IP del cliente (considerando proxies)
+            const forwardedFor = request.headers.get('x-forwarded-for')
+            const clientIp = forwardedFor ? forwardedFor.split(',')[0].trim() : (request.ip || '127.0.0.1')
+
+            // Permitir localhost en desarrollo
+            const isLocal = clientIp === '127.0.0.1' || clientIp === '::1'
+            const isAllowedIp = isLocal || BREVO_IPS.some((cidr: string) => isIpInCidr(clientIp, cidr))
+
+            if (!isAllowedIp) {
+                console.warn(`[BREVO] Blocked request from unauthorized IP: ${clientIp}`)
+                return NextResponse.json({ error: 'Unauthorized IP' }, { status: 403 })
+            }
+
             // Validar autenticación del webhook
-            const webhookKey = request.headers.get('x-webhook-key') || request.headers.get('authorization')
+            let webhookKey = request.headers.get('x-webhook-key')
+            const authHeader = request.headers.get('authorization')
+
+            // Si viene en header Authorization, puede tener prefijo Bearer
+            if (!webhookKey && authHeader) {
+                if (authHeader.startsWith('Bearer ')) {
+                    webhookKey = authHeader.substring(7)
+                } else {
+                    webhookKey = authHeader
+                }
+            }
+
             const expectedKey = process.env.BREVO_WEBHOOK_KEY
 
             if (expectedKey && webhookKey !== expectedKey) {
-                console.error('Invalid Brevo webhook authentication')
+                console.error('Invalid Brevo webhook authentication. Received:', webhookKey ? '***' : 'null')
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
             }
 

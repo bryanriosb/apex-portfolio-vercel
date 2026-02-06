@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import {
   Loader2,
@@ -45,7 +45,10 @@ import {
   updateDeliveryStrategyAction,
   deleteDeliveryStrategyAction,
   setDefaultStrategyAction,
+  getReputationSummaryAction,
 } from '@/lib/actions/collection/email-strategies'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import type { EmailReputationProfile } from '@/lib/models/collection/email-reputation'
 
 interface EmailDeliveryClientProps {
   initialStrategies: DeliveryStrategy[]
@@ -251,19 +254,32 @@ export default function EmailDeliveryClient({
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-end">
-            <Button onClick={handleOpenCreate} disabled={isLoading}>
-              <Plus className="h-4 w-4 mr-2" />
-              Crear Estrategia
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <StrategiesTab strategies={strategies} onEdit={handleOpenEdit} onDelete={(id) => setDeleteConfirmId(id)} onSetDefault={handleSetDefault} isLoading={isLoading} />
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="strategies" className="w-full">
+        <TabsList>
+          <TabsTrigger value="strategies">Estrategias de Envío</TabsTrigger>
+          <TabsTrigger value="domains">Reputación de Dominios</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="strategies">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-end">
+                <Button onClick={handleOpenCreate} disabled={isLoading}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Crear Estrategia
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <StrategiesTab strategies={strategies} onEdit={handleOpenEdit} onDelete={(id) => setDeleteConfirmId(id)} onSetDefault={handleSetDefault} isLoading={isLoading} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="domains">
+          <DomainsTab businessId={businessId} />
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -665,6 +681,132 @@ function StrategiesTab({
   )
 }
 
+
+function DomainsTab({ businessId }: { businessId: string }) {
+  const [profiles, setProfiles] = useState<EmailReputationProfile[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    let mounted = true
+    const loadData = async () => {
+      try {
+        const data = await getReputationSummaryAction(businessId)
+        if (mounted) {
+          setProfiles(data)
+        }
+      } catch (error) {
+        console.error('Error loading domain reputation:', error)
+      } finally {
+        if (mounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+    loadData()
+    return () => { mounted = false }
+  }, [businessId])
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+
+  if (profiles.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+          <ShieldAlert className="h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">
+            No hay dominios registrados
+          </h3>
+          <p className="text-muted-foreground max-w-md">
+            Los dominios se registrarán automáticamente cuando envíes tu primera campaña de cobro.
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="grid gap-6">
+      {profiles.map((profile) => (
+        <Card key={profile.id}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xl font-bold flex items-center gap-2">
+                {profile.domain}
+                <Badge variant={!profile.has_reputation_issues ? 'default' : 'destructive'}>
+                  {profile.has_reputation_issues ? 'Problemas Detectados' : 'Saludable'}
+                </Badge>
+              </CardTitle>
+              <div className="text-sm text-muted-foreground">
+                Estrategia: <span className="font-medium capitalize">{profile.current_strategy.replace('_', ' ')}</span>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="p-4 bg-muted rounded-lg text-center">
+                <div className="text-sm text-muted-foreground mb-1">Enviados</div>
+                <div className="text-2xl font-bold">{profile.total_emails_sent}</div>
+              </div>
+              <div className="p-4 bg-muted rounded-lg text-center">
+                <div className="text-sm text-muted-foreground mb-1">Entregados</div>
+                <div className="text-2xl font-bold">{profile.total_emails_delivered}</div>
+              </div>
+              <div className="p-4 bg-muted rounded-lg text-center">
+                <div className="text-sm text-muted-foreground mb-1">Abiertos</div>
+                <div className="text-2xl font-bold">{profile.total_emails_opened}</div>
+              </div>
+              <div className="p-4 bg-muted rounded-lg text-center">
+                <div className="text-sm text-muted-foreground mb-1">Rebotes</div>
+                <div className="text-2xl font-bold text-red-600">{profile.total_emails_bounced}</div>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-2">
+              <h4 className="font-medium text-sm">Salud del Dominio</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Tasa de Rebote (Bounce Rate)</span>
+                    <span className={profile.bounce_rate && profile.bounce_rate > 5 ? 'text-red-600 font-bold' : ''}>
+                      {profile.bounce_rate}%
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${profile.bounce_rate && profile.bounce_rate > 5 ? 'bg-red-500' : 'bg-green-500'}`}
+                      style={{ width: `${Math.min(profile.bounce_rate || 0, 100)}%` }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Quejas (Complaints)</span>
+                    <span className={profile.complaint_rate && profile.complaint_rate > 0.1 ? 'text-red-600 font-bold' : ''}>
+                      {profile.complaint_rate}%
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${profile.complaint_rate && profile.complaint_rate > 0.1 ? 'bg-red-500' : 'bg-green-500'}`}
+                      style={{ width: `${Math.min((profile.complaint_rate || 0) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+{/* StrategyTypeBadge was here */ }
 function StrategyTypeBadge({ type }: { type: string }) {
   const variants: Record<string, { label: string; className: string }> = {
     ramp_up: {

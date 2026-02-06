@@ -9,7 +9,7 @@ import { EmailReputationProfile } from '@/lib/models/collection/email-reputation
  */
 export async function getBusinessStrategiesAction(businessId: string): Promise<DeliveryStrategy[]> {
   const supabase = await getSupabaseAdminClient()
-  
+
   const { data, error } = await supabase
     .from('delivery_strategies')
     .select('*')
@@ -30,7 +30,7 @@ export async function getBusinessStrategiesAction(businessId: string): Promise<D
  */
 export async function getStrategyByIdAction(strategyId: string): Promise<DeliveryStrategy | null> {
   const supabase = await getSupabaseAdminClient()
-  
+
   const { data, error } = await supabase
     .from('delivery_strategies')
     .select('*')
@@ -53,7 +53,7 @@ export async function getStrategyByIdAction(strategyId: string): Promise<Deliver
  */
 export async function getDefaultStrategyAction(businessId: string): Promise<DeliveryStrategy | null> {
   const supabase = await getSupabaseAdminClient()
-  
+
   const { data, error } = await supabase
     .from('delivery_strategies')
     .select('*')
@@ -78,7 +78,7 @@ export async function getDefaultStrategyAction(businessId: string): Promise<Deli
  */
 export async function createDeliveryStrategyAction(strategy: DeliveryStrategyInsert): Promise<DeliveryStrategy> {
   const supabase = await getSupabaseAdminClient()
-  
+
   if (strategy.is_default) {
     await supabase
       .from('delivery_strategies')
@@ -106,7 +106,7 @@ export async function createDeliveryStrategyAction(strategy: DeliveryStrategyIns
  */
 export async function updateDeliveryStrategyAction(strategyId: string, updates: DeliveryStrategyUpdate): Promise<DeliveryStrategy> {
   const supabase = await getSupabaseAdminClient()
-  
+
   if (updates.is_default) {
     const { data: currentStrategy } = await supabase
       .from('delivery_strategies')
@@ -143,7 +143,7 @@ export async function updateDeliveryStrategyAction(strategyId: string, updates: 
  */
 export async function deleteDeliveryStrategyAction(strategyId: string): Promise<void> {
   const supabase = await getSupabaseAdminClient()
-  
+
   const { error } = await supabase
     .from('delivery_strategies')
     .update({ is_active: false })
@@ -160,7 +160,7 @@ export async function deleteDeliveryStrategyAction(strategyId: string): Promise<
  */
 export async function setDefaultStrategyAction(strategyId: string): Promise<DeliveryStrategy> {
   const supabase = await getSupabaseAdminClient()
-  
+
   const { data: strategy, error: fetchError } = await supabase
     .from('delivery_strategies')
     .select('business_id')
@@ -215,6 +215,31 @@ export async function getReputationSummaryAction(businessId: string): Promise<Em
   }
 
   return (data || []).map(item => ({ ...item }))
+}
+
+/**
+ * Obtiene los dominios únicos configurados para un negocio
+ */
+export async function getBusinessDomainsAction(businessId: string): Promise<string[]> {
+  const supabase = await getSupabaseAdminClient()
+
+  // Obtenemos dominios únicos usando distinct
+  const { data, error } = await supabase
+    .from('email_reputation_profiles')
+    .select('domain')
+    .eq('business_id', businessId)
+
+  if (error) {
+    console.error('Error fetching business domains:', error)
+    return []
+  }
+
+  // Filtrar duplicados en memoria y ordenar
+  // Nota: Podríamos usar .select('domain', { count: 'exact', head: false }) si tuviéramos tabla de dominios
+  // pero como es reputación, mejor filtramos en JS
+  const domains = Array.from(new Set((data || []).map((item: any) => item.domain))).sort()
+
+  return domains
 }
 
 /**
