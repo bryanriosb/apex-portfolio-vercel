@@ -224,6 +224,17 @@ export default function DashboardPage() {
         { event: '*', schema: 'public', table: 'collection_clients' },
         async (payload) => {
           console.log('Dashboard: Client change detected', payload)
+
+          // Refresh global stats (Totals, Rates)
+          getDashboardStatsAction(activeBusiness.id)
+            .then(setStats)
+            .catch(console.error)
+
+          // Refresh recent executions list
+          getRecentExecutionsAction(activeBusiness.id, 5)
+            .then(setRecentExecutions)
+            .catch(console.error)
+
           // Refresh client stats for active executions
           for (const exec of activeExecutions) {
             const clientStats = await getExecutionClientsAction(exec.id)
