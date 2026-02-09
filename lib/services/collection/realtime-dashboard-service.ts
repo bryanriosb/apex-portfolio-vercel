@@ -43,6 +43,7 @@ export class RealtimeDashboardService {
         businessId: string,
         onExecutionChange: (payload: any) => void,
         onClientChange: (payload: any) => void,
+        onReputationChange: (payload: any) => void,
         onStatusChange?: (status: string) => void
     ) {
         // Si ya hay un canal para este negocio y está activo, no hacemos nada
@@ -73,6 +74,15 @@ export class RealtimeDashboardService {
                     table: 'collection_clients',
                 },
                 (payload) => onClientChange(payload)
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'email_reputation_profiles',
+                },
+                (payload) => onReputationChange(payload)
             )
             .subscribe((status) => {
                 if (onStatusChange) {

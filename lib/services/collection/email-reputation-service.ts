@@ -13,6 +13,7 @@ export class EmailReputationService {
     static async getOrCreateReputationProfile(
         businessId: string,
         domain: string,
+        provider: string = 'brevo',
         sendingIp?: string
     ): Promise<EmailReputationProfile> {
         const supabase = await getSupabaseAdminClient()
@@ -37,6 +38,7 @@ export class EmailReputationService {
         const insertData: EmailReputationProfileInsert = {
             business_id: businessId,
             domain: domain.toLowerCase().trim(),
+            provider: provider.toLowerCase(),
             sending_ip: sendingIp,
             is_warmed_up: false,
             warmup_start_date: new Date().toISOString(),
@@ -159,11 +161,11 @@ export class EmailReputationService {
             if (!profile) {
                 return { canSend: false, remaining: 0, dailyLimit: 0, emailsSent: 0 }
             }
-            return { 
-                canSend: true, 
-                remaining: profile.daily_sending_limit, 
-                dailyLimit: profile.daily_sending_limit, 
-                emailsSent: 0 
+            return {
+                canSend: true,
+                remaining: profile.daily_sending_limit,
+                dailyLimit: profile.daily_sending_limit,
+                emailsSent: 0
             }
         }
 

@@ -15,6 +15,7 @@ interface CreateExecutionWorkflowParams {
     strategyId?: string // ID de la estrategia de la DB
     strategyType: 'ramp_up' | 'batch' | 'conservative' | 'aggressive'
     domain: string // Dominio remitente (ej: bore.sas)
+    provider?: string // Proveedor de email (brevo, ses, sendgrid, etc.)
     sendingIp?: string // IP dedicada de SES (opcional)
     customBatchSize?: number // Para estrategia batch: tamaño custom
     maxBatchesPerDay?: number // Para estrategia batch: máximo batches/día
@@ -138,6 +139,7 @@ export async function createExecutionWithClientsAction({
     const reputationProfile = await EmailReputationService.getOrCreateReputationProfile(
       executionData.business_id,
       domain,
+      strategyConfig.provider || 'brevo', // Default a Brevo si no se especifica
       strategyConfig.sendingIp
     )
 
@@ -163,7 +165,7 @@ export async function createExecutionWithClientsAction({
 
     // 6. Encolar batches en SQS (si se solicita inicio inmediato o está programado)
     let queueResult = null
-    
+
     if (executionData.execution_mode === 'immediate' || strategyConfig.startImmediately) {
       // Encolar todos los batches pendientes
       queueResult = await SQSBatchService.enqueueBatches(
@@ -183,7 +185,7 @@ export async function createExecutionWithClientsAction({
       // Actualizar estado de ejecución
       await supabase
         .from('collection_executions')
-        .update({ 
+        .update({
           status: 'processing',
           started_at: new Date().toISOString(),
           sqs_queue_url: process.env.SQS_BATCH_QUEUE_URL,
@@ -193,11 +195,11 @@ export async function createExecutionWithClientsAction({
     } else if (executionData.execution_mode === 'scheduled' && executionData.scheduled_at) {
       // Para ejecuciones programadas, los batches ya tienen scheduled_for configurado
       // Se encolarán automáticamente cuando llegue el momento (via Lambda scheduler)
-      
+
       // Actualizar ejecución con información de programación
       await supabase
         .from('collection_executions')
-        .update({ 
+        .update({
           status: 'pending', // Se mantendrá pending hasta que se encole el primer batch
           scheduled_at: executionData.scheduled_at,
         })
@@ -224,8 +226,8 @@ export async function createExecutionWithClientsAction({
 
   } catch (error: any) {
     console.error('Workflow Error:', error)
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: error.message || 'Unknown error occurred',
     }
   }
