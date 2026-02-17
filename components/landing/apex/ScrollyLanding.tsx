@@ -32,6 +32,7 @@ export const ScrollyLanding: React.FC = () => {
   const [logs, setLogs] = React.useState<TelemetryLog[]>([])
   const [mounted, setMounted] = React.useState(false)
   const [activeSection, setActiveSection] = React.useState(0)
+  const [isMobile, setIsMobile] = React.useState(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
   const router = useRouter()
   const [isLoading, setIsLoading] = React.useState(false)
@@ -40,6 +41,18 @@ export const ScrollyLanding: React.FC = () => {
 
   React.useEffect(() => {
     setMounted(true)
+    
+    // Detectar dispositivos móviles o de bajos recursos
+    const checkMobile = () => {
+      const isTouchDevice = window.matchMedia('(pointer: coarse)').matches
+      const isSmallScreen = window.innerWidth < 768
+      const isLowMemory = (navigator as any).deviceMemory && (navigator as any).deviceMemory < 4
+      setIsMobile(isTouchDevice || isSmallScreen || isLowMemory)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    
     const handleScroll = () => {
       if (!containerRef.current) return
       const scrollY = window.scrollY
@@ -67,6 +80,8 @@ export const ScrollyLanding: React.FC = () => {
     }))
     setLogs(initialLogs)
 
+    // Reducir frecuencia de actualización en móvil
+    const intervalTime = isMobile ? 5000 : 2000
     const interval = setInterval(() => {
       setLogs((prev) => [
         {
@@ -76,14 +91,15 @@ export const ScrollyLanding: React.FC = () => {
         },
         ...prev.slice(0, 5),
       ])
-    }, 2000)
+    }, intervalTime)
 
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => {
       window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('resize', checkMobile)
       clearInterval(interval)
     }
-  }, [])
+  }, [isMobile])
 
   const frameVariants: Variants = {
     initial: { opacity: 0, scale: 0.9, filter: 'blur(20px)' },
@@ -160,20 +176,31 @@ export const ScrollyLanding: React.FC = () => {
       className="relative bg-[#F8FAFC]"
       style={{ height: `${TOTAL_FRAMES * 100}vh` }}
     >
-      {/* Background */}
+      {/* Background - Usar fondo estático en móvil */}
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <Player
-          component={ApexDeepTechBackground}
-          inputProps={{ scrollProgress }}
-          durationInFrames={300}
-          fps={30}
-          compositionWidth={1920}
-          compositionHeight={1080}
-          style={{ width: '100%', height: '100%' }}
-          autoPlay
-          loop
-          controls={false}
-        />
+        {isMobile ? (
+          <div className="w-full h-full bg-gradient-to-br from-[#F8FAFC] via-[#E2E8F0] to-[#CBD5E1]">
+            <div 
+              className="absolute inset-0 opacity-30"
+              style={{
+                backgroundImage: 'radial-gradient(circle at 50% 50%, #0052FF 0%, transparent 50%)',
+              }}
+            />
+          </div>
+        ) : (
+          <Player
+            component={ApexDeepTechBackground}
+            inputProps={{ scrollProgress, isMobile: false }}
+            durationInFrames={300}
+            fps={30}
+            compositionWidth={1920}
+            compositionHeight={1080}
+            style={{ width: '100%', height: '100%' }}
+            autoPlay
+            loop
+            controls={false}
+          />
+        )}
       </div>
 
       {/* Navbar */}
