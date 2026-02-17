@@ -1,9 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Player } from '@remotion/player'
 import { AnimatePresence, Variants } from 'framer-motion'
-import { ApexDeepTechBackground } from '@/remotion/compositions/ApexDeepTechBackground'
 import { Button } from '@/components/ui/button'
 import {
   Frame0ROI,
@@ -176,7 +174,7 @@ export const ScrollyLanding: React.FC = () => {
       className="relative bg-[#F8FAFC]"
       style={{ height: `${TOTAL_FRAMES * 100}vh` }}
     >
-      {/* Background - Usar fondo estático en móvil */}
+      {/* Background - Video en desktop, estático en móvil */}
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
         {isMobile ? (
           <div className="w-full h-full bg-gradient-to-br from-[#F8FAFC] via-[#E2E8F0] to-[#CBD5E1]">
@@ -188,18 +186,16 @@ export const ScrollyLanding: React.FC = () => {
             />
           </div>
         ) : (
-          <Player
-            component={ApexDeepTechBackground}
-            inputProps={{ scrollProgress, isMobile: false }}
-            durationInFrames={300}
-            fps={30}
-            compositionWidth={1920}
-            compositionHeight={1080}
-            style={{ width: '100%', height: '100%' }}
+          <video
             autoPlay
             loop
-            controls={false}
-          />
+            muted
+            playsInline
+            className="w-screen h-screen object-contain"
+            poster="/videos/apex-background-poster.jpg"
+          >
+            <source src="/videos/apex-background.mp4" type="video/mp4" />
+          </video>
         )}
       </div>
 
@@ -268,10 +264,7 @@ export const ScrollyLanding: React.FC = () => {
         <div className="w-full h-full max-w-7xl mx-auto px-4 sm:px-6 flex items-start lg:items-center justify-center pointer-events-auto overflow-y-auto lg:overflow-visible py-4">
           <AnimatePresence mode="wait">
             {activeSection === 0 && (
-              <Frame0ROI
-                frameVariants={frameVariants}
-                childVariants={childVariants}
-              />
+              <Frame0ROI />
             )}
             {activeSection === 1 && (
               <Frame1Seguridad
@@ -341,6 +334,54 @@ export const ScrollyLanding: React.FC = () => {
           </button>
         ))}
       </div>
+
+      {/* Scroll Indicator - Arrow down or Go to Top button */}
+      {activeSection < TOTAL_FRAMES - 1 ? (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 animate-bounce">
+          <span className="text-[10px] font-black text-[#0052FF] uppercase tracking-widest bg-white/90 backdrop-blur-sm px-3 py-1 border-2 border-[#0052FF] shadow-[2px_2px_0px_#0052FF]">
+            Scroll
+          </span>
+          <div className="w-8 h-8 bg-[#0052FF] flex items-center justify-center shadow-[2px_2px_0px_#000] border-2 border-gray-900">
+            <svg
+              className="w-5 h-5 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={3}
+                d="M19 14l-7 7m0 0l-7-7m7 7V3"
+              />
+            </svg>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 group cursor-pointer"
+        >
+          <span className="text-[10px] font-black text-white uppercase tracking-widest bg-[#0052FF] px-3 py-1 border-2 border-gray-900 shadow-[2px_2px_0px_#000] group-hover:shadow-none group-hover:translate-x-[2px] group-hover:translate-y-[2px] transition-all">
+            Inicio
+          </span>
+          <div className="w-8 h-8 bg-white flex items-center justify-center shadow-[2px_2px_0px_#000] border-2 border-gray-900 group-hover:shadow-none group-hover:translate-x-[2px] group-hover:translate-y-[2px] transition-all">
+            <svg
+              className="w-5 h-5 text-[#0052FF]"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={3}
+                d="M5 10l7-7m0 0l7 7m-7-7v18"
+              />
+            </svg>
+          </div>
+        </button>
+      )}
 
       {/* Bottom Scroll Progress */}
       <div className="fixed bottom-0 left-0 right-0 h-1 bg-gray-200 z-50">

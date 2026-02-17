@@ -1,12 +1,38 @@
 import React from 'react';
-import {Composition} from 'remotion';
+import {Composition, Folder, registerRoot} from 'remotion';
 import {ApexExecutionBackground} from './compositions/ApexExecutionBackground';
 import {ApexDeepTechBackground} from './compositions/ApexDeepTechBackground';
+import {ApexDeepTechBackgroundLoop} from './compositions/ApexDeepTechBackgroundLoop';
 import {ApexDeliveryComparison} from './compositions/ApexDeliveryComparison';
 
 export const RemotionRoot: React.FC = () => {
   return (
     <>
+      <Folder name="Backgrounds">
+        <Composition
+          id="ApexDeepTechBackgroundVideo"
+          component={ApexDeepTechBackgroundLoop}
+          durationInFrames={300}
+          fps={30}
+          width={1920}
+          height={1080}
+          defaultProps={{
+            isMobile: false,
+          }}
+        />
+        <Composition
+          id="ApexDeepTechBackgroundMobile"
+          component={ApexDeepTechBackgroundLoop}
+          durationInFrames={300}
+          fps={30}
+          width={1920}
+          height={1080}
+          defaultProps={{
+            isMobile: true,
+          }}
+        />
+      </Folder>
+      
       <Composition
         id="ApexExecutionBackground"
         component={ApexExecutionBackground}
@@ -43,3 +69,5 @@ export const RemotionRoot: React.FC = () => {
     </>
   );
 };
+
+registerRoot(RemotionRoot);

@@ -1,28 +1,14 @@
 'use client';
 
-import React, {useRef, useEffect, useState} from 'react';
-import {Player, PlayerRef} from '@remotion/player';
-import {ApexExecutionBackground} from '@/remotion/compositions/ApexExecutionBackground';
+import React, {useEffect, useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {ArrowRight, Zap, Shield, BarChart3, Crosshair, Terminal} from 'lucide-react';
 
-interface DashboardShellProps {
-  nodeCount?: number;
-}
-
-export const DashboardShell: React.FC<DashboardShellProps> = ({
-  nodeCount = 24,
-}) => {
-  const playerRef = useRef<PlayerRef>(null);
+export const DashboardShell: React.FC = () => {
   const [isClient, setIsClient] = useState(false);
-  const [scanPos, setScanPos] = useState(0);
   
   useEffect(() => {
     setIsClient(true);
-    const interval = setInterval(() => {
-      setScanPos((prev) => (prev + 1) % 100);
-    }, 50);
-    return () => clearInterval(interval);
   }, []);
   
   if (!isClient) {
@@ -37,36 +23,18 @@ export const DashboardShell: React.FC<DashboardShellProps> = ({
   
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[#F4F7FA] font-sans">
-      {/* Scanning Line Animation */}
-      <div 
-        className="absolute w-full h-[1px] bg-[#0052FF]/20 z-20 pointer-events-none"
-        style={{top: `${scanPos}%`}}
-      />
-      <div 
-        className="absolute w-[1px] h-full bg-[#0052FF]/10 z-20 pointer-events-none"
-        style={{left: `${scanPos}%`}}
-      />
-
-      {/* Remotion Player Background */}
+      {/* Video Background */}
       <div className="absolute inset-0 z-0 opacity-80">
-        <Player
-          ref={playerRef}
-          component={ApexExecutionBackground}
-          inputProps={{nodeCount}}
-          durationInFrames={300}
-          fps={30}
-          compositionWidth={1920}
-          compositionHeight={1080}
-          style={{
-            width: '100%',
-            height: '100%',
-            position: 'absolute',
-            filter: 'saturate(0.8) contrast(1.05)',
-          }}
+        <video
           autoPlay
           loop
-          controls={false}
-        />
+          muted
+          playsInline
+          className="w-screen h-screen object-contain"
+          style={{ filter: 'saturate(0.8) contrast(1.05)' }}
+        >
+          <source src="/videos/apex-execution.mp4" type="video/mp4" />
+        </video>
       </div>
 
       {/* UI Overlay Corners (Hard-Edge) */}
