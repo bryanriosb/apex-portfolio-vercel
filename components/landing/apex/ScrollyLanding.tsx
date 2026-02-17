@@ -266,14 +266,7 @@ export const ScrollyLanding: React.FC = () => {
             {activeSection === 0 && (
               <Frame0ROI />
             )}
-            {activeSection === 1 && (
-              <Frame1Seguridad
-                frameVariants={frameVariants}
-                childVariants={childVariants}
-                activeStrategy={activeStrategy}
-                setActiveStrategy={setActiveStrategy}
-              />
-            )}
+            {activeSection === 1 && <Frame1Seguridad />}
             {activeSection === 2 && (
               <Frame2Telemetria
                 frameVariants={frameVariants}
@@ -337,7 +330,7 @@ export const ScrollyLanding: React.FC = () => {
 
       {/* Scroll Indicator - Arrow down or Go to Top button */}
       {activeSection < TOTAL_FRAMES - 1 ? (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 animate-bounce">
+        <div className="fixed bottom-16 sm:bottom-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 animate-bounce">
           <span className="text-[10px] font-black text-[#0052FF] uppercase tracking-widest bg-white/90 backdrop-blur-sm px-3 py-1 border-2 border-[#0052FF] shadow-[2px_2px_0px_#0052FF]">
             Scroll
           </span>
@@ -360,7 +353,7 @@ export const ScrollyLanding: React.FC = () => {
       ) : (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 group cursor-pointer"
+          className="fixed bottom-16 sm:bottom-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 group cursor-pointer"
         >
           <span className="text-[10px] font-black text-white uppercase tracking-widest bg-[#0052FF] px-3 py-1 border-2 border-gray-900 shadow-[2px_2px_0px_#000] group-hover:shadow-none group-hover:translate-x-[2px] group-hover:translate-y-[2px] transition-all">
             Inicio
