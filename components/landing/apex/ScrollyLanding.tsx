@@ -52,11 +52,16 @@ export const ScrollyLanding: React.FC = () => {
     checkMobile()
     window.addEventListener('resize', checkMobile)
 
-    // Sistema de scroll preciso: 1 scroll = 1 sección
+    // Sistema de scroll preciso: 1 scroll/swipe = 1 sección
     let isScrolling = false
     let scrollTimeout: NodeJS.Timeout
+    let touchStartY = 0
+    let touchEndY = 0
 
     const handleWheel = (e: WheelEvent) => {
+      // Solo aplicar en desktop
+      if (isMobile) return
+      
       e.preventDefault()
       
       if (isScrolling) return
@@ -82,6 +87,41 @@ export const ScrollyLanding: React.FC = () => {
         scrollTimeout = setTimeout(() => {
           isScrolling = false
         }, 800)
+      }
+    }
+
+    // Soporte para gestos táctiles (móvil)
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0].clientY
+    }
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (isScrolling) return
+      
+      touchEndY = e.changedTouches[0].clientY
+      const diff = touchStartY - touchEndY
+      const minSwipeDistance = 50 // Mínima distancia para considerar un swipe
+      
+      if (Math.abs(diff) > minSwipeDistance) {
+        const direction = diff > 0 ? 1 : -1
+        const newSection = Math.max(0, Math.min(TOTAL_FRAMES - 1, activeSection + direction))
+        
+        if (newSection !== activeSection) {
+          isScrolling = true
+          setActiveSection(newSection)
+          
+          const progress = newSection / (TOTAL_FRAMES - 1)
+          setScrollProgress(progress)
+          
+          window.scrollTo({
+            top: newSection * window.innerHeight,
+            behavior: 'smooth'
+          })
+          
+          scrollTimeout = setTimeout(() => {
+            isScrolling = false
+          }, 800)
+        }
       }
     }
 
@@ -122,11 +162,15 @@ export const ScrollyLanding: React.FC = () => {
 
     window.addEventListener('wheel', handleWheel, { passive: false })
     window.addEventListener('scroll', handleScroll, { passive: true })
-    
+    window.addEventListener('touchstart', handleTouchStart, { passive: true })
+    window.addEventListener('touchend', handleTouchEnd, { passive: true })
+
     return () => {
       window.removeEventListener('wheel', handleWheel)
       window.removeEventListener('scroll', handleScroll)
       window.removeEventListener('resize', checkMobile)
+      window.removeEventListener('touchstart', handleTouchStart)
+      window.removeEventListener('touchend', handleTouchEnd)
       clearInterval(interval)
       clearTimeout(scrollTimeout)
     }
