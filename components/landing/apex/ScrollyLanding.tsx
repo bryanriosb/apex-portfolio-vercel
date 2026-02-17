@@ -39,29 +39,58 @@ export const ScrollyLanding: React.FC = () => {
 
   React.useEffect(() => {
     setMounted(true)
-    
+
     // Detectar dispositivos móviles o de bajos recursos
     const checkMobile = () => {
       const isTouchDevice = window.matchMedia('(pointer: coarse)').matches
       const isSmallScreen = window.innerWidth < 768
-      const isLowMemory = (navigator as any).deviceMemory && (navigator as any).deviceMemory < 4
+      const isLowMemory =
+        (navigator as any).deviceMemory && (navigator as any).deviceMemory < 4
       setIsMobile(isTouchDevice || isSmallScreen || isLowMemory)
     }
-    
+
     checkMobile()
     window.addEventListener('resize', checkMobile)
-    
+
+    // Sistema de scroll preciso: 1 scroll = 1 sección
+    let isScrolling = false
+    let scrollTimeout: NodeJS.Timeout
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      
+      if (isScrolling) return
+      
+      const direction = e.deltaY > 0 ? 1 : -1
+      const newSection = Math.max(0, Math.min(TOTAL_FRAMES - 1, activeSection + direction))
+      
+      if (newSection !== activeSection) {
+        isScrolling = true
+        setActiveSection(newSection)
+        
+        // Calcular progreso basado en sección
+        const progress = newSection / (TOTAL_FRAMES - 1)
+        setScrollProgress(progress)
+        
+        // Scroll a la posición exacta de la sección
+        window.scrollTo({
+          top: newSection * window.innerHeight,
+          behavior: 'smooth'
+        })
+        
+        // Prevenir múltiples scrolls rápidos
+        scrollTimeout = setTimeout(() => {
+          isScrolling = false
+        }, 800)
+      }
+    }
+
     const handleScroll = () => {
       if (!containerRef.current) return
       const scrollY = window.scrollY
       const totalHeight = containerRef.current.scrollHeight - window.innerHeight
       const progress = Math.min(scrollY / totalHeight, 1)
       setScrollProgress(progress)
-      const frameIndex = Math.min(
-        Math.floor(progress * TOTAL_FRAMES),
-        TOTAL_FRAMES - 1
-      )
-      setActiveSection(frameIndex)
     }
 
     const types = [
@@ -79,7 +108,7 @@ export const ScrollyLanding: React.FC = () => {
     setLogs(initialLogs)
 
     // Reducir frecuencia de actualización en móvil
-    const intervalTime = isMobile ? 5000 : 2000
+    const intervalTime = isMobile ? 5000 : 3000
     const interval = setInterval(() => {
       setLogs((prev) => [
         {
@@ -91,13 +120,17 @@ export const ScrollyLanding: React.FC = () => {
       ])
     }, intervalTime)
 
+    window.addEventListener('wheel', handleWheel, { passive: false })
     window.addEventListener('scroll', handleScroll, { passive: true })
+    
     return () => {
+      window.removeEventListener('wheel', handleWheel)
       window.removeEventListener('scroll', handleScroll)
       window.removeEventListener('resize', checkMobile)
       clearInterval(interval)
+      clearTimeout(scrollTimeout)
     }
-  }, [isMobile])
+  }, [isMobile, activeSection])
 
   const frameVariants: Variants = {
     initial: { opacity: 0, scale: 0.9, filter: 'blur(20px)' },
@@ -178,10 +211,11 @@ export const ScrollyLanding: React.FC = () => {
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
         {isMobile ? (
           <div className="w-full h-full bg-gradient-to-br from-[#F8FAFC] via-[#E2E8F0] to-[#CBD5E1]">
-            <div 
+            <div
               className="absolute inset-0 opacity-30"
               style={{
-                backgroundImage: 'radial-gradient(circle at 50% 50%, #0052FF 0%, transparent 50%)',
+                backgroundImage:
+                  'radial-gradient(circle at 50% 50%, #0052FF 0%, transparent 50%)',
               }}
             />
           </div>
@@ -263,17 +297,9 @@ export const ScrollyLanding: React.FC = () => {
       <div className="fixed inset-0 z-10 flex items-center justify-center overflow-hidden lg:overflow-hidden pointer-events-none pt-16 sm:pt-20">
         <div className="w-full h-full max-w-7xl mx-auto px-4 sm:px-6 flex items-start lg:items-center justify-center pointer-events-auto overflow-y-auto lg:overflow-visible py-4">
           <AnimatePresence mode="wait">
-            {activeSection === 0 && (
-              <Frame0ROI />
-            )}
+            {activeSection === 0 && <Frame0ROI />}
             {activeSection === 1 && <Frame1Seguridad />}
-            {activeSection === 2 && (
-              <Frame2Telemetria
-                frameVariants={frameVariants}
-                childVariants={childVariants}
-                logs={logs}
-              />
-            )}
+            {activeSection === 2 && <Frame2Telemetria logs={logs} />}
             {activeSection === 3 && (
               <Frame3Integridad
                 frameVariants={frameVariants}

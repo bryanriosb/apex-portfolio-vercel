@@ -414,3 +414,21 @@
 .btn-link {
   @apply bg-primary p-2 rounded-md text-primary-foreground hover:bg-primary/90 text-sm w-fit h-8 flex font-medium gap-2 items-center justify-center;
 }
+/* Scan animation for telemetry */
+@keyframes scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(400%);
+  }
+}
+
+.animate-scan {
+  animation: scan 3s linear infinite;
+}
+
+/* Rotate 15 degrees on hover */
+.hover\:rotate-15:hover {
+  transform: rotate(15deg);
+}
