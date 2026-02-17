@@ -15,7 +15,7 @@ export const Frame6Cierre: React.FC<Frame6CierreProps> = () => {
 
   return (
     <div
-      className="w-full max-h-[calc(100vh-160px)] lg:max-h-none overflow-y-auto lg:overflow-visible animate-in fade-in duration-500"
+      className="w-full animate-in fade-in duration-500"
     >
       <div 
         className="bg-gray-900 text-white border-4 border-white/20 p-6 sm:p-10 md:p-16 relative overflow-hidden text-center backdrop-blur-2xl mx-4 sm:mx-0 hover:border-[rgba(0,82,255,0.5)] transition-all duration-500"

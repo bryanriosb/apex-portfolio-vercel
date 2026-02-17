@@ -85,7 +85,7 @@ export const Frame4Plataforma: React.FC<Frame4PlataformaProps> = () => {
 
   return (
     <div
-      className="w-full max-h-[calc(100vh-160px)] lg:max-h-none overflow-y-auto lg:overflow-visible animate-in fade-in duration-500"
+      className="w-full animate-in fade-in duration-500"
     >
       <div 
         className="bg-white/95 backdrop-blur-md border-4 border-gray-900 p-4 sm:p-8 md:p-12 shadow-[15px_15px_0px_#000] lg:shadow-[30px_30px_0px_#000] relative overflow-hidden hover:shadow-[35px_35px_0px_rgba(0,82,255,0.2)] transition-all duration-400"

@@ -52,6 +52,9 @@ export const ScrollyLanding: React.FC = () => {
     // Sistema de scroll: Desktop usa secciones fijas, móvil usa scroll libre
     let isScrolling = false
     let scrollTimeout: NodeJS.Timeout
+    let scrollAccumulator = 0
+    const SCROLL_THRESHOLD = 150 // Acumular 150 unidades de scroll antes de cambiar
+    const SCROLL_COOLDOWN = 1200 // 1.2 segundos de cooldown entre secciones
 
     const handleWheel = (e: WheelEvent) => {
       // Solo aplicar snap en desktop (no en móvil)
@@ -61,27 +64,38 @@ export const ScrollyLanding: React.FC = () => {
       
       if (isScrolling) return
       
-      const direction = e.deltaY > 0 ? 1 : -1
-      const newSection = Math.max(0, Math.min(TOTAL_FRAMES - 1, activeSection + direction))
+      // Acumular el scroll
+      scrollAccumulator += e.deltaY
       
-      if (newSection !== activeSection) {
-        isScrolling = true
-        setActiveSection(newSection)
+      // Solo cambiar si se acumuló suficiente scroll
+      if (Math.abs(scrollAccumulator) >= SCROLL_THRESHOLD) {
+        const direction = scrollAccumulator > 0 ? 1 : -1
+        const newSection = Math.max(0, Math.min(TOTAL_FRAMES - 1, activeSection + direction))
         
-        // Calcular progreso basado en sección
-        const progress = newSection / (TOTAL_FRAMES - 1)
-        setScrollProgress(progress)
-        
-        // Scroll a la posición exacta de la sección
-        window.scrollTo({
-          top: newSection * window.innerHeight,
-          behavior: 'smooth'
-        })
-        
-        // Prevenir múltiples scrolls rápidos
-        scrollTimeout = setTimeout(() => {
-          isScrolling = false
-        }, 800)
+        if (newSection !== activeSection) {
+          isScrolling = true
+          scrollAccumulator = 0 // Resetear acumulador
+          
+          setActiveSection(newSection)
+          
+          // Calcular progreso basado en sección
+          const progress = newSection / (TOTAL_FRAMES - 1)
+          setScrollProgress(progress)
+          
+          // Scroll a la posición exacta de la sección
+          window.scrollTo({
+            top: newSection * window.innerHeight,
+            behavior: 'smooth'
+          })
+          
+          // Prevenir múltiples scrolls rápidos
+          scrollTimeout = setTimeout(() => {
+            isScrolling = false
+          }, SCROLL_COOLDOWN)
+        } else {
+          // Resetear si estamos en los límites
+          scrollAccumulator = 0
+        }
       }
     }
 

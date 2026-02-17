@@ -44,7 +44,7 @@ export const Frame5Gobernanza: React.FC<Frame5GobernanzaProps> = () => {
 
   return (
     <div
-      className="w-full text-left relative max-h-[calc(100vh-160px)] lg:max-h-none overflow-y-auto lg:overflow-visible animate-in fade-in duration-500"
+      className="w-full text-left relative animate-in fade-in duration-500"
     >
       {/* Background decoration - Tailwind animation */}
       <div

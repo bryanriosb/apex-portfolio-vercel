@@ -31,7 +31,7 @@ export const Frame2Telemetria: React.FC<Frame2TelemetriaProps> = ({
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#0052FF]/5 blur-[80px] animate-pulse [animation-duration:8s]"
         />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-20 items-start w-full relative z-10 max-h-[calc(100vh-140px)] lg:max-h-none overflow-y-auto lg:overflow-visible"
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-20 items-start w-full relative z-10"
         >
           <div className="order-2 lg:order-1 animate-in slide-in-from-left-4 duration-700 fill-mode-forwards"
           >

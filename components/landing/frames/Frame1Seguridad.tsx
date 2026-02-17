@@ -30,7 +30,7 @@ export const Frame1Seguridad: React.FC<Frame1SeguridadProps> = () => {
         className="absolute -top-32 left-1/4 w-96 h-96 bg-gradient-to-br from-[#0052FF]/5 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse [animation-duration:8s]"
       />
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-20 items-start w-full px-4 sm:px-0 max-h-[calc(100vh-140px)] lg:max-h-none overflow-y-auto lg:overflow-visible"
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-20 items-start w-full px-4 sm:px-0"
       >
         <div 
           className="bg-white border-4 border-gray-900 p-4 sm:p-6 lg:p-10 shadow-[8px_8px_0px_#000] lg:shadow-[15px_15px_0px_#000] text-left relative overflow-hidden group shrink-0 hover:shadow-[20px_20px_0px_#0052FF] transition-all duration-300"
