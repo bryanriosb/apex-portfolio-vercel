@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { AnimatePresence, Variants } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import {
   Frame0ROI,
@@ -24,9 +24,6 @@ interface TelemetryLog {
 
 export const ScrollyLanding: React.FC = () => {
   const [scrollProgress, setScrollProgress] = React.useState(0)
-  const [activeStrategy, setActiveStrategy] = React.useState<'apex' | 'legacy'>(
-    'apex'
-  )
   const [logs, setLogs] = React.useState<TelemetryLog[]>([])
   const [mounted, setMounted] = React.useState(false)
   const [activeSection, setActiveSection] = React.useState(0)
@@ -52,14 +49,12 @@ export const ScrollyLanding: React.FC = () => {
     checkMobile()
     window.addEventListener('resize', checkMobile)
 
-    // Sistema de scroll preciso: 1 scroll/swipe = 1 sección
+    // Sistema de scroll: Desktop usa secciones fijas, móvil usa scroll libre
     let isScrolling = false
     let scrollTimeout: NodeJS.Timeout
-    let touchStartY = 0
-    let touchEndY = 0
 
     const handleWheel = (e: WheelEvent) => {
-      // Solo aplicar en desktop
+      // Solo aplicar snap en desktop (no en móvil)
       if (isMobile) return
       
       e.preventDefault()
@@ -90,47 +85,22 @@ export const ScrollyLanding: React.FC = () => {
       }
     }
 
-    // Soporte para gestos táctiles (móvil)
-    const handleTouchStart = (e: TouchEvent) => {
-      touchStartY = e.touches[0].clientY
-    }
-
-    const handleTouchEnd = (e: TouchEvent) => {
-      if (isScrolling) return
-      
-      touchEndY = e.changedTouches[0].clientY
-      const diff = touchStartY - touchEndY
-      const minSwipeDistance = 50 // Mínima distancia para considerar un swipe
-      
-      if (Math.abs(diff) > minSwipeDistance) {
-        const direction = diff > 0 ? 1 : -1
-        const newSection = Math.max(0, Math.min(TOTAL_FRAMES - 1, activeSection + direction))
-        
-        if (newSection !== activeSection) {
-          isScrolling = true
-          setActiveSection(newSection)
-          
-          const progress = newSection / (TOTAL_FRAMES - 1)
-          setScrollProgress(progress)
-          
-          window.scrollTo({
-            top: newSection * window.innerHeight,
-            behavior: 'smooth'
-          })
-          
-          scrollTimeout = setTimeout(() => {
-            isScrolling = false
-          }, 800)
-        }
-      }
-    }
-
     const handleScroll = () => {
       if (!containerRef.current) return
       const scrollY = window.scrollY
       const totalHeight = containerRef.current.scrollHeight - window.innerHeight
       const progress = Math.min(scrollY / totalHeight, 1)
       setScrollProgress(progress)
+      
+      // En móvil, actualizar la sección activa basada en scroll posición
+      if (isMobile) {
+        const sectionHeight = window.innerHeight
+        const currentSection = Math.min(
+          Math.floor(scrollY / sectionHeight),
+          TOTAL_FRAMES - 1
+        )
+        setActiveSection(currentSection)
+      }
     }
 
     const types = [
@@ -162,63 +132,15 @@ export const ScrollyLanding: React.FC = () => {
 
     window.addEventListener('wheel', handleWheel, { passive: false })
     window.addEventListener('scroll', handleScroll, { passive: true })
-    window.addEventListener('touchstart', handleTouchStart, { passive: true })
-    window.addEventListener('touchend', handleTouchEnd, { passive: true })
 
     return () => {
       window.removeEventListener('wheel', handleWheel)
       window.removeEventListener('scroll', handleScroll)
       window.removeEventListener('resize', checkMobile)
-      window.removeEventListener('touchstart', handleTouchStart)
-      window.removeEventListener('touchend', handleTouchEnd)
       clearInterval(interval)
       clearTimeout(scrollTimeout)
     }
   }, [isMobile, activeSection])
-
-  const frameVariants: Variants = {
-    initial: { opacity: 0, scale: 0.9, filter: 'blur(20px)' },
-    enter: {
-      opacity: 1,
-      scale: 1,
-      filter: 'blur(0px)',
-      transition: {
-        duration: 0.8,
-        ease: [0.16, 1, 0.3, 1],
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
-      },
-    },
-    exit: {
-      opacity: 0,
-      scale: 1.1,
-      filter: 'blur(15px)',
-      transition: { duration: 0.5, ease: 'easeInOut' },
-    },
-  }
-
-  const childVariants: Variants = {
-    initial: { opacity: 0, y: 30 },
-    enter: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
-    },
-  }
-
-  const cardEntranceVariants: Variants = {
-    initial: { opacity: 0, y: 60, rotateX: 15 },
-    enter: (i: number) => ({
-      opacity: 1,
-      y: 0,
-      rotateX: 0,
-      transition: {
-        delay: 0.4 + i * 0.15,
-        duration: 0.8,
-        ease: [0.16, 1, 0.3, 1],
-      },
-    }),
-  }
 
   if (!mounted) return <div className="min-h-screen bg-[#F8FAFC]" />
 
@@ -249,7 +171,7 @@ export const ScrollyLanding: React.FC = () => {
     <div
       ref={containerRef}
       className="relative bg-[#F8FAFC]"
-      style={{ height: `${TOTAL_FRAMES * 100}vh` }}
+      style={isMobile ? undefined : { height: `${TOTAL_FRAMES * 100}vh` }}
     >
       {/* Background - Video en desktop, estático en móvil */}
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
@@ -337,41 +259,48 @@ export const ScrollyLanding: React.FC = () => {
         </Button>
       </nav>
 
-      {/* Main Content */}
-      <div className="fixed inset-0 z-10 flex items-center justify-center overflow-hidden lg:overflow-hidden pointer-events-none pt-16 sm:pt-20">
-        <div className="w-full h-full max-w-7xl mx-auto px-4 sm:px-6 flex items-start lg:items-center justify-center pointer-events-auto overflow-y-auto lg:overflow-visible py-4">
-          <AnimatePresence mode="wait">
-            {activeSection === 0 && <Frame0ROI />}
-            {activeSection === 1 && <Frame1Seguridad />}
-            {activeSection === 2 && <Frame2Telemetria logs={logs} />}
-            {activeSection === 3 && (
-              <Frame3Integridad
-                frameVariants={frameVariants}
-                childVariants={childVariants}
-              />
-            )}
-            {activeSection === 4 && (
-              <Frame4Plataforma
-                frameVariants={frameVariants}
-                childVariants={childVariants}
-              />
-            )}
-            {activeSection === 5 && (
-              <Frame5Gobernanza
-                frameVariants={frameVariants}
-                childVariants={childVariants}
-                cardEntranceVariants={cardEntranceVariants}
-              />
-            )}
-            {activeSection === 6 && (
-              <Frame6Cierre
-                frameVariants={frameVariants}
-                childVariants={childVariants}
-              />
-            )}
-          </AnimatePresence>
+      {/* Main Content - Desktop: Fixed sections, Mobile: Stacked sections */}
+      {isMobile ? (
+        // Mobile Layout: Sections stacked vertically
+        <div className="relative z-10 pt-20">
+          <section className="min-h-screen flex items-center justify-center px-4 py-8">
+            <Frame0ROI />
+          </section>
+          <section className="min-h-screen flex items-center justify-center px-4 py-8">
+            <Frame1Seguridad />
+          </section>
+          <section className="min-h-screen flex items-center justify-center px-4 py-8">
+            <Frame2Telemetria logs={logs} />
+          </section>
+          <section className="min-h-screen flex items-center justify-center px-4 py-8">
+            <Frame3Integridad />
+          </section>
+          <section className="min-h-screen flex items-center justify-center px-4 py-8">
+            <Frame4Plataforma />
+          </section>
+          <section className="min-h-screen flex items-center justify-center px-4 py-8">
+            <Frame5Gobernanza />
+          </section>
+          <section className="min-h-screen flex items-center justify-center px-4 py-8">
+            <Frame6Cierre />
+          </section>
         </div>
-      </div>
+      ) : (
+        // Desktop Layout: Fixed position with single section visible
+        <div className="fixed inset-0 z-10 flex items-center justify-center overflow-hidden pointer-events-none pt-16 sm:pt-20">
+          <div className="w-full h-full max-w-7xl mx-auto px-4 sm:px-6 flex items-start lg:items-center justify-center pointer-events-auto overflow-y-auto lg:overflow-visible py-4">
+            <AnimatePresence mode="wait">
+              {activeSection === 0 && <Frame0ROI />}
+              {activeSection === 1 && <Frame1Seguridad />}
+              {activeSection === 2 && <Frame2Telemetria logs={logs} />}
+              {activeSection === 3 && <Frame3Integridad />}
+              {activeSection === 4 && <Frame4Plataforma />}
+              {activeSection === 5 && <Frame5Gobernanza />}
+              {activeSection === 6 && <Frame6Cierre />}
+            </AnimatePresence>
+          </div>
+        </div>
+      )}
 
       {/* Side Progress Indicator - Hidden on mobile */}
       <div className="hidden md:flex fixed right-6 md:right-12 top-1/2 -translate-y-1/2 z-50 flex-col gap-8 items-end">
@@ -398,52 +327,54 @@ export const ScrollyLanding: React.FC = () => {
         ))}
       </div>
 
-      {/* Scroll Indicator - Arrow down or Go to Top button */}
-      {activeSection < TOTAL_FRAMES - 1 ? (
-        <div className="fixed bottom-16 sm:bottom-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 animate-bounce">
-          <span className="text-[10px] font-black text-[#0052FF] uppercase tracking-widest bg-white/90 backdrop-blur-sm px-3 py-1 border-2 border-[#0052FF] shadow-[2px_2px_0px_#0052FF]">
-            Scroll
-          </span>
-          <div className="w-8 h-8 bg-[#0052FF] flex items-center justify-center shadow-[2px_2px_0px_#000] border-2 border-gray-900">
-            <svg
-              className="w-5 h-5 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={3}
-                d="M19 14l-7 7m0 0l-7-7m7 7V3"
-              />
-            </svg>
+      {/* Scroll Indicator - Desktop only */}
+      {!isMobile && (
+        activeSection < TOTAL_FRAMES - 1 ? (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 animate-bounce">
+            <span className="text-[10px] font-black text-[#0052FF] uppercase tracking-widest bg-white/90 backdrop-blur-sm px-3 py-1 border-2 border-[#0052FF] shadow-[2px_2px_0px_#0052FF]">
+              Scroll
+            </span>
+            <div className="w-8 h-8 bg-[#0052FF] flex items-center justify-center shadow-[2px_2px_0px_#000] border-2 border-gray-900">
+              <svg
+                className="w-5 h-5 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={3}
+                  d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                />
+              </svg>
+            </div>
           </div>
-        </div>
-      ) : (
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-16 sm:bottom-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 group cursor-pointer"
-        >
-          <span className="text-[10px] font-black text-white uppercase tracking-widest bg-[#0052FF] px-3 py-1 border-2 border-gray-900 shadow-[2px_2px_0px_#000] group-hover:shadow-none group-hover:translate-x-[2px] group-hover:translate-y-[2px] transition-all">
-            Inicio
-          </span>
-          <div className="w-8 h-8 bg-white flex items-center justify-center shadow-[2px_2px_0px_#000] border-2 border-gray-900 group-hover:shadow-none group-hover:translate-x-[2px] group-hover:translate-y-[2px] transition-all">
-            <svg
-              className="w-5 h-5 text-[#0052FF]"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={3}
-                d="M5 10l7-7m0 0l7 7m-7-7v18"
-              />
-            </svg>
-          </div>
-        </button>
+        ) : (
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 group cursor-pointer"
+          >
+            <span className="text-[10px] font-black text-white uppercase tracking-widest bg-[#0052FF] px-3 py-1 border-2 border-gray-900 shadow-[2px_2px_0px_#000] group-hover:shadow-none group-hover:translate-x-[2px] group-hover:translate-y-[2px] transition-all">
+              Inicio
+            </span>
+            <div className="w-8 h-8 bg-white flex items-center justify-center shadow-[2px_2px_0px_#000] border-2 border-gray-900 group-hover:shadow-none group-hover:translate-x-[2px] group-hover:translate-y-[2px] transition-all">
+              <svg
+                className="w-5 h-5 text-[#0052FF]"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={3}
+                  d="M5 10l7-7m0 0l7 7m-7-7v18"
+                />
+              </svg>
+            </div>
+          </button>
+        )
       )}
 
       {/* Bottom Scroll Progress */}
