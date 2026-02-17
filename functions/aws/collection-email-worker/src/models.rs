@@ -65,6 +65,8 @@ pub struct LambdaEvent {
 pub struct SqsMessage {
     #[allow(dead_code)]
     pub message_id: Option<String>,
+    #[allow(dead_code)]
+    pub receipt_handle: Option<String>,
     pub body: Option<String>,
 }
 
@@ -79,6 +81,7 @@ pub struct SqsEvent {
 pub struct BatchMessage {
     pub batch_id: String,
     pub execution_id: String,
+    pub business_id: String,
     pub batch_number: i32,
     pub client_ids: Vec<String>,
     pub total_clients: i32,

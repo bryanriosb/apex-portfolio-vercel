@@ -1,0 +1,7 @@
+export { Frame0ROI } from './Frame0ROI'
+export { Frame1Seguridad } from './Frame1Seguridad'
+export { Frame2Telemetria } from './Frame2Telemetria'
+export { Frame3Integridad } from './Frame3Integridad'
+export { Frame4Plataforma } from './Frame4Plataforma'
+export { Frame5Gobernanza } from './Frame5Gobernanza'
+export { Frame6Cierre } from './Frame6Cierre'

@@ -170,6 +170,7 @@ export async function createExecutionWithClientsAction({
       // Encolar todos los batches pendientes
       queueResult = await SQSBatchService.enqueueBatches(
         batches,
+        executionData.business_id,
         {
           delaySeconds: 0,
           maxConcurrent: strategyType === 'batch' || strategyType === 'aggressive' ? 5 : 1,

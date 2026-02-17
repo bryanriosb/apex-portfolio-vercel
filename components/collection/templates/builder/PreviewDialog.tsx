@@ -24,18 +24,21 @@ const SAMPLE_DATA = {
         {
             invoice_number: 'INV-001',
             amount_due: '$1,500,000',
+            invoice_date: '2024-01-15',
             due_date: '2024-02-15',
             days_overdue: '15'
         },
         {
             invoice_number: 'INV-002',
             amount_due: '$500,000',
+            invoice_date: '2024-01-20',
             due_date: '2024-02-20',
             days_overdue: '10'
         },
         {
             invoice_number: 'INV-003',
             amount_due: '$2,350,000',
+            invoice_date: '2024-01-05',
             due_date: '2024-01-30',
             days_overdue: '31'
         }
@@ -303,7 +306,7 @@ export function PreviewDialog({ open, onOpenChange, subject, content }: PreviewD
                                 Variables disponibles en bucle <code>{'{{#each invoices}} ... {{/each}}'}</code>:
                             </p>
                             <div className="flex flex-wrap gap-2 text-xs">
-                                {['invoice_number', 'amount_due', 'due_date', 'days_overdue'].map(v => (
+                                {['invoice_number', 'amount_due', 'invoice_date', 'due_date', 'days_overdue'].map(v => (
                                     <code key={v} className="font-mono bg-blue-100 dark:bg-blue-900/50 px-1.5 py-0.5 rounded text-blue-800 dark:text-blue-200">
                                         {`{{${v}}}`}
                                     </code>

@@ -7,6 +7,9 @@ use std::error::Error;
 use regex::Regex;
 use rusty_money::{Money, iso};
 use css_inline::{CSSInliner, InlineOptions};
+use aws_config::BehaviorVersion;
+use aws_sdk_sqs::Client as SqsClient;
+use chrono::{DateTime, Utc};
 
 mod models;
 mod supabase;
@@ -14,10 +17,14 @@ mod ses;
 mod email_provider;
 mod factory;
 mod providers;
+mod distributed_lock;
+mod control_tower;
 
 use models::{LambdaEvent as CollectionEvent, SqsEvent, BatchMessage};
 use supabase::SupabaseService;
 use email_provider::{EmailProvider, EmailMessage};
+
+use control_tower::ExecutionLogger;
 
 #[tokio::main]
 async fn main() -> Result<(), lambda_runtime::Error> {
@@ -195,36 +202,257 @@ fn wrap_with_styles(html_body: &str) -> String {
     )
 }
 
+async fn handle_future_batch(
+    sqs_client: &SqsClient,
+    queue_url: &str,
+    receipt_handle: &str,
+    scheduled_for: &str,
+    logger: &ExecutionLogger,
+    batch_msg: &BatchMessage,
+) -> Result<bool, Box<dyn Error + Send + Sync>> {
+    let scheduled_time = DateTime::parse_from_rfc3339(scheduled_for)?.with_timezone(&Utc);
+    let now = Utc::now();
+    
+    if scheduled_time > now {
+        let delay_seconds = (scheduled_time - now).num_seconds();
+        
+        // SQS visibility timeout limit is 12 hours (43200 seconds)
+        let visibility_timeout = if delay_seconds > 43200 {
+            43200
+        } else {
+            delay_seconds as i32
+        };
+
+        if visibility_timeout > 0 {
+            info!(
+                "Batch {} scheduled for future ({}). Hiding for {} seconds.", 
+                batch_msg.batch_id, 
+                scheduled_for, 
+                visibility_timeout
+            );
+
+            sqs_client
+                .change_message_visibility()
+                .queue_url(queue_url)
+                .receipt_handle(receipt_handle)
+                .visibility_timeout(visibility_timeout)
+                .send()
+                .await?;
+
+            logger.log_event(
+                &batch_msg.execution_id, 
+                Some(&batch_msg.batch_id), 
+                "DEFERRED", 
+                Some(serde_json::json!({
+                    "delay_seconds": visibility_timeout,
+                    "scheduled_for": scheduled_for
+                }))
+            ).await?;
+
+            return Ok(true); // Handled as future batch
+        }
+    }
+    
+    Ok(false) // Ready to process
+}
+
 async fn func(event: LambdaEvent<Value>) -> Result<Value, lambda_runtime::Error> {
     let (payload, _context) = event.into_parts();
     
+    // AWS Clients
+    let config = aws_config::load_defaults(BehaviorVersion::latest()).await;
+    let sqs_client = SqsClient::new(&config);
+    
+    // Services
+    let supabase = SupabaseService::new();
+    let provider = factory::create_email_provider().await;
+    
+    // Control Tower Logger
+    let worker_id = uuid::Uuid::new_v4().to_string();
+    let logger = ExecutionLogger::new(
+        std::env::var("SUPABASE_URL").unwrap_or_default(),
+        std::env::var("SUPABASE_SECRET_KEY").unwrap_or_default(),
+        worker_id.clone()
+    );
+
     // Try to parse as SQS event first
     let sqs_event: Result<SqsEvent, _> = serde_json::from_value(payload.clone());
     
+    let queue_url = std::env::var("SQS_BATCH_QUEUE_URL").unwrap_or_default();
+    
     if let Ok(sqs) = sqs_event {
-            info!("Received SQS event with {} records", sqs.records.len());
-        
-        let supabase = SupabaseService::new();
-        let provider = factory::create_email_provider().await;
+        info!("Received SQS event with {} records", sqs.records.len());
         
         let mut processed_count = 0;
         let mut failed_count = 0;
         
-            for sqs_message in sqs.records {
+        for sqs_message in sqs.records {
             if let Some(body) = &sqs_message.body {
                 if let Some(batch_msg) = BatchMessage::from_body(body) {
                     info!("Processing batch {} for execution {}", batch_msg.batch_id, batch_msg.execution_id);
                     
+                    // Log PICKED_UP
+                    let _ = logger.log_event(
+                        &batch_msg.execution_id, 
+                        Some(&batch_msg.batch_id), 
+                        "PICKED_UP", 
+                        None
+                    ).await;
+
+                    // Handle scheduled batches (Iterative Visibility)
+                    let receipt_handle = sqs_message.receipt_handle.as_deref().unwrap_or_default();
+                    if let Some(scheduled_for) = &batch_msg.scheduled_for {
+                        match handle_future_batch(
+                            &sqs_client, 
+                            &queue_url, 
+                            receipt_handle, 
+                            scheduled_for, 
+                            &logger,
+                            &batch_msg
+                        ).await {
+                            Ok(is_future) => {
+                                if is_future {
+                                    continue; // Skip processing, message hidden
+                                }
+                            }
+                            Err(e) => {
+                                error!("Failed to handle future batch {}: {}", batch_msg.batch_id, e);
+                                // Continue to try processing or let it fail? 
+                                // Best to fail safe and not process if scheduling failed logic
+                            }
+                        }
+                    }
+
+                    // Check retry count before processing
+                    let max_retries = 3;
+                    let retry_count = match supabase.get_batch_retry_count(&batch_msg.batch_id).await {
+                        Ok(count) => count,
+                        Err(e) => {
+                            error!("Failed to get retry count for batch {}: {}", batch_msg.batch_id, e);
+                            0
+                        }
+                    };
+
+                    if retry_count >= max_retries {
+                        error!("Batch {} exceeded max retries ({}), moving to DLQ", batch_msg.batch_id, max_retries);
+                        
+                        // Mark as DLQ in database
+                        let _ = supabase.mark_batch_as_dlq(&batch_msg.batch_id, "Exceeded maximum retry attempts").await;
+                        
+                        // Log DLQ_SENT event
+                        let _ = logger.log_event(
+                            &batch_msg.execution_id,
+                            Some(&batch_msg.batch_id),
+                            "DLQ_SENT",
+                            Some(serde_json::json!({
+                                "retry_count": retry_count,
+                                "max_retries": max_retries,
+                                "reason": "Exceeded maximum retry attempts"
+                            }))
+                        ).await;
+                        
+                        // Delete from SQS to prevent reprocessing
+                        if let Err(e) = sqs_client
+                            .delete_message()
+                            .queue_url(&queue_url)
+                            .receipt_handle(receipt_handle)
+                            .send()
+                            .await
+                        {
+                            error!("Failed to delete DLQ message from SQS: {}", e);
+                        }
+                        
+                        continue;
+                    }
+
+                    // Increment retry count
+                    let _ = supabase.increment_batch_retry_count(&batch_msg.batch_id).await;
+
+                    // Check Circuit Breaker (Is Paused?)
+                    // Fetch execution status first
+                    match supabase.get_execution(&batch_msg.execution_id).await {
+                        Ok(execution) => {
+                            if execution.status == "paused" {
+                                info!("Execution {} is PAUSED. Re-queueing batch {}", batch_msg.execution_id, batch_msg.batch_id);
+                                // Return to queue with delay (e.g. 5 mins)
+                                let _ = sqs_client
+                                    .change_message_visibility()
+                                    .queue_url(&queue_url)
+                                    .receipt_handle(receipt_handle)
+                                    .visibility_timeout(300)
+                                    .send()
+                                    .await;
+                                continue;
+                            }
+                        },
+                        Err(e) => {
+                             error!("Failed to fetch execution status: {}", e);
+                        }
+                    }
+
+                    // Log PROCESSING
+                    let _ = logger.log_event(
+                        &batch_msg.execution_id, 
+                        Some(&batch_msg.batch_id), 
+                        "PROCESSING", 
+                        Some(serde_json::json!({ "retry_count": retry_count + 1 }))
+                    ).await;
+
                     let result = process_batch(&supabase, provider.as_ref(), &batch_msg).await;
                     
                     match result {
                         Ok(_) => {
                             processed_count += 1;
                             info!("Batch {} processed successfully", batch_msg.batch_id);
+                            let _ = logger.log_event(
+                                &batch_msg.execution_id, 
+                                Some(&batch_msg.batch_id), 
+                                "COMPLETED", 
+                                Some(serde_json::json!({ "retry_count": retry_count + 1 }))
+                            ).await;
                         }
                         Err(e) => {
                             failed_count += 1;
                             error!("Failed to process batch {}: {}", batch_msg.batch_id, e);
+                            
+                            // Check if we should move to DLQ
+                            let new_retry_count = retry_count + 1;
+                            if new_retry_count >= max_retries {
+                                warn!("Batch {} failed and will be moved to DLQ after {} retries", batch_msg.batch_id, new_retry_count);
+                                
+                                let _ = supabase.mark_batch_as_dlq(&batch_msg.batch_id, &e.to_string()).await;
+                                
+                                let _ = logger.log_event(
+                                    &batch_msg.execution_id,
+                                    Some(&batch_msg.batch_id),
+                                    "DLQ_SENT",
+                                    Some(serde_json::json!({
+                                        "retry_count": new_retry_count,
+                                        "max_retries": max_retries,
+                                        "error": e.to_string(),
+                                        "reason": "Failed after maximum retries"
+                                    }))
+                                ).await;
+                                
+                                // Delete from SQS
+                                let _ = sqs_client
+                                    .delete_message()
+                                    .queue_url(&queue_url)
+                                    .receipt_handle(receipt_handle)
+                                    .send()
+                                    .await;
+                            } else {
+                                let _ = logger.log_event(
+                                    &batch_msg.execution_id, 
+                                    Some(&batch_msg.batch_id), 
+                                    "FAILED", 
+                                    Some(serde_json::json!({ 
+                                        "error": e.to_string(),
+                                        "retry_count": new_retry_count,
+                                        "will_retry": new_retry_count < max_retries
+                                    }))
+                                ).await;
+                            }
                         }
                     }
                 } else {

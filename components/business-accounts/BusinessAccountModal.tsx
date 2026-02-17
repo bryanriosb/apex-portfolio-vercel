@@ -250,10 +250,13 @@ export function BusinessAccountModal({
       // Convertir settings array a objeto
       const settingsObject = settings
         .filter((s) => s.key.trim() !== '')
-        .reduce((acc, { key, value }) => {
-          acc[key] = value
-          return acc
-        }, {} as Record<string, unknown>)
+        .reduce(
+          (acc, { key, value }) => {
+            acc[key] = value
+            return acc
+          },
+          {} as Record<string, unknown>
+        )
 
       await onSave({
         ...data,
@@ -320,7 +323,7 @@ export function BusinessAccountModal({
                       <FormLabel>NIT</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="900123456-7"
+                          placeholder="900123456"
                           disabled={isSubmitting}
                           {...field}
                         />

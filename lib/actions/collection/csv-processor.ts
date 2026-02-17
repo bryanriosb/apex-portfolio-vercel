@@ -11,6 +11,7 @@ export interface CSVRow {
     nit?: string
     amount_due: number
     invoice_number?: string
+    invoice_date?: string
     due_date?: string
     days_overdue?: number
     [key: string]: any // For custom fields
@@ -41,6 +42,7 @@ const RECOMMENDED_COLUMNS = [
     'phone',
     'nit',
     'invoice_number',
+    'invoice_date',
     'due_date',
     'days_overdue',
 ]
@@ -183,6 +185,14 @@ export async function validateCSVStructure(
             warnings.push(`Fila ${rowNum}: Monto pendiente es cero o negativo`)
         }
 
+        // Validate invoice_date format if present
+        if (row.invoice_date && row.invoice_date.trim() !== '') {
+            const date = new Date(row.invoice_date)
+            if (isNaN(date.getTime())) {
+                warnings.push(`Fila ${rowNum}: Fecha de factura inválida`)
+            }
+        }
+
         // Validate due_date format if present
         if (row.due_date && row.due_date.trim() !== '') {
             const date = new Date(row.due_date)
@@ -223,6 +233,7 @@ export async function mapCSVToClients(
             'nit',
             'amount_due',
             'invoice_number',
+            'invoice_date',
             'due_date',
             'days_overdue',
         ]
@@ -242,6 +253,7 @@ export async function mapCSVToClients(
             nit: row.nit?.trim() || null,
             amount_due: Number(row.amount_due),
             invoice_number: row.invoice_number?.trim() || null,
+            invoice_date: row.invoice_date ? formatDate(row.invoice_date) : null,
             due_date: row.due_date ? formatDate(row.due_date) : null,
             days_overdue: row.days_overdue ? Number(row.days_overdue) : null,
             custom_data: Object.keys(customData).length > 0 ? customData : {},

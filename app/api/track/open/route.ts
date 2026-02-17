@@ -22,43 +22,59 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await getSupabaseAdminClient()
 
-    const { error: updateError } = await supabase
+    // Verificar si ya fue abierto anteriormente (first open only)
+    const { data: clientData, error: clientError } = await supabase
       .from('collection_clients')
-      .update({
-        status: 'opened',
-        custom_data: {
-          opened_at: new Date().toISOString(),
-          message_id: messageId,
-        },
-      })
+      .select('status, email_opened_at')
       .eq('id', clientId)
+      .single()
 
-    if (updateError) {
-      console.error('Error updating client status:', updateError)
+    if (clientError) {
+      console.error('Error fetching client:', clientError)
+    } else if (clientData?.status === 'opened' || clientData?.email_opened_at) {
+      // Ya fue abierto anteriormente, no registrar nuevamente
+      console.log(`Client ${clientId} already opened, skipping duplicate tracking`)
     } else {
-      console.log(`Client ${clientId} marked as opened`)
-
-      if (executionId) {
-        const { error: counterError } = await supabase.rpc('increment_execution_counter', {
-          p_execution_id: executionId,
-          p_column: 'emails_opened',
+      // Primera apertura - registrar
+      const { error: updateError } = await supabase
+        .from('collection_clients')
+        .update({
+          status: 'opened',
+          email_opened_at: new Date().toISOString(),
+          custom_data: {
+            opened_at: new Date().toISOString(),
+            message_id: messageId,
+          },
         })
+        .eq('id', clientId)
 
-        if (counterError) {
-          console.error('Error incrementing counter:', counterError)
+      if (updateError) {
+        console.error('Error updating client status:', updateError)
+      } else {
+        console.log(`Client ${clientId} marked as opened (first open)`)
+
+        if (executionId) {
+          const { error: counterError } = await supabase.rpc('increment_execution_counter', {
+            p_execution_id: executionId,
+            p_column: 'emails_opened',
+          })
+
+          if (counterError) {
+            console.error('Error incrementing counter:', counterError)
+          }
         }
-      }
 
-      await supabase.from('collection_events').insert({
-        client_id: clientId,
-        execution_id: executionId,
-        event_type: 'email_opened',
-        event_data: {
-          message_id: messageId,
-          timestamp: new Date().toISOString(),
-          user_agent: request.headers.get('user-agent'),
-        },
-      })
+        await supabase.from('collection_events').insert({
+          client_id: clientId,
+          execution_id: executionId,
+          event_type: 'email_opened',
+          event_data: {
+            message_id: messageId,
+            timestamp: new Date().toISOString(),
+            user_agent: request.headers.get('user-agent'),
+          },
+        })
+      }
     }
   } catch (error) {
     console.error('Error tracking open:', error)

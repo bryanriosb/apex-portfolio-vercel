@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { GoogleTagManager } from '@next/third-parties/google'
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import 'react-phone-number-input/style.css'
 import { Toaster } from '@/components/ui/sonner'
@@ -12,12 +14,12 @@ const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'Beluvio | Software de Gestión para Negocios de Belleza',
-    template: '%s | Beluvio',
+    default: 'APEX | Adaptive Planning & Execution Platform',
+    template: '%s | APEX',
   },
   description:
-    'Plataforma todo-en-uno para gestionar tu estética, spa, barbería o centro de belleza. Agenda inteligente, WhatsApp integrado, asistente IA 24/7.',
-  applicationName: 'Beluvio',
+    'Potencie la operación de su empresa con agentes IA que planifican y ejecutan procesos críticos de negocio en LatAm.',
+  applicationName: 'APEX',
   referrer: 'origin-when-cross-origin',
   formatDetection: {
     email: false,
@@ -50,7 +52,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" className="h-screen w-full" suppressHydrationWarning>
+    <html
+      lang="es"
+      className={`${GeistSans.variable} ${GeistMono.variable} h-screen w-full font-sans`}
+      suppressHydrationWarning
+    >
       {GTM_ID && <GoogleTagManager gtmId={GTM_ID} />}
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -60,7 +66,7 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
       </head>
-      <body className="h-full">
+      <body className="h-full antialiased">
         <ClientProviders>{children}</ClientProviders>
         <Analytics />
         <Toaster />

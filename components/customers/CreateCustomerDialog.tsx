@@ -218,7 +218,7 @@ export function CreateCustomerDialog({
                       </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="900123456-7"
+                          placeholder="900123456"
                           disabled={isSubmitting}
                           {...field}
                         />

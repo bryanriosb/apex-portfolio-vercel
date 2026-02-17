@@ -91,6 +91,10 @@ export const SIDE_APP_MENU_ITEMS: MenuItem[] = [
         title: 'Adjuntos',
         url: '/admin/collection/attachments',
       },
+      {
+        title: 'Torre de Control',
+        url: '/admin/collection/control-tower',
+      },
     ],
   },
   {

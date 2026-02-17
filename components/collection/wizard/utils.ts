@@ -67,6 +67,7 @@ export async function parseInvoiceFile(file: File): Promise<FileData> {
           const invoice: Invoice = {
             amount_due: rowData['amount_due'],
             invoice_number: rowData['invoice_number'],
+            invoice_date: rowData['invoice_date'],
             due_date: rowData['due_date'],
             days_overdue: rowData['days_overdue'],
             ...rowData,

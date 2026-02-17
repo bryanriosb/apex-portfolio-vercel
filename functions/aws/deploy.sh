@@ -9,14 +9,22 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
-# 1. Exportar credenciales para AWS CLI
+# 1. Exportar credenciales para AWS CLI (estas NO van a Lambda)
 export $(grep -v '^#' .env | xargs)
 
 # 2. Construir env-vars string desde .env
-# Filtra comentarios y líneas vacías, convierte a formato KEY=VALUE,KEY2=VALUE2
-ENV_VARS=$(grep -v '^#' .env | grep -v '^$' | tr '\n' ',' | sed 's/,$//')
+# Filtra comentarios, líneas vacías Y variables reservadas de AWS
+# Las variables AWS_* solo se usan para autenticación del CLI, no van a Lambda
+ENV_VARS=$(grep -v '^#' .env | \
+           grep -v '^$' | \
+           grep -v '^AWS_REGION' | \
+           grep -v '^AWS_ACCESS_KEY_ID' | \
+           grep -v '^AWS_SECRET_ACCESS_KEY' | \
+           grep -v '^AWS_SQS_QUEUE_URL' | \
+           tr '\n' ',' | sed 's/,$//')
 
 # Agregar variables adicionales que no están en .env pero son necesarias
+# Nota: AWS_REGION no se incluye porque es una variable reservada de Lambda
 ADDITIONAL_VARS="APP_ENV=dev,SES_CONFIGURATION_SET=borls-collection-config,SES_SOURCE_EMAIL=manager@borls.com,API_BASE_URL=https://apex.borls.com"
 
 # Combinar variables

@@ -204,6 +204,40 @@
   background: rgba(255, 255, 255, 0.25);
 }
 
+/* Hide scrollbar on mobile/tablet (max-width: 1024px) for better UX */
+/* Keep functionality but hide visual scrollbar */
+@media (max-width: 1024px) {
+  html {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  
+  html::-webkit-scrollbar {
+    display: none !important;
+  }
+  
+  body {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  
+  body::-webkit-scrollbar {
+    display: none !important;
+  }
+  
+  /* Target all scrollable containers on mobile */
+  * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  
+  *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+}
+
 .subtitle {
   @apply text-lg font-semibold;
 }

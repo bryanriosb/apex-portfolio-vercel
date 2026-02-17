@@ -52,68 +52,75 @@ export async function processEmailEvent(
             throw eventError
         }
 
-        // Actualizar status del cliente según el evento
-        if (client) {
-            let newStatus = client.status
+            // Actualizar status del cliente según el evento
+            if (client) {
+                let newStatus = client.status
+                let shouldUpdateMetrics = true
 
-            switch (event.eventType) {
-                case 'delivered':
-                    newStatus = 'delivered'
-                    break
-                case 'bounced':
-                    newStatus = 'bounced'
-                    break
-                case 'complained':
-                    newStatus = 'complained'
-                    break
-                case 'opened':
-                    // Solo actualizar si aún no está en un estado más avanzado
-                    if (client.status === 'sent' || client.status === 'delivered') {
-                        newStatus = 'opened'
-                    }
-                    break
-                case 'clicked':
-                    // Click indica alto engagement, actualizar a 'opened' si aún no lo está
-                    if (client.status === 'sent' || client.status === 'delivered') {
-                        newStatus = 'opened'
-                    }
-                    // No cambiamos el status si ya está en 'opened', solo registramos el evento
-                    break
-                case 'failed':
-                    newStatus = 'failed'
-                    break
-            }
-
-            if (newStatus !== client.status) {
-                const updatedCustomData = {
-                    ...client.custom_data,
-                    [`${event.eventType}_at`]: event.timestamp,
+                switch (event.eventType) {
+                    case 'delivered':
+                        newStatus = 'delivered'
+                        break
+                    case 'bounced':
+                        newStatus = 'bounced'
+                        break
+                    case 'complained':
+                        newStatus = 'complained'
+                        break
+                    case 'opened':
+                        // Solo actualizar si aún no está en un estado más avanzado
+                        if (client.status === 'sent' || client.status === 'delivered') {
+                            newStatus = 'opened'
+                        } else if (client.status === 'opened') {
+                            // Ya fue abierto anteriormente, no contar métricas duplicadas
+                            shouldUpdateMetrics = false
+                            console.log(`Client ${client.id} already opened, skipping duplicate metrics`)
+                        }
+                        break
+                    case 'clicked':
+                        // Click indica alto engagement, actualizar a 'opened' si aún no lo está
+                        if (client.status === 'sent' || client.status === 'delivered') {
+                            newStatus = 'opened'
+                        }
+                        // No cambiamos el status si ya está en 'opened', solo registramos el evento
+                        break
+                    case 'failed':
+                        newStatus = 'failed'
+                        break
                 }
 
-                const { error: updateError } = await supabase
-                    .from('collection_clients')
-                    .update({
-                        status: newStatus,
-                        custom_data: updatedCustomData,
-                    })
-                    .eq('id', client.id)
+                if (newStatus !== client.status) {
+                    const updatedCustomData = {
+                        ...client.custom_data,
+                        [`${event.eventType}_at`]: event.timestamp,
+                    }
 
-                if (updateError) {
-                    console.error('Error updating client status:', updateError)
-                    throw updateError
+                    const { error: updateError } = await supabase
+                        .from('collection_clients')
+                        .update({
+                            status: newStatus,
+                            custom_data: updatedCustomData,
+                        })
+                        .eq('id', client.id)
+
+                    if (updateError) {
+                        console.error('Error updating client status:', updateError)
+                        throw updateError
+                    }
+
+                    console.log(
+                        `Updated client ${client.id} status: ${client.status} -> ${newStatus}`
+                    )
                 }
 
-                console.log(
-                    `Updated client ${client.id} status: ${client.status} -> ${newStatus}`
-                )
+                // =====================================================================
+                // SINCRONIZACIÓN DE MÉTRICAS DE REPUTACIÓN (CRÍTICO)
+                // =====================================================================
+                // Solo actualizar métricas si no es un evento de apertura duplicado
+                if (shouldUpdateMetrics) {
+                    await updateReputationMetrics(supabase, client.execution_id, event.eventType)
+                }
             }
-
-            // =====================================================================
-            // SINCRONIZACIÓN DE MÉTRICAS DE REPUTACIÓN (CRÍTICO)
-            // =====================================================================
-            // Actualizar métricas en las 4 tablas del sistema de reputación
-            await updateReputationMetrics(supabase, client.execution_id, event.eventType)
-        }
 
         console.log(
             `Processed ${provider} ${event.eventType} event for ${event.email}`
@@ -185,23 +192,23 @@ async function updateReputationMetrics(
 
         // 2. Actualizar collection_executions
         if (executionField) {
-            const { error: execUpdateError } = await supabase.rpc('increment_execution_metric', {
-                p_execution_id: executionId,
-                p_field: executionField,
-                p_increment: 1
-            })
+            // Incremento atómico directo (sin RPC que no existe)
+            const { data: currentExec } = await supabase
+                .from('collection_executions')
+                .select(executionField)
+                .eq('id', executionId)
+                .single()
 
-            if (execUpdateError) {
-                // Fallback si la función RPC no existe - incremento manual
-                const newValue = (execution[executionField] || 0) + 1
+            if (currentExec) {
+                const newValue = (currentExec[executionField] || 0) + 1
                 await supabase
                     .from('collection_executions')
                     .update({ [executionField]: newValue })
                     .eq('id', executionId)
-            }
 
-            // Recalcular tasas
-            await recalculateExecutionRates(supabase, executionId)
+                // Recalcular tasas después de actualizar
+                await recalculateExecutionRates(supabase, executionId)
+            }
         }
 
         // 3. Actualizar execution_batches (encontrar el batch del cliente actual)

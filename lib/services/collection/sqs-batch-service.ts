@@ -34,11 +34,13 @@ export class SQSBatchService {
    * Encola batches en SQS para procesamiento asíncrono
    *
    * @param batches - Batches a encolar
+   * @param businessId - ID del negocio (Tenant)
    * @param options - Opciones de encolado
    * @returns Información de los mensajes encolados
    */
   static async enqueueBatches(
     batches: ExecutionBatch[],
+    businessId: string,
     options?: {
       delaySeconds?: number // Retraso inicial (0-900 segundos)
       maxConcurrent?: number // Máximo de batches a encolar simultáneamente
@@ -75,6 +77,7 @@ export class SQSBatchService {
             MessageBody: JSON.stringify({
               batch_id: batch.id,
               execution_id: batch.execution_id,
+              business_id: businessId,
               batch_number: batch.batch_number,
               client_ids: batch.client_ids,
               total_clients: batch.total_clients,
@@ -90,6 +93,10 @@ export class SQSBatchService {
               execution_id: {
                 DataType: 'String',
                 StringValue: batch.execution_id,
+              },
+              business_id: {
+                DataType: 'String',
+                StringValue: businessId,
               },
               batch_number: {
                 DataType: 'Number',
@@ -124,6 +131,7 @@ export class SQSBatchService {
                 payload: {
                   batch_id: batch.id,
                   execution_id: batch.execution_id,
+                  business_id: businessId,
                   batch_number: batch.batch_number,
                 },
               }
@@ -137,6 +145,22 @@ export class SQSBatchService {
               if (message) {
                 messages.push(message as BatchQueueMessage)
               }
+
+              // Insertar log ENQUEUED para Control Tower
+              await supabase
+                .from('execution_audit_logs')
+                .insert({
+                  execution_id: batch.execution_id,
+                  batch_id: batch.id,
+                  event: 'ENQUEUED',
+                  worker_id: 'wizard',
+                  details: {
+                    batch_number: batch.batch_number,
+                    total_clients: batch.total_clients,
+                    scheduled_for: batch.scheduled_for,
+                    sqs_message_id: success.MessageId,
+                  },
+                })
 
               queuedCount++
             }
@@ -185,6 +209,7 @@ export class SQSBatchService {
    */
   static async enqueueSingleBatch(
     batch: ExecutionBatch,
+    businessId: string,
     delaySeconds?: number
   ): Promise<BatchQueueMessage | null> {
     const supabase = await getSupabaseAdminClient()
@@ -199,6 +224,7 @@ export class SQSBatchService {
         MessageBody: JSON.stringify({
           batch_id: batch.id,
           execution_id: batch.execution_id,
+          business_id: businessId,
           batch_number: batch.batch_number,
           client_ids: batch.client_ids,
           total_clients: batch.total_clients,
@@ -215,6 +241,10 @@ export class SQSBatchService {
           execution_id: {
             DataType: 'String',
             StringValue: batch.execution_id,
+          },
+          business_id: {
+            DataType: 'String',
+            StringValue: businessId,
           },
         },
       })
@@ -233,6 +263,7 @@ export class SQSBatchService {
         payload: {
           batch_id: batch.id,
           execution_id: batch.execution_id,
+          business_id: businessId,
         },
       }
 
@@ -241,6 +272,23 @@ export class SQSBatchService {
         .insert(messageInsert)
         .select()
         .single()
+
+      // Insertar log ENQUEUED para Control Tower
+      await supabase
+        .from('execution_audit_logs')
+        .insert({
+          execution_id: batch.execution_id,
+          batch_id: batch.id,
+          event: 'ENQUEUED',
+          worker_id: 'retry-system',
+          details: {
+            batch_number: batch.batch_number,
+            total_clients: batch.total_clients,
+            scheduled_for: batch.scheduled_for,
+            sqs_message_id: result.MessageId,
+            is_retry: true,
+          },
+        })
 
       return message as BatchQueueMessage
     } catch (error) {
@@ -349,7 +397,21 @@ export class SQSBatchService {
   }> {
     const supabase = await getSupabaseAdminClient()
 
-    // Buscar batches fallidos
+    // 1. Obtener business_id de la ejecución
+    const { data: execution, error: execError } = await supabase
+      .from('collection_executions')
+      .select('business_id')
+      .eq('id', executionId)
+      .single()
+
+    if (execError || !execution) {
+      console.error(`Error fetching execution ${executionId}:`, execError)
+      return { retried: 0, succeeded: 0, failed: 0 }
+    }
+
+    const businessId = execution.business_id
+
+    // 2. Buscar batches fallidos
     const { data: failedBatches, error } = await supabase
       .from('execution_batches')
       .select('*')
@@ -375,8 +437,11 @@ export class SQSBatchService {
         })
         .eq('id', batch.id)
 
-      // Reintentar encolar
-      const message = await this.enqueueSingleBatch(batch as ExecutionBatch)
+      // Reintentar encolar (Pasando businessId)
+      const message = await this.enqueueSingleBatch(
+        batch as ExecutionBatch,
+        businessId
+      )
 
       if (message) {
         succeeded++

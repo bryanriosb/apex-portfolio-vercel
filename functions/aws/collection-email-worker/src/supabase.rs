@@ -252,4 +252,94 @@ impl SupabaseService {
         log::info!("Updated execution {} to status {}", execution_id, status);
         Ok(())
     }
+
+    pub async fn get_batch_retry_count(&self, batch_id: &str) -> Result<i32, Box<dyn Error + Send + Sync>> {
+        let url = format!("{}/rest/v1/batch_queue_messages?batch_id=eq.{}&select=retry_count", self.base_url, batch_id);
+        
+        let response = self.client.get(&url)
+            .header("apikey", &self.api_key)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to fetch retry count: {}", response.status()).into());
+        }
+
+        let messages: Vec<serde_json::Value> = response.json().await?;
+        let count = messages.first()
+            .and_then(|m| m.get("retry_count"))
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0) as i32;
+        
+        Ok(count)
+    }
+
+    pub async fn increment_batch_retry_count(&self, batch_id: &str) -> Result<i32, Box<dyn Error + Send + Sync>> {
+        let current = self.get_batch_retry_count(batch_id).await?;
+        let new_count = current + 1;
+
+        let url = format!("{}/rest/v1/batch_queue_messages?batch_id=eq.{}", self.base_url, batch_id);
+        
+        let body = json!({ "retry_count": new_count });
+
+        let response = self.client.patch(&url)
+            .header("apikey", &self.api_key)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .header("Prefer", "return=minimal")
+            .json(&body)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to increment retry count: {}", response.status()).into());
+        }
+
+        log::info!("Incremented retry count for batch {} to {}", batch_id, new_count);
+        Ok(new_count)
+    }
+
+    pub async fn mark_batch_as_dlq(&self, batch_id: &str, error_message: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
+        // Update batch_queue_messages status to dlq
+        let url = format!("{}/rest/v1/batch_queue_messages?batch_id=eq.{}", self.base_url, batch_id);
+        
+        let body = json!({
+            "status": "dlq",
+            "error_message": error_message,
+            "dlq_at": chrono::Utc::now().to_rfc3339()
+        });
+
+        let response = self.client.patch(&url)
+            .header("apikey", &self.api_key)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .header("Prefer", "return=minimal")
+            .json(&body)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to mark batch as DLQ: {}", response.status()).into());
+        }
+
+        // Also update execution_batches status
+        let batch_url = format!("{}/rest/v1/execution_batches?id=eq.{}", self.base_url, batch_id);
+        let batch_body = json!({
+            "status": "dlq",
+            "error_message": error_message
+        });
+
+        let _ = self.client.patch(&batch_url)
+            .header("apikey", &self.api_key)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .header("Prefer", "return=minimal")
+            .json(&batch_body)
+            .send()
+            .await;
+
+        log::warn!("Batch {} moved to DLQ: {}", batch_id, error_message);
+        Ok(())
+    }
 }

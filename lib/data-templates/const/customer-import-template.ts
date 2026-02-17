@@ -16,7 +16,7 @@ export interface CustomerRow {
 export const DEFAULT_CUSTOMER_TEMPLATES: CustomerRow[] = [
   {
     company_name: 'Empresa ABC S.A.',
-    nit: '900123456-7',
+    nit: '900123456',
     full_name: 'María González López',
     email: 'maria.gonzalez@empresaabc.com',
     phone: '+57 300 123 4567',

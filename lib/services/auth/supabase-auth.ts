@@ -485,3 +485,20 @@ export async function createAdminAccount(
     return { success: false, error: 'Unexpected error occurred' }
   }
 }
+/**
+ * Get the current business ID from the authenticated user
+ * Throws error if not authenticated or no business ID found
+ */
+export async function getCurrentBusinessId(): Promise<string> {
+  const user = await getCurrentUser()
+
+  if (!user) {
+    throw new Error('User not authenticated')
+  }
+
+  if (!user.business_id) {
+    throw new Error('User does not have a business ID')
+  }
+
+  return user.business_id
+}

@@ -30,6 +30,7 @@ export const REQUIRED_COLUMNS = [
   'nit',
   'amount_due',
   'invoice_number',
+  'invoice_date',
   'due_date',
   'days_overdue',
 ] as const
@@ -37,6 +38,7 @@ export const REQUIRED_COLUMNS = [
 export interface Invoice {
   amount_due: string
   invoice_number: string
+  invoice_date: string
   due_date: string
   days_overdue: string
   [key: string]: any
@@ -72,16 +74,18 @@ export interface EmailConfig {
 // Sample template data for download
 export const TEMPLATE_DATA = [
   {
-    nit: '900123456-7',
+    nit: '900123456',
     amount_due: '1500000',
     invoice_number: 'FAC-001',
+    invoice_date: '2024-01-15',
     due_date: '2024-02-15',
     days_overdue: '15',
   },
   {
-    nit: '900123456-7',
+    nit: '900123456',
     amount_due: '500000',
     invoice_number: 'FAC-003',
+    invoice_date: '2024-01-20',
     due_date: '2024-02-18',
     days_overdue: '12',
   },
@@ -89,6 +93,7 @@ export const TEMPLATE_DATA = [
     nit: '52123456',
     amount_due: '850000',
     invoice_number: 'FAC-002',
+    invoice_date: '2024-01-10',
     due_date: '2024-02-20',
     days_overdue: '10',
   },

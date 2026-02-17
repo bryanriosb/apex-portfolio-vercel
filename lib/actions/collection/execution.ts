@@ -514,10 +514,14 @@ export async function processExecutionAction(
       .eq('id', executionId)
 
     // Enqueue batches to SQS
-    await SQSBatchService.enqueueBatches(batches, {
-      delaySeconds: 0,
-      maxConcurrent: 5,
-    })
+    await SQSBatchService.enqueueBatches(
+      batches,
+      execution.business_id,
+      {
+        delaySeconds: 0,
+        maxConcurrent: 5,
+      }
+    )
 
     return { success: true }
   } catch (error: any) {

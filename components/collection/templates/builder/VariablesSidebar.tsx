@@ -28,13 +28,13 @@ const SNIPPET_VARIABLES = [
         key: 'invoices_table',
         label: 'Tabla de Facturas',
         icon: TableIcon,
-        snippet: `<table style="width: 100%; border-collapse: collapse; margin-top: 10px;"><thead><tr style="background-color: #f3f4f6;"><th style="padding: 8px; border: 1px solid #e5e7eb; text-align: left;">No. Factura</th><th style="padding: 8px; border: 1px solid #e5e7eb; text-align: right;">Monto</th><th style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">Vencimiento</th><th style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">Días</th></tr></thead><tbody><tr style="display:none"><td colspan="4">{{#each invoices}}</td></tr><tr><td style="padding: 8px; border: 1px solid #e5e7eb;">{{invoice_number}}</td><td style="padding: 8px; border: 1px solid #e5e7eb; text-align: right;">{{amount_due}}</td><td style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">{{due_date}}</td><td style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">{{days_overdue}}</td></tr><tr style="display:none"><td colspan="4">{{/each}}</td></tr></tbody></table><p> </p>`
+        snippet: `<table style="width: 100%; border-collapse: collapse; margin-top: 10px;"><thead><tr style="background-color: #f3f4f6;"><th style="padding: 8px; border: 1px solid #e5e7eb; text-align: left;">No. Factura</th><th style="padding: 8px; border: 1px solid #e5e7eb; text-align: right;">Monto</th><th style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">Fecha Factura</th><th style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">Vencimiento</th><th style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">Días</th></tr></thead><tbody><tr style="display:none"><td colspan="5">{{#each invoices}}</td></tr><tr><td style="padding: 8px; border: 1px solid #e5e7eb;">{{invoice_number}}</td><td style="padding: 8px; border: 1px solid #e5e7eb; text-align: right;">{{amount_due}}</td><td style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">{{invoice_date}}</td><td style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">{{due_date}}</td><td style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">{{days_overdue}}</td></tr><tr style="display:none"><td colspan="5">{{/each}}</td></tr></tbody></table><p> </p>`
     },
     {
         key: 'invoices_list',
         label: 'Lista de Facturas',
         icon: List,
-        snippet: `<ul style="margin-top: 10px; margin-bottom: 10px; padding-left: 20px;">{{#each invoices}}<li><strong>Factura {{invoice_number}}</strong>: {{amount_due}} - Vence: {{due_date}} ({{days_overdue}} días)</li>{{/each}}</ul><p> </p>`
+        snippet: `<ul style="margin-top: 10px; margin-bottom: 10px; padding-left: 20px;">{{#each invoices}}<li><strong>Factura {{invoice_number}}</strong>: {{amount_due}} - Fecha: {{invoice_date}} - Vence: {{due_date}} ({{days_overdue}} días)</li>{{/each}}</ul><p> </p>`
     }
 ]
 
