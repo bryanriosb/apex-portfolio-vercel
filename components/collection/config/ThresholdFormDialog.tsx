@@ -31,6 +31,7 @@ interface ThresholdFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   threshold: NotificationThreshold | null
+  businessId: string
   businessAccountId: string
   onSuccess: () => void
 }
@@ -39,6 +40,7 @@ export function ThresholdFormDialog({
   open,
   onOpenChange,
   threshold,
+  businessId,
   businessAccountId,
   onSuccess,
 }: ThresholdFormDialogProps) {
@@ -117,7 +119,7 @@ export function ThresholdFormDialog({
       }
 
       const payload = {
-        business_account_id: businessAccountId,
+        business_id: businessId,
         name: formData.name.trim(),
         description: formData.description?.trim() || null,
         days_from: Number(formData.days_from),
@@ -132,7 +134,7 @@ export function ThresholdFormDialog({
         await NotificationThresholdService.updateThreshold(
           threshold.id,
           payload,
-          businessAccountId
+          businessId
         )
         toast.success('Umbral actualizado correctamente')
       } else {
@@ -148,6 +150,13 @@ export function ThresholdFormDialog({
       toast.error(error.message || 'Error al guardar el umbral')
     } finally {
       setIsSubmitting(false)
+      setFormData({
+        name: '',
+        description: '',
+        days_from: 0,
+        days_to: '',
+        email_template_id: '',
+      })
     }
   }
 
@@ -260,7 +269,11 @@ export function ThresholdFormDialog({
               Cancelar
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Guardando...' : threshold ? 'Actualizar' : 'Crear'}
+              {isSubmitting
+                ? 'Guardando...'
+                : threshold
+                  ? 'Actualizar'
+                  : 'Crear'}
             </Button>
           </DialogFooter>
         </form>

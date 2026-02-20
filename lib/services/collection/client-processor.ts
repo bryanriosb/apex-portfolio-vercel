@@ -16,7 +16,7 @@ export interface ProcessedClient {
 
 export interface ClientProcessorParams {
   clients: any[]
-  business_account_id: string
+  business_id: string
   execution_id?: string
 }
 
@@ -34,15 +34,25 @@ export const ClientProcessor = {
 
     for (const clientData of params.clients) {
       try {
-        // Get days_overdue from custom_data (pre-calculated from CSV)
-        const daysOverdue = clientData.custom_data?.total_days_overdue || 0
+        // Get days_overdue from client.total (set during file parsing)
+        const daysOverdue = clientData.total?.total_days_overdue || 0
+
+        console.log(`[ClientProcessor] Processing client ${clientData.nit || clientData.customer?.nit}, daysOverdue: ${daysOverdue}, business_id: ${params.business_id}`)
 
         // Determine threshold based on days
         const threshold =
           await NotificationThresholdService.getThresholdForDays(
-            params.business_account_id,
+            params.business_id,
             daysOverdue
           )
+
+        console.log(`[ClientProcessor] daysOverdue: ${daysOverdue}, Threshold found:`, threshold ? {
+          id: threshold.id,
+          name: threshold.name,
+          days_from: threshold.days_from,
+          days_to: threshold.days_to,
+          email_template_id: threshold.email_template_id
+        } : 'NULL')
 
         if (!threshold) {
           console.warn(`No threshold found for ${daysOverdue} days`)
@@ -52,8 +62,16 @@ export const ClientProcessor = {
             customer_id: clientData.customer?.id,
             invoices: clientData.invoices,
             custom_data: {
-              ...clientData.custom_data,
+              nit: clientData.nit,
+              total_amount_due: clientData.total?.total_amount_due,
+              total_days_overdue: clientData.total?.total_days_overdue,
+              total_invoices: clientData.total?.total_invoices,
               days_overdue: daysOverdue,
+              // Include customer data for email rendering in worker
+              email: clientData.customer?.email,
+              full_name: clientData.customer?.full_name,
+              phone: clientData.customer?.phone,
+              company_name: clientData.customer?.company_name,
             },
             status: 'pending',
           })
@@ -63,12 +81,12 @@ export const ClientProcessor = {
         // Resolve attachments based on rules
         const attachments = await AttachmentRulesService.resolveAttachmentsForClient(
           {
-            business_account_id: params.business_account_id,
+            business_id: params.business_id,
             threshold_id: threshold.id,
             customer_category_id: clientData.customer?.category_id,
             customer_id: clientData.customer?.id,
             days_overdue: daysOverdue,
-            invoice_amount: clientData.custom_data?.total_amount_due,
+            invoice_amount: clientData.total?.total_amount_due,
           }
         )
 
@@ -80,21 +98,47 @@ export const ClientProcessor = {
           email_template_id: threshold.email_template_id,
           threshold_id: threshold.id,
           custom_data: {
-            ...clientData.custom_data,
+            nit: clientData.nit,
+            total_amount_due: clientData.total?.total_amount_due,
+            total_days_overdue: clientData.total?.total_days_overdue,
+            total_invoices: clientData.total?.total_invoices,
             days_overdue: daysOverdue,
             threshold_name: threshold.name,
+            // Include customer data for email rendering in worker
+            email: clientData.customer?.email,
+            full_name: clientData.customer?.full_name,
+            phone: clientData.customer?.phone,
+            company_name: clientData.customer?.company_name,
           },
           status: 'pending',
           attachments,
         })
       } catch (error) {
         console.error('Error processing client:', error)
-        // Include client even if processing failed
+        // Include client even if processing failed - use fallback template
+        const fallbackThreshold = await NotificationThresholdService.getThresholdForDays(
+          params.business_id,
+          clientData.total?.total_days_overdue || 0
+        )
+        
         processedClients.push({
           execution_id: params.execution_id,
           customer_id: clientData.customer?.id,
           invoices: clientData.invoices,
-          custom_data: clientData.custom_data,
+          email_template_id: fallbackThreshold?.email_template_id,
+          threshold_id: fallbackThreshold?.id,
+          custom_data: {
+            nit: clientData.nit,
+            total_amount_due: clientData.total?.total_amount_due,
+            total_days_overdue: clientData.total?.total_days_overdue,
+            total_invoices: clientData.total?.total_invoices,
+            days_overdue: clientData.total?.total_days_overdue || 0,
+            // Include customer data for email rendering in worker
+            email: clientData.customer?.email,
+            full_name: clientData.customer?.full_name,
+            phone: clientData.customer?.phone,
+            company_name: clientData.customer?.company_name,
+          },
           status: 'pending',
         })
       }

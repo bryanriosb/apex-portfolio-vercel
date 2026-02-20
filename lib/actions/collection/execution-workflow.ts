@@ -9,6 +9,7 @@ import { EmailReputationService } from '@/lib/services/collection/email-reputati
 import { getCurrentUser } from '@/lib/services/auth/supabase-auth'
 import { ClientProcessor } from '@/lib/services/collection/client-processor'
 import { fetchThresholdsAction } from '@/lib/actions/collection/notification-threshold'
+import { getBusinessByIdAction } from '@/lib/actions/business'
 
 interface CreateExecutionWorkflowParams {
   executionData: CollectionExecutionInsert
@@ -64,12 +65,13 @@ export async function createExecutionWithClientsAction({
       throw new Error('Domain is required for reputation tracking and deliverability.')
     }
 
-    // Determine template ID (fallback logic)
+    // Determine template ID (fallback logic) - using business_id directly now
     let emailTemplateId = executionData.email_template_id;
 
     if (!emailTemplateId) {
       // If no template provided, try to find the lowest threshold template
       try {
+        // Use business_id directly for thresholds
         const thresholdsResponse = await fetchThresholdsAction(executionData.business_id);
         if (thresholdsResponse.data.length > 0) {
           // fetchThresholdsAction returns sorted by days_from ASC, so first one is lowest
@@ -105,7 +107,7 @@ export async function createExecutionWithClientsAction({
     const processedClients = await ClientProcessor.processClientsWithThresholds(
       {
         clients,
-        business_account_id: executionData.business_id,
+        business_id: executionData.business_id,
         execution_id: execution.id,
       }
     )
@@ -123,6 +125,16 @@ export async function createExecutionWithClientsAction({
     )
 
     console.log(`Creating execution with ${clientsToInsert.length} clients`)
+
+    // Debug: log first client data
+    if (clientsToInsert.length > 0) {
+      console.log('[ExecutionWorkflow] First client to insert:', {
+        email_template_id: clientsToInsert[0].email_template_id,
+        threshold_id: clientsToInsert[0].threshold_id,
+        custom_data_days_overdue: clientsToInsert[0].custom_data?.days_overdue,
+        custom_data_total_days: clientsToInsert[0].custom_data?.total_days_overdue,
+      })
+    }
 
     // 3. Insert Clients (Batch)
     const { data: insertedClients, error: clientsError } = await supabase

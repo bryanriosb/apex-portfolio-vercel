@@ -36,7 +36,7 @@ export function useThresholdPreview(
   }, [clients])
 
   const calculatePreview = useCallback(async () => {
-    if (!activeBusiness?.business_account_id || clientsArray.length === 0) {
+    if (!activeBusiness?.id || clientsArray.length === 0) {
       setPreviewData([])
       setIsLoading(false)
       return
@@ -47,7 +47,7 @@ export function useThresholdPreview(
     try {
       // Obtener todos los thresholds activos
       const thresholdsResponse = await NotificationThresholdService.fetchThresholds(
-        activeBusiness.business_account_id
+        activeBusiness.id
       )
       const thresholds = thresholdsResponse.data
 
@@ -61,7 +61,7 @@ export function useThresholdPreview(
         
         const daysOverdue = client.total.total_days_overdue || 0
         const threshold = await NotificationThresholdService.getThresholdForDays(
-          activeBusiness.business_account_id,
+          activeBusiness.id,
           daysOverdue
         )
 
@@ -95,7 +95,7 @@ export function useThresholdPreview(
     } finally {
       setIsLoading(false)
     }
-  }, [clientsArray, activeBusiness?.business_account_id])
+  }, [clientsArray, activeBusiness?.id])
 
   useEffect(() => {
     calculatePreview()

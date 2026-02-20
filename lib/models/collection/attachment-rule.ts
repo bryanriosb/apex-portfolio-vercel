@@ -13,7 +13,7 @@ export interface AttachmentRuleConditions {
 export interface AttachmentRule {
   id: string
   attachment_id: string
-  business_account_id: string
+  business_id: string
   rule_type: AttachmentRuleType
   rule_entity_id?: string | null
   is_required: boolean
@@ -25,7 +25,7 @@ export interface AttachmentRule {
 
 export interface AttachmentRuleInsert {
   attachment_id: string
-  business_account_id: string
+  business_id: string
   rule_type: AttachmentRuleType
   rule_entity_id?: string | null
   is_required?: boolean

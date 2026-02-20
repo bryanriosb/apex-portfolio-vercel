@@ -37,7 +37,7 @@ export function ThresholdsTab() {
   const [refreshKey, setRefreshKey] = useState(0)
 
   const loadThresholds = useCallback(async () => {
-    if (!activeBusiness?.business_account_id) {
+    if (!activeBusiness?.id) {
       setLoading(false)
       return
     }
@@ -45,7 +45,7 @@ export function ThresholdsTab() {
     setLoading(true)
     try {
       const result = await NotificationThresholdService.fetchThresholds(
-        activeBusiness.business_account_id
+        activeBusiness.id
       )
       setThresholds(result.data)
     } catch (error) {
@@ -54,7 +54,7 @@ export function ThresholdsTab() {
     } finally {
       setLoading(false)
     }
-  }, [activeBusiness?.business_account_id])
+  }, [activeBusiness?.id])
 
   useEffect(() => {
     loadThresholds()
@@ -218,6 +218,7 @@ export function ThresholdsTab() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         threshold={editingThreshold}
+        businessId={activeBusiness.id}
         businessAccountId={activeBusiness.business_account_id}
         onSuccess={handleSuccess}
       />

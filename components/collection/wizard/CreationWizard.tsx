@@ -83,14 +83,14 @@ export function CreationWizard() {
   // Load strategies, templates and thresholds from database
   useEffect(() => {
     const loadData = async () => {
-      if (!activeBusiness?.id) return
+      if (!activeBusiness?.id || !activeBusiness?.business_account_id) return
 
       try {
         const [businessStrategies, businessDomains, emailTemplates, thresholdsResponse] = await Promise.all([
           getBusinessStrategiesAction(activeBusiness.id),
           getBusinessDomainsAction(activeBusiness.id),
-          getActiveTemplatesByTypeAction(activeBusiness.id, 'email'),
-          fetchThresholdsAction(activeBusiness.id),
+          getActiveTemplatesByTypeAction(activeBusiness.business_account_id, 'email'),
+          fetchThresholdsAction(activeBusiness.id), // Use business_id for thresholds
         ])
 
         setStrategies(businessStrategies)
@@ -130,7 +130,7 @@ export function CreationWizard() {
     }
 
     loadData()
-  }, [activeBusiness?.id])
+  }, [activeBusiness?.id, activeBusiness?.business_account_id])
 
   const handleNext = async () => {
     if (currentStep < WIZARD_STEPS.length) {

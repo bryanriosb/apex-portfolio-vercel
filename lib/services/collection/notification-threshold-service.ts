@@ -23,9 +23,9 @@ export interface ThresholdServiceParams {
  */
 export const NotificationThresholdService = {
   async fetchThresholds(
-    businessAccountId: string
+    businessId: string
   ): Promise<ThresholdListResponse> {
-    return await fetchThresholdsAction(businessAccountId)
+    return await fetchThresholdsAction(businessId)
   },
 
   async getThreshold(id: string): Promise<NotificationThreshold> {
@@ -66,10 +66,10 @@ export const NotificationThresholdService = {
   },
 
   async getThresholdForDays(
-    businessAccountId: string,
+    businessId: string,
     daysOverdue: number
   ): Promise<NotificationThreshold | null> {
-    const threshold = await getThresholdForDaysAction(businessAccountId, daysOverdue)
+    const threshold = await getThresholdForDaysAction(businessId, daysOverdue)
     console.log('[ThresholdService] getThresholdForDays result:', {
       daysOverdue,
       thresholdId: threshold?.id,
@@ -92,7 +92,7 @@ export const NotificationThresholdService = {
    */
   async processClientsWithThresholds(params: {
     clients: any[]
-    business_account_id: string
+    business_id: string
   }): Promise<
     {
       client: any
@@ -104,7 +104,7 @@ export const NotificationThresholdService = {
     for (const client of params.clients) {
       const daysOverdue = client.custom_data?.total_days_overdue || 0
       const threshold = await this.getThresholdForDays(
-        params.business_account_id,
+        params.business_id,
         daysOverdue
       )
 

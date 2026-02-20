@@ -15,26 +15,22 @@ import type {
   ResolvedAttachment,
 } from '@/lib/models/collection/attachment-rule'
 
-export interface AttachmentRulesServiceParams {
-  business_account_id: string
-}
-
 /**
  * Service for Attachment Rules management
  */
 export const AttachmentRulesService = {
   async fetchRules(
-    businessAccountId: string
+    businessId: string
   ): Promise<AttachmentRuleListResponse> {
-    return await fetchAttachmentRulesAction(businessAccountId)
+    return await fetchAttachmentRulesAction(businessId)
   },
 
   async fetchRulesByAttachment(attachmentId: string): Promise<AttachmentRule[]> {
     return await fetchRulesByAttachmentAction(attachmentId)
   },
 
-  async fetchGlobalRules(businessAccountId: string): Promise<AttachmentRule[]> {
-    return await fetchGlobalAttachmentRulesAction(businessAccountId)
+  async fetchGlobalRules(businessId: string): Promise<AttachmentRule[]> {
+    return await fetchGlobalAttachmentRulesAction(businessId)
   },
 
   async createRule(data: AttachmentRuleInsert): Promise<AttachmentRule> {
@@ -64,7 +60,7 @@ export const AttachmentRulesService = {
   },
 
   async resolveAttachmentsForClient(params: {
-    business_account_id: string
+    business_id: string
     threshold_id?: string
     customer_category_id?: string
     customer_id?: string
@@ -76,12 +72,12 @@ export const AttachmentRulesService = {
 
   async saveRulesForAttachment(
     attachmentId: string,
-    businessAccountId: string,
-    rules: Omit<AttachmentRuleInsert, 'attachment_id' | 'business_account_id'>[]
+    businessId: string,
+    rules: Omit<AttachmentRuleInsert, 'attachment_id' | 'business_id'>[]
   ): Promise<void> {
     const result = await saveAttachmentRulesAction(
       attachmentId,
-      businessAccountId,
+      businessId,
       rules
     )
     if (!result.success) {
@@ -94,13 +90,13 @@ export const AttachmentRulesService = {
    */
   async resolveAttachmentsForClients(
     clients: any[],
-    businessAccountId: string
+    businessId: string
   ): Promise<Map<string, ResolvedAttachment[]>> {
     const results = new Map<string, ResolvedAttachment[]>()
 
     for (const client of clients) {
       const attachments = await this.resolveAttachmentsForClient({
-        business_account_id: businessAccountId,
+        business_id: businessId,
         threshold_id: client.threshold_id,
         customer_category_id: client.customer?.category_id,
         customer_id: client.customer?.id,

@@ -1,6 +1,6 @@
 export interface NotificationThreshold {
   id: string
-  business_account_id: string
+  business_id: string
   name: string
   description?: string | null
   days_from: number
@@ -20,7 +20,7 @@ export interface NotificationThreshold {
 }
 
 export interface NotificationThresholdInsert {
-  business_account_id: string
+  business_id: string
   name: string
   description?: string | null
   days_from: number

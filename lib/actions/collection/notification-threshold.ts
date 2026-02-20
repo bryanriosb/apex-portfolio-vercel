@@ -19,10 +19,10 @@ export interface ThresholdListResponse {
 }
 
 /**
- * Fetch all thresholds for a business account
+ * Fetch all thresholds for a business
  */
 export async function fetchThresholdsAction(
-  businessAccountId: string
+  businessId: string
 ): Promise<ThresholdListResponse> {
   try {
     const supabase = await getSupabaseAdminClient()
@@ -34,7 +34,7 @@ export async function fetchThresholdsAction(
         email_template:email_template_id(id, name, subject)`,
         { count: 'exact' }
       )
-      .eq('business_account_id', businessAccountId)
+      .eq('business_id', businessId)
       .eq('is_active', true)
       .order('days_from', { ascending: true })
 
@@ -90,7 +90,7 @@ export async function createThresholdAction(
     const overlapCheck = await supabase
       .from('notification_thresholds')
       .select('id, name, days_from, days_to')
-      .eq('business_account_id', data.business_account_id)
+      .eq('business_id', data.business_id)
       .eq('is_active', true)
       .or(
         `and(days_from.lte.${data.days_to || 999999},days_to.gte.${data.days_from}),and(days_from.gte.${data.days_from},days_from.lte.${data.days_to || 999999})`
@@ -131,7 +131,7 @@ export async function createThresholdAction(
 export async function updateThresholdAction(
   id: string,
   data: NotificationThresholdUpdate,
-  businessAccountId: string
+  businessId: string
 ): Promise<{ success: boolean; data?: NotificationThreshold; error?: string }> {
   try {
     const supabase = await getSupabaseAdminClient()
@@ -149,7 +149,7 @@ export async function updateThresholdAction(
       const overlapCheck = await supabase
         .from('notification_thresholds')
         .select('id, name, days_from, days_to')
-        .eq('business_account_id', businessAccountId)
+        .eq('business_id', businessId)
         .eq('is_active', true)
         .neq('id', id)
         .or(
@@ -202,14 +202,14 @@ export async function deleteThresholdAction(
  * Get threshold for specific days overdue using RPC function
  */
 export async function getThresholdForDaysAction(
-  businessAccountId: string,
+  businessId: string,
   daysOverdue: number
 ): Promise<NotificationThreshold | null> {
   try {
     const supabase = await getSupabaseAdminClient()
 
     const { data, error } = await supabase.rpc('get_threshold_for_days', {
-      p_business_account_id: businessAccountId,
+      p_business_id: businessId,
       p_days_overdue: daysOverdue,
     })
 

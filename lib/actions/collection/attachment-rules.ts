@@ -20,10 +20,10 @@ export interface AttachmentRuleListResponse {
 }
 
 /**
- * Fetch all attachment rules for a business account
+ * Fetch all attachment rules for a business
  */
 export async function fetchAttachmentRulesAction(
-  businessAccountId: string
+  businessId: string
 ): Promise<AttachmentRuleListResponse> {
   try {
     const supabase = await getSupabaseAdminClient()
@@ -35,7 +35,7 @@ export async function fetchAttachmentRulesAction(
         attachment:attachment_id(id, name, file_type, storage_path, storage_bucket)`,
         { count: 'exact' }
       )
-      .eq('business_account_id', businessAccountId)
+      .eq('business_id', businessId)
       .order('display_order', { ascending: true })
 
     if (error) throw error
@@ -153,7 +153,7 @@ export async function deleteAttachmentRuleAction(
  * Resolve attachments for a client based on rules using RPC
  */
 export async function resolveAttachmentsForClientAction(params: {
-  business_account_id: string
+  business_id: string
   threshold_id?: string
   customer_category_id?: string
   customer_id?: string
@@ -164,7 +164,7 @@ export async function resolveAttachmentsForClientAction(params: {
     const supabase = await getSupabaseAdminClient()
 
     const { data, error } = await supabase.rpc('resolve_attachments_by_rules', {
-      p_business_account_id: params.business_account_id,
+      p_business_id: params.business_id,
       p_threshold_id: params.threshold_id,
       p_customer_category_id: params.customer_category_id,
       p_customer_id: params.customer_id,
@@ -187,8 +187,8 @@ export async function resolveAttachmentsForClientAction(params: {
  */
 export async function saveAttachmentRulesAction(
   attachmentId: string,
-  businessAccountId: string,
-  rules: Omit<AttachmentRuleInsert, 'attachment_id' | 'business_account_id'>[]
+  businessId: string,
+  rules: Omit<AttachmentRuleInsert, 'attachment_id' | 'business_id'>[]
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await getSupabaseAdminClient()
@@ -201,7 +201,7 @@ export async function saveAttachmentRulesAction(
       const rulesToInsert = rules.map((rule, index) => ({
         ...rule,
         attachment_id: attachmentId,
-        business_account_id: businessAccountId,
+        business_id: businessId,
         display_order: rule.display_order ?? index,
       }))
 
@@ -221,7 +221,7 @@ export async function saveAttachmentRulesAction(
  * Get global rules only
  */
 export async function fetchGlobalAttachmentRulesAction(
-  businessAccountId: string
+  businessId: string
 ): Promise<AttachmentRule[]> {
   try {
     const supabase = await getSupabaseAdminClient()
@@ -232,7 +232,7 @@ export async function fetchGlobalAttachmentRulesAction(
         `*,
         attachment:attachment_id(id, name, file_type, storage_path, storage_bucket)`
       )
-      .eq('business_account_id', businessAccountId)
+      .eq('business_id', businessId)
       .eq('rule_type', 'global')
       .order('display_order', { ascending: true })
 

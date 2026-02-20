@@ -162,6 +162,13 @@ const StylePreserver = Extension.create({
   },
 })
 
+const SafeTableDecorations = Extension.create({
+  name: 'safeTableDecorations',
+  addProseMirrorPlugins() {
+    return []
+  },
+})
+
 interface EmailEditorProps {
   subject: string
   content: string
@@ -186,6 +193,7 @@ export function EmailEditor({
       StarterKit,
       FontSize,
       StylePreserver,
+      SafeTableDecorations,
       Placeholder.configure({
         placeholder: 'Escribe el contenido del correo aquí...',
       }),
@@ -194,6 +202,7 @@ export function EmailEditor({
         HTMLAttributes: {
           class: 'tiptap-table',
         },
+        allowTableNodeSelection: false,
       }).extend({
         addAttributes() {
           return {
@@ -335,11 +344,27 @@ export function EmailEditor({
           'prose prose-sm sm:prose-base lg:prose-lg xl:prose-2xl dark:prose-invert m-5 focus:outline-none min-h-[500px]',
       },
     },
-    onUpdate: ({ editor }) => {
-      onContentChange(editor.getHTML())
-    },
     onCreate: ({ editor }) => {
       onEditorReady(editor)
+      
+      const view = editor.view
+      if (!view) return
+      
+      const originalDispatch = view.dispatch.bind(view)
+      view.dispatch = (tr) => {
+        try {
+          originalDispatch(tr)
+        } catch (e: any) {
+          if (e.message?.includes('No cell with offset') || e.message?.includes('No cell with')) {
+            console.warn('Table decoration error caught')
+            return
+          }
+          throw e
+        }
+      }
+    },
+    onUpdate: ({ editor }) => {
+      onContentChange(editor.getHTML())
     },
   })
 
