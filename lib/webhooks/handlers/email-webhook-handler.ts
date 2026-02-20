@@ -157,26 +157,22 @@ async function updateReputationMetrics(
         }
 
         // Determinar qué campo incrementar
-        let executionField: string | null = null
         let batchField: string | null = null
         let dailyField: string | null = null
         let profileField: string | null = null
 
         switch (eventType) {
             case 'delivered':
-                executionField = 'emails_delivered'
                 batchField = 'emails_delivered'
                 dailyField = 'emails_delivered'
                 profileField = 'total_emails_delivered'
                 break
             case 'opened':
-                executionField = 'emails_opened'
                 batchField = 'emails_opened'
                 dailyField = 'emails_opened'
                 profileField = 'total_emails_opened'
                 break
             case 'bounced':
-                executionField = 'emails_bounced'
                 batchField = 'emails_bounced'
                 dailyField = 'emails_bounced'
                 profileField = 'total_emails_bounced'
@@ -190,28 +186,7 @@ async function updateReputationMetrics(
                 return
         }
 
-        // 2. Actualizar collection_executions
-        if (executionField) {
-            // Incremento atómico directo (sin RPC que no existe)
-            const { data: currentExec } = await supabase
-                .from('collection_executions')
-                .select(executionField)
-                .eq('id', executionId)
-                .single()
-
-            if (currentExec) {
-                const newValue = (currentExec[executionField] || 0) + 1
-                await supabase
-                    .from('collection_executions')
-                    .update({ [executionField]: newValue })
-                    .eq('id', executionId)
-
-                // Recalcular tasas después de actualizar
-                await recalculateExecutionRates(supabase, executionId)
-            }
-        }
-
-        // 3. Actualizar execution_batches (encontrar el batch del cliente actual)
+        // 2. Actualizar execution_batches (encontrar el batch del cliente actual)
         if (batchField) {
             // Aquí necesitaríamos el batch_id. Por ahora, actualizamos todos los batches de la ejecución
             // En una implementación más robusta, deberíamos almacenar batch_id en collection_clients
@@ -231,7 +206,7 @@ async function updateReputationMetrics(
             }
         }
 
-        // 4. Obtener el reputation profile asociado
+        // 3. Obtener el reputation profile asociado
         const { data: profiles } = await supabase
             .from('email_reputation_profiles')
             .select('id, total_emails_sent, total_emails_delivered, total_emails_opened, total_emails_bounced, total_complaints')
@@ -242,7 +217,7 @@ async function updateReputationMetrics(
             const profile = profiles[0]
             const today = new Date().toISOString().split('T')[0]
 
-            // 5. Actualizar email_reputation_profiles
+            // 4. Actualizar email_reputation_profiles
             if (profileField) {
                 const newProfileValue = (profile[profileField] || 0) + 1
                 await supabase
@@ -254,7 +229,7 @@ async function updateReputationMetrics(
                 await recalculateProfileRates(supabase, profile.id)
             }
 
-            // 6. Actualizar daily_sending_limits
+            // 5. Actualizar daily_sending_limits
             if (dailyField) {
                 const { data: dailyLimit } = await supabase
                     .from('daily_sending_limits')

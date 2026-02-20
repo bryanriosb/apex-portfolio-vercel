@@ -70,11 +70,12 @@ fn get_f64(v: &serde_json::Value) -> f64 {
 fn preprocess_tiptap_template(template_str: &str) -> String {
     let mut processed = template_str.to_string();
     
-    // Extract helpers from TipTap TR wrappers
-    let re_helper = Regex::new(r"(?is)<tr>\s*<td[^>]*>(?:\s*<[^>]+>)*\s*(\{\{[/#!][^}]+\}\})\s*(?:</[^>]+>)*\s*</td>\s*</tr>").unwrap();
+    // Handles both: single TD with helper, and first TD with helper + empty TDs
+    let re_helper = Regex::new(
+        r"(?is)<tr[^>]*>\s*<td[^>]*>(?:\s*<[^>]+>)*\s*(\{\{[/#!][^}]+\}\})\s*(?:</[^>]+>)*\s*</td>(?:\s*<td[^>]*>\s*</td>)*\s*</tr>"
+    ).unwrap();
     processed = re_helper.replace_all(&processed, "$1").to_string();
     
-    // Clean up whitespace around helpers but preserve line breaks
     processed = processed.replace("\n{{#", "{{#")
                          .replace("\n{{/", "{{/");
     
