@@ -14,6 +14,7 @@ import {
   Settings,
   Info,
   Database,
+  AlertTriangle,
 } from 'lucide-react'
 import {
   Select,
@@ -25,10 +26,12 @@ import {
 import { FileData, EmailConfig, StrategyType, DatabaseStrategy } from './types'
 import { ThresholdPreview } from './ThresholdPreview'
 import { useThresholdPreview } from '@/hooks/collection/use-threshold-preview'
+import { CollectionTemplate } from '@/lib/models/collection'
 
 interface Step3ContentProps {
   fileData: FileData | null
   emailConfig: EmailConfig
+  onTemplateChange: (templateId: string | undefined) => void
   executionMode: 'immediate' | 'scheduled'
   onExecutionModeChange: (mode: 'immediate' | 'scheduled') => void
   scheduledDate: Date | undefined
@@ -38,6 +41,7 @@ interface Step3ContentProps {
   selectedStrategyId: string | null
   onStrategyChange: (strategyId: string | null) => void
   strategies: DatabaseStrategy[]
+  templates: CollectionTemplate[]
   senderDomain: string
   onDomainChange: (domain: string) => void
   showAdvancedOptions: boolean
@@ -50,6 +54,7 @@ interface Step3ContentProps {
 export function Step3Content({
   fileData,
   emailConfig,
+  onTemplateChange,
   executionMode,
   onExecutionModeChange,
   scheduledDate,
@@ -59,6 +64,7 @@ export function Step3Content({
   selectedStrategyId,
   onStrategyChange,
   strategies,
+  templates,
   senderDomain,
   onDomainChange,
   showAdvancedOptions,
@@ -72,39 +78,40 @@ export function Step3Content({
   // Debug: Verificar datos de clientes
   console.log('[Step3Content] fileData.groupedClients:', {
     size: fileData.groupedClients.size,
-    clients: Array.from(fileData.groupedClients.values()).map(c => ({
+    clients: Array.from(fileData.groupedClients.values()).map((c) => ({
       nit: c.nit,
       status: c.status,
       daysOverdue: c.total?.total_days_overdue,
-      invoices: c.invoices?.length
-    }))
+      invoices: c.invoices?.length,
+    })),
   })
 
   // Usar el mismo hook que Step2 para consistencia
-  const { previewData, unassignedCount, totalClients, isLoading } = useThresholdPreview(
-    fileData.groupedClients
-  )
+  const { previewData, unassignedCount, totalClients, isLoading } =
+    useThresholdPreview(fileData.groupedClients)
 
   // Debug: Verificar resultado del hook
   console.log('[Step3Content] useThresholdPreview result:', {
     totalClients,
     unassignedCount,
-    previewData: previewData.map(d => ({
+    previewData: previewData.map((d) => ({
       thresholdName: d.threshold?.name,
       count: d.count,
       daysFrom: d.threshold?.days_from,
-      daysTo: d.threshold?.days_to
-    }))
+      daysTo: d.threshold?.days_to,
+    })),
   })
 
   // Calcular totales basados en los datos del hook
   // totalClients ya excluye los no válidos (status !== 'found')
   const validClients = totalClients
   const totalInvoices = previewData.reduce(
-    (acc, curr) => acc + curr.clients.reduce((sum, client) => sum + client.invoices.length, 0),
+    (acc, curr) =>
+      acc +
+      curr.clients.reduce((sum, client) => sum + client.invoices.length, 0),
     0
   )
-  
+
   // Total de clientes en el CSV (incluyendo no válidos)
   const totalClientsInCsv = fileData.groupedClients.size
 
@@ -157,9 +164,7 @@ export function Step3Content({
             <CardTitle className="text-sm font-medium">Configuración</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-sm font-medium">
-              Por umbrales
-            </div>
+            <div className="text-sm font-medium">Por umbrales</div>
             <p className="text-xs text-muted-foreground">
               {emailConfig.attachmentIds.length} adjuntos globales
             </p>
@@ -170,6 +175,43 @@ export function Step3Content({
       {/* Threshold Preview */}
       {fileData?.groupedClients && fileData.groupedClients.size > 0 && (
         <ThresholdPreview clients={fileData.groupedClients} />
+      )}
+
+      {/* Fallback Template Alert & Selection */}
+      {unassignedCount > 0 && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-yellow-800">
+              <AlertTriangle className="h-4 w-4" />
+              Atención: {unassignedCount} clientes sin umbral asignado
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-yellow-700">
+              Estos clientes no coinciden con ningún rango de días de los umbrales configurados.
+              Seleccione una plantilla de respaldo para enviarles correo, o no se les enviará nada.
+            </p>
+            
+            <div className="space-y-2">
+              <Label className="text-yellow-900">Plantilla de Respaldo (Fallback)</Label>
+              <Select
+                value={emailConfig.templateId || ''}
+                onValueChange={(value) => onTemplateChange(value)}
+              >
+                <SelectTrigger className="w-full bg-white">
+                  <SelectValue placeholder="Seleccionar plantilla..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Execution Mode */}
@@ -251,8 +293,12 @@ export function Step3Content({
                   <SelectValue placeholder="Seleccionar un dominio verificado" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="custom">✍️ Usar otro dominio...</SelectItem>
-                  {availableDomains.length > 0 && <div className="h-px bg-muted my-1" />}
+                  <SelectItem value="custom">
+                    ✍️ Usar otro dominio...
+                  </SelectItem>
+                  {availableDomains.length > 0 && (
+                    <div className="h-px bg-muted my-1" />
+                  )}
                   {availableDomains.map((domain) => (
                     <SelectItem key={domain} value={domain}>
                       {domain}
@@ -263,7 +309,8 @@ export function Step3Content({
             </div>
           </div>
 
-          {(senderDomain === '' || !availableDomains.includes(senderDomain)) && (
+          {(senderDomain === '' ||
+            !availableDomains.includes(senderDomain)) && (
             <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
               <Label htmlFor="customDomain">Escribir Dominio</Label>
               <Input
@@ -277,7 +324,8 @@ export function Step3Content({
           )}
 
           <p className="text-xs text-muted-foreground">
-            Dominio que aparecerá como remitente. Los dominios nuevos comenzarán a generar reputación desde cero.
+            Dominio que aparecerá como remitente. Los dominios nuevos comenzarán
+            a generar reputación desde cero.
           </p>
         </CardContent>
       </Card>
@@ -368,7 +416,7 @@ export function Step3Content({
       </Card>
 
       {/* Summary */}
-      <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+      <div className="bg-yellow-50 border border-yellow-200 p-4">
         <h4 className="font-medium text-yellow-900 mb-2">
           Resumen de Ejecución
         </h4>

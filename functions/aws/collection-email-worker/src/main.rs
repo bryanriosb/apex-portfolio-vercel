@@ -507,9 +507,28 @@ async fn process_batch(
 
     let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "pro".to_string()) == "dev";
 
-    for (index, client) in clients.into_iter().enumerate() {
+    for (index, mut client) in clients.into_iter().enumerate() {
         if is_dev && index > 0 {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        }
+
+        if client.email().is_none() {
+            if let Some(customer_id) = &client.customer_id {
+                match supabase.get_customer_email(customer_id).await {
+                     Ok(Some(email)) => {
+                         info!("Fetched email {} for client {} from business_customers", email, client.id);
+                         if let Some(custom_data) = &mut client.custom_data {
+                             if let Some(obj) = custom_data.as_object_mut() {
+                                 obj.insert("email".to_string(), serde_json::Value::String(email));
+                             }
+                         } else {
+                             client.custom_data = Some(serde_json::json!({ "email": email }));
+                         }
+                     },
+                     Ok(None) => warn!("No email found in business_customers for customer_id {}", customer_id),
+                     Err(e) => error!("Failed to fetch email from business_customers: {}", e),
+                }
+            }
         }
 
         if client.email().is_none() {
@@ -629,9 +648,28 @@ async fn process_execution(execution_id: &str) -> Result<(), Box<dyn Error + Sen
 
     let clients = supabase.get_pending_clients(execution_id).await?;
 
-    for (index, client) in clients.into_iter().enumerate() {
+    for (index, mut client) in clients.into_iter().enumerate() {
         if is_dev && index > 0 {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        }
+
+        if client.email().is_none() {
+            if let Some(customer_id) = &client.customer_id {
+                match supabase.get_customer_email(customer_id).await {
+                     Ok(Some(email)) => {
+                         info!("Fetched email {} for client {} from business_customers", email, client.id);
+                         if let Some(custom_data) = &mut client.custom_data {
+                             if let Some(obj) = custom_data.as_object_mut() {
+                                 obj.insert("email".to_string(), serde_json::Value::String(email));
+                             }
+                         } else {
+                             client.custom_data = Some(serde_json::json!({ "email": email }));
+                         }
+                     },
+                     Ok(None) => warn!("No email found in business_customers for customer_id {}", customer_id),
+                     Err(e) => error!("Failed to fetch email from business_customers: {}", e),
+                }
+            }
         }
 
         if client.email().is_none() {

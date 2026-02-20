@@ -25,6 +25,7 @@ pub struct Attachment {
 pub struct CollectionClient {
     pub id: String,
     pub execution_id: String,
+    pub customer_id: Option<String>,
     pub status: String,
     pub invoices: Option<serde_json::Value>,
     pub custom_data: Option<serde_json::Value>,

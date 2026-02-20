@@ -342,4 +342,26 @@ impl SupabaseService {
         log::warn!("Batch {} moved to DLQ: {}", batch_id, error_message);
         Ok(())
     }
+
+    pub async fn get_customer_email(&self, customer_id: &str) -> Result<Option<String>, Box<dyn Error + Send + Sync>> {
+        let url = format!("{}/rest/v1/business_customers?id=eq.{}&select=email", self.base_url, customer_id);
+        
+        let response = self.client.get(&url)
+            .header("apikey", &self.api_key)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to fetch customer email: {}", response.status()).into());
+        }
+
+        let customers: Vec<serde_json::Value> = response.json().await?;
+        let email = customers.first()
+            .and_then(|c| c.get("email"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        
+        Ok(email)
+    }
 }

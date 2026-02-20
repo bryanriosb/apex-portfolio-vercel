@@ -66,6 +66,8 @@ export interface FileData {
 
 export interface EmailConfig {
   // Ya no se selecciona plantilla - se asigna por umbral automáticamente
+  // Pero permitimos un fallback opcional
+  templateId?: string
   attachmentIds: string[]
 }
 

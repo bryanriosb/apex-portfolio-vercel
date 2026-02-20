@@ -21,6 +21,9 @@ import {
   getBusinessStrategiesAction,
   getBusinessDomainsAction,
 } from '@/lib/actions/collection/email-strategies'
+import { getActiveTemplatesByTypeAction } from '@/lib/actions/collection/template'
+import { fetchThresholdsAction } from '@/lib/actions/collection/notification-threshold'
+import { CollectionTemplate } from '@/lib/models/collection'
 import * as XLSX from 'xlsx'
 
 // Import components
@@ -65,6 +68,8 @@ export function CreationWizard() {
     null
   )
   const [strategies, setStrategies] = useState<DatabaseStrategy[]>([])
+  const [templates, setTemplates] = useState<CollectionTemplate[]>([])
+  const [defaultTemplateId, setDefaultTemplateId] = useState<string | undefined>(undefined)
   const [senderDomain, setSenderDomain] = useState('')
   const [availableDomains, setAvailableDomains] = useState<string[]>([])
   const [customBatchSize, setCustomBatchSize] = useState<number | undefined>(
@@ -75,19 +80,36 @@ export function CreationWizard() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { activeBusiness } = useActiveBusinessStore()
 
-  // Load strategies from database
+  // Load strategies, templates and thresholds from database
   useEffect(() => {
-    const loadStrategies = async () => {
+    const loadData = async () => {
       if (!activeBusiness?.id) return
 
       try {
-        const [businessStrategies, businessDomains] = await Promise.all([
+        const [businessStrategies, businessDomains, emailTemplates, thresholdsResponse] = await Promise.all([
           getBusinessStrategiesAction(activeBusiness.id),
           getBusinessDomainsAction(activeBusiness.id),
+          getActiveTemplatesByTypeAction(activeBusiness.id, 'email'),
+          fetchThresholdsAction(activeBusiness.id),
         ])
 
         setStrategies(businessStrategies)
         setAvailableDomains(businessDomains)
+        setTemplates(emailTemplates)
+
+        // Determine default template from lowest threshold
+        // thresholdsResponse.data is already sorted by days_from ASC (see fetchThresholdsAction)
+        if (thresholdsResponse.data.length > 0) {
+          const lowestThreshold = thresholdsResponse.data[0]
+          if (lowestThreshold.email_template_id) {
+            setDefaultTemplateId(lowestThreshold.email_template_id)
+            // Pre-select this template if none selected yet
+            setEmailConfig(prev => ({
+              ...prev,
+              templateId: prev.templateId || lowestThreshold.email_template_id
+            }))
+          }
+        }
 
         // Select default strategy if available
         const defaultStrategy = businessStrategies.find((s) => s.is_default)
@@ -102,12 +124,12 @@ export function CreationWizard() {
           setSenderDomain(businessDomains[0])
         }
       } catch (error) {
-        console.error('Error loading strategies/domains:', error)
+        console.error('Error loading strategies/domains/templates:', error)
         toast.error('Error al cargar configuración de envío')
       }
     }
 
-    loadStrategies()
+    loadData()
   }, [activeBusiness?.id])
 
   const handleNext = async () => {
@@ -151,8 +173,9 @@ export function CreationWizard() {
           campaignDescription ||
           `Importado desde archivo: ${fileData.fileName}`,
         status: 'pending' as const,
-        // Las plantillas se asignan por umbral, no a nivel de ejecución
-        email_template_id: null,
+        // Las plantillas se asignan por umbral, pero usamos un fallback si se seleccionó uno
+        // Si no se seleccionó, usamos el del umbral más bajo por defecto
+        email_template_id: emailConfig.templateId || defaultTemplateId || null,
         created_by: user?.id || 'system',
         execution_mode: executionMode,
         scheduled_at: finalScheduledAt,
@@ -305,6 +328,7 @@ export function CreationWizard() {
             <Step3Content
               fileData={fileData}
               emailConfig={emailConfig}
+              onTemplateChange={(templateId) => setEmailConfig(prev => ({ ...prev, templateId }))}
               executionMode={executionMode}
               onExecutionModeChange={setExecutionMode}
               scheduledDate={scheduledDate}
@@ -314,6 +338,7 @@ export function CreationWizard() {
               selectedStrategyId={selectedStrategyId}
               onStrategyChange={setSelectedStrategyId}
               strategies={strategies}
+              templates={templates}
               senderDomain={senderDomain}
               onDomainChange={setSenderDomain}
               showAdvancedOptions={showAdvancedOptions}
