@@ -8,6 +8,7 @@ import { SQSBatchService } from '@/lib/services/collection/sqs-batch-service'
 import { EmailReputationService } from '@/lib/services/collection/email-reputation-service'
 import { getCurrentUser } from '@/lib/services/auth/supabase-auth'
 import { ClientProcessor } from '@/lib/services/collection/client-processor'
+import { fetchThresholdsAction } from '@/lib/actions/collection/notification-threshold'
 
 interface CreateExecutionWorkflowParams {
   executionData: CollectionExecutionInsert
@@ -63,11 +64,33 @@ export async function createExecutionWithClientsAction({
       throw new Error('Domain is required for reputation tracking and deliverability.')
     }
 
+    // Determine template ID (fallback logic)
+    let emailTemplateId = executionData.email_template_id;
+
+    if (!emailTemplateId) {
+      // If no template provided, try to find the lowest threshold template
+      try {
+        const thresholdsResponse = await fetchThresholdsAction(executionData.business_id);
+        if (thresholdsResponse.data.length > 0) {
+          // fetchThresholdsAction returns sorted by days_from ASC, so first one is lowest
+          const lowestThreshold = thresholdsResponse.data[0];
+          if (lowestThreshold.email_template_id) {
+            emailTemplateId = lowestThreshold.email_template_id;
+            console.log(`Using lowest threshold template as fallback: ${emailTemplateId} (Threshold: ${lowestThreshold.name})`);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching fallback template from thresholds:', err);
+        // Continue without template (will fail later if not handled)
+      }
+    }
+
     // 1. Create Execution
     const { data: execution, error: execError } = await supabase
       .from('collection_executions')
       .insert({
         ...executionData,
+        email_template_id: emailTemplateId, // Use the resolved template ID
         status: 'pending',
         total_clients: clients.length,
       })

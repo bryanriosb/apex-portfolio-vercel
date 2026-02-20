@@ -55,7 +55,7 @@ export const RecentExecutions: React.FC<RecentExecutionsProps> = ({
             <CardTitle className="text-base font-semibold">
               <h2 className="font-semibold tracking-tight flex items-center gap-2">
                 <Zap className="h-5 w-5" />
-                Ejecuciones Recientes
+                Campañas Recientes
               </h2>
             </CardTitle>
             <Link href="/admin/collection/executions">
