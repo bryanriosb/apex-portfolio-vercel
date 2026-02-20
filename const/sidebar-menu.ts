@@ -194,8 +194,8 @@ export const SIDE_SYSTEM_MENU_ITEMS: MenuItem[] = [
         moduleCode: 'whatsapp',
       },
       {
-        title: 'Entrega de Email',
-        url: '/admin/settings/email-delivery',
+        title: 'Cobros',
+        url: '/admin/settings/collection',
         allowedRoles: [USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN],
         moduleCode: 'collection',
       },
