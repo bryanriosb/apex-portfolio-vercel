@@ -34,7 +34,7 @@ export default function AdminHeader() {
                 className="flex items-center gap-2"
               >
                 <LifeBuoy className="!h-4.5 !w-4.5" />
-                <span className="hidden sm:inline">Feedback</span>
+                <span className="hidden sm:inline">Reportar Novedad</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent>

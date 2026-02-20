@@ -69,16 +69,16 @@ fn get_f64(v: &serde_json::Value) -> f64 {
 
 fn preprocess_tiptap_template(template_str: &str) -> String {
     let mut processed = template_str.to_string();
-    
-    // Handles both: single TD with helper, and first TD with helper + empty TDs
+
+    // Strip <tr><td[...]>[<p>]{{#each}}|{{/each}}[</p>]</td><td></td|<td><p></p></td>*</tr>
+    // TipTap wraps cell content in <p> tags and empty cells become <td><p></p></td>
     let re_helper = Regex::new(
-        r"(?is)<tr[^>]*>\s*<td[^>]*>(?:\s*<[^>]+>)*\s*(\{\{[/#!][^}]+\}\})\s*(?:</[^>]+>)*\s*</td>(?:\s*<td[^>]*>\s*</td>)*\s*</tr>"
+        r"(?is)<tr[^>]*>\s*<td[^>]*>(?:\s*<[^>]+>)*\s*(\{\{[/#!][^}]+\}\})\s*(?:</[^>]+>)*\s*</td>(?:\s*<td[^>]*>(?:\s*<[^>]+>\s*</[^>]+>)?\s*</td>)*\s*</tr>"
     ).unwrap();
     processed = re_helper.replace_all(&processed, "$1").to_string();
-    
-    processed = processed.replace("\n{{#", "{{#")
-                         .replace("\n{{/", "{{/");
-    
+
+    processed = processed.replace("\n{{#", "{{#").replace("\n{{/", "{{/");
+
     processed
 }
 
@@ -790,8 +790,30 @@ mod tests {
     }
 
     #[test]
-    fn test_preprocess() {
+    fn test_preprocess_bare_td() {
+        // Basic: no p-wrapper, no extra cells
         let input = "<tr><td>{{#each invoices}}</td></tr>";
         assert_eq!(preprocess_tiptap_template(input), "{{#each invoices}}");
+    }
+
+    #[test]
+    fn test_preprocess_bare_td_empty_siblings() {
+        // Legacy snippet: 4 bare empty <td></td> siblings
+        let input = "<tr><td style=\"color:gray\">{{#each invoices}}</td><td></td><td></td><td></td><td></td></tr>";
+        assert_eq!(preprocess_tiptap_template(input), "{{#each invoices}}");
+    }
+
+    #[test]
+    fn test_preprocess_p_wrapper_inside_td() {
+        // TipTap wraps content in <p>; empty siblings become <td><p></p></td>
+        let input = "<tr><td style=\"color:gray\"><p>{{#each invoices}}</p></td><td><p></p></td><td><p></p></td><td><p></p></td><td><p></p></td></tr>";
+        assert_eq!(preprocess_tiptap_template(input), "{{#each invoices}}");
+    }
+
+    #[test]
+    fn test_preprocess_end_helper_with_p_wrapper() {
+        // Same pattern for closing {{/each}}
+        let input = "<tr><td style=\"color:gray\"><p>{{/each}}</p></td><td><p></p></td><td><p></p></td></tr>";
+        assert_eq!(preprocess_tiptap_template(input), "{{/each}}");
     }
 }
