@@ -46,7 +46,6 @@ export function CreationWizard() {
   const [currentStep, setCurrentStep] = useState(1)
   const [fileData, setFileData] = useState<FileData | null>(null)
   const [emailConfig, setEmailConfig] = useState<EmailConfig>({
-    templateId: '',
     attachmentIds: [],
   })
   const [campaignName, setCampaignName] = useState('')
@@ -120,7 +119,7 @@ export function CreationWizard() {
   }
 
   const handleFinish = async () => {
-    if (!fileData || !emailConfig.templateId || !activeBusiness?.id) return
+    if (!fileData || !activeBusiness?.id) return
 
     const loadingToast = toast.loading('Creando ejecución de cobro...')
 
@@ -152,7 +151,8 @@ export function CreationWizard() {
           campaignDescription ||
           `Importado desde archivo: ${fileData.fileName}`,
         status: 'pending' as const,
-        email_template_id: emailConfig.templateId,
+        // Las plantillas se asignan por umbral, no a nivel de ejecución
+        email_template_id: null,
         created_by: user?.id || 'system',
         execution_mode: executionMode,
         scheduled_at: finalScheduledAt,
@@ -206,7 +206,8 @@ export function CreationWizard() {
           (c) => c.status === 'found'
         )
       case 2:
-        return !!emailConfig.templateId
+        // Paso 2 solo configura adjuntos opcionales
+        return true
       case 3:
         if (!senderDomain.trim()) return false
         if (!selectedStrategyId) return false
@@ -294,7 +295,11 @@ export function CreationWizard() {
             />
           )}
           {currentStep === 2 && (
-            <Step2Content config={emailConfig} onChange={setEmailConfig} />
+            <Step2Content
+              fileData={fileData}
+              config={emailConfig}
+              onChange={setEmailConfig}
+            />
           )}
           {currentStep === 3 && (
             <Step3Content
@@ -361,11 +366,11 @@ function StepIndicator({
                 className={cn(
                   'w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors',
                   isActive &&
-                  'border-primary bg-primary text-primary-foreground',
+                    'border-primary bg-primary text-primary-foreground',
                   isCompleted && 'border-green-500 bg-green-500 text-white',
                   !isActive &&
-                  !isCompleted &&
-                  'border-gray-300 bg-white text-gray-400'
+                    !isCompleted &&
+                    'border-gray-300 bg-white text-gray-400'
                 )}
               >
                 {isCompleted ? (

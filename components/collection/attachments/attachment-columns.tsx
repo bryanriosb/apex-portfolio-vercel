@@ -12,10 +12,12 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Download, Pencil, Trash2, File } from 'lucide-react'
+import { MoreHorizontal, Download, Pencil, Trash2, File, Settings } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { AttachmentActions } from './AttachmentActions'
+import { useState } from 'react'
+import { AttachmentRulesDialog } from './AttachmentRulesDialog'
 
 function formatFileSize(bytes: number | null | undefined): string {
     if (!bytes) return '-'
@@ -23,6 +25,31 @@ function formatFileSize(bytes: number | null | undefined): string {
     if (mb >= 1) return `${mb.toFixed(2)} MB`
     const kb = bytes / 1024
     return `${kb.toFixed(2)} KB`
+}
+
+// Componente wrapper para la columna de reglas
+function RulesCell({ attachment, onRefresh }: { attachment: CollectionAttachment; onRefresh: () => void }) {
+    const [open, setOpen] = useState(false)
+
+    return (
+        <>
+            <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setOpen(true)}
+                className="h-8"
+            >
+                <Settings className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Configurar</span>
+            </Button>
+            <AttachmentRulesDialog
+                open={open}
+                onOpenChange={setOpen}
+                attachment={attachment}
+                onSuccess={onRefresh}
+            />
+        </>
+    )
 }
 
 export const attachmentColumns: ColumnDef<CollectionAttachment>[] = [
@@ -84,6 +111,17 @@ export const attachmentColumns: ColumnDef<CollectionAttachment>[] = [
                     {isActive ? 'Activo' : 'Inactivo'}
                 </Badge>
             )
+        },
+    },
+    {
+        id: 'rules',
+        header: 'Reglas',
+        cell: ({ row, table }) => {
+            const attachment = row.original
+            const meta = table.options.meta as any
+            const refreshData = meta?.refreshData || (() => { })
+
+            return <RulesCell attachment={attachment} onRefresh={refreshData} />
         },
     },
     {

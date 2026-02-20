@@ -10,10 +10,11 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { Download, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { Download, MoreHorizontal, Pencil, Trash2, Settings } from 'lucide-react'
 import { CollectionAttachment } from '@/lib/models/collection'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { AttachmentEditDialog } from './AttachmentEditDialog'
+import { AttachmentRulesDialog } from './AttachmentRulesDialog'
 import { deleteAttachmentAction } from '@/lib/actions/collection/attachment'
 import { toast } from 'sonner'
 import { getSupabaseClient } from '@/lib/actions/supabase' // Client-side download
@@ -26,6 +27,7 @@ interface AttachmentActionsProps {
 
 export function AttachmentActions({ attachment, onRefresh, table }: AttachmentActionsProps) {
     const [showEditDialog, setShowEditDialog] = useState(false)
+    const [showRulesDialog, setShowRulesDialog] = useState(false)
 
     const handleDownload = async () => {
         try {
@@ -75,6 +77,10 @@ export function AttachmentActions({ attachment, onRefresh, table }: AttachmentAc
                         <Pencil className="mr-2 h-4 w-4" />
                         Editar
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShowRulesDialog(true)}>
+                        <Settings className="mr-2 h-4 w-4" />
+                        Configurar Reglas
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                         className="text-red-600 focus:text-red-600 focus:bg-red-50"
@@ -94,6 +100,13 @@ export function AttachmentActions({ attachment, onRefresh, table }: AttachmentAc
             <AttachmentEditDialog
                 open={showEditDialog}
                 onOpenChange={setShowEditDialog}
+                attachment={attachment}
+                onSuccess={onRefresh}
+            />
+
+            <AttachmentRulesDialog
+                open={showRulesDialog}
+                onOpenChange={setShowRulesDialog}
                 attachment={attachment}
                 onSuccess={onRefresh}
             />

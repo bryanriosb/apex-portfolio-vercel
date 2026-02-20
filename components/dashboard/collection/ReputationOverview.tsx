@@ -25,7 +25,7 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
           <Shield className="h-5 w-5" />
           Reputación de Dominios
         </h2>
-        <Link href="/admin/settings/email-delivery">
+        <Link href="/admin/settings/collection">
           <Button variant="outline" size="sm">
             Gestionar
           </Button>

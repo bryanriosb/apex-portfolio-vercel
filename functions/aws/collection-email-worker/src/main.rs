@@ -504,37 +504,74 @@ async fn process_batch(
     } else {
         vec![]
     };
-    
+
     let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "pro".to_string()) == "dev";
-    
-    if let Some(template_id) = &execution.email_template_id {
-        let template = supabase.get_template(template_id).await?;
-        
-        for (index, client) in clients.into_iter().enumerate() {
-            if is_dev && index > 0 {
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
+    for (index, client) in clients.into_iter().enumerate() {
+        if is_dev && index > 0 {
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        }
+
+        if client.email().is_none() {
+            warn!("Client {} has no email, skipping", client.id);
+            continue;
+        }
+
+        let template_id = if let Some(client_template) = &client.email_template_id {
+            info!("Using client-specific template {} for client {}", client_template, client.id);
+            client_template.clone()
+        } else if let Some(exec_template) = &execution.email_template_id {
+            info!("Using fallback execution template {} for client {}", exec_template, client.id);
+            exec_template.clone()
+        } else {
+            error!("No template configured for client {} in execution {}", client.id, batch_msg.execution_id);
+
+            let error_data = serde_json::json!({
+                "error": "No email template configured",
+                "error_type": "missing_template"
+            });
+            let _ = supabase.update_client_status(&client.id, "failed", Some(error_data)).await;
+
+            continue;
+        };
+
+        let template = match supabase.get_template(&template_id).await {
+            Ok(t) => t,
+            Err(e) => {
+                error!("Failed to fetch template {} for client {}: {}", template_id, client.id, e);
+
+                let error_data = serde_json::json!({
+                    "error": format!("Failed to fetch template: {}", e),
+                    "template_id": template_id,
+                    "error_type": "template_fetch_failed"
+                });
+                let _ = supabase.update_client_status(&client.id, "failed", Some(error_data)).await;
+                continue;
             }
-            
-            if let Some(_email) = client.email() {
-                let result = send_client_email(supabase, provider, &template, &client, &attachments, &batch_msg.execution_id).await;
-                
-                match result {
-                    Ok(message_id) => {
-                        let mut new_custom_data = client.custom_data.clone().unwrap_or(serde_json::json!({}));
-                        if let Some(obj) = new_custom_data.as_object_mut() {
-                            obj.insert("message_id".to_string(), serde_json::Value::String(message_id));
-                            obj.insert("email_sent_at".to_string(), serde_json::Value::String(chrono::Utc::now().to_rfc3339()));
-                        }
-                        let _ = supabase.update_client_status(&client.id, "sent", Some(new_custom_data)).await;
-                    }
-                    Err(e) => {
-                        let mut new_custom_data = client.custom_data.clone().unwrap_or(serde_json::json!({}));
-                        if let Some(obj) = new_custom_data.as_object_mut() {
-                            obj.insert("error".to_string(), serde_json::Value::String(e.to_string()));
-                        }
-                        let _ = supabase.update_client_status(&client.id, "failed", Some(new_custom_data)).await;
+        };
+
+        let result = send_client_email(supabase, provider, &template, &client, &attachments, &batch_msg.execution_id).await;
+
+        match result {
+            Ok(message_id) => {
+                let mut new_custom_data = client.custom_data.clone().unwrap_or(serde_json::json!({}));
+                if let Some(obj) = new_custom_data.as_object_mut() {
+                    obj.insert("message_id".to_string(), serde_json::Value::String(message_id));
+                    obj.insert("email_sent_at".to_string(), serde_json::Value::String(chrono::Utc::now().to_rfc3339()));
+                    obj.insert("template_id".to_string(), serde_json::Value::String(template_id));
+                    if let Some(threshold_id) = &client.threshold_id {
+                        obj.insert("threshold_id".to_string(), serde_json::Value::String(threshold_id.clone()));
                     }
                 }
+                let _ = supabase.update_client_status(&client.id, "sent", Some(new_custom_data)).await;
+            }
+            Err(e) => {
+                let mut new_custom_data = client.custom_data.clone().unwrap_or(serde_json::json!({}));
+                if let Some(obj) = new_custom_data.as_object_mut() {
+                    obj.insert("error".to_string(), serde_json::Value::String(e.to_string()));
+                    obj.insert("template_id".to_string(), serde_json::Value::String(template_id));
+                }
+                let _ = supabase.update_client_status(&client.id, "failed", Some(new_custom_data)).await;
             }
         }
     }
@@ -587,38 +624,76 @@ async fn process_execution(execution_id: &str) -> Result<(), Box<dyn Error + Sen
     } else {
         vec![]
     };
-    
+
     let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "pro".to_string()) == "dev";
-    
-    if let Some(template_id) = &execution.email_template_id {
-        let template = supabase.get_template(template_id).await?;
-        let clients = supabase.get_pending_clients(execution_id).await?;
-        
-        for (index, client) in clients.into_iter().enumerate() {
-            if is_dev && index > 0 {
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
+    let clients = supabase.get_pending_clients(execution_id).await?;
+
+    for (index, client) in clients.into_iter().enumerate() {
+        if is_dev && index > 0 {
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        }
+
+        if client.email().is_none() {
+            warn!("Client {} has no email, skipping", client.id);
+            continue;
+        }
+
+        let template_id = if let Some(client_template) = &client.email_template_id {
+            info!("Using client-specific template {} for client {}", client_template, client.id);
+            client_template.clone()
+        } else if let Some(exec_template) = &execution.email_template_id {
+            info!("Using fallback execution template {} for client {}", exec_template, client.id);
+            exec_template.clone()
+        } else {
+            error!("No template configured for client {} in execution {}", client.id, execution_id);
+
+            let error_data = serde_json::json!({
+                "error": "No email template configured",
+                "error_type": "missing_template"
+            });
+            let _ = supabase.update_client_status(&client.id, "failed", Some(error_data)).await;
+
+            continue;
+        };
+
+        let template = match supabase.get_template(&template_id).await {
+            Ok(t) => t,
+            Err(e) => {
+                error!("Failed to fetch template {} for client {}: {}", template_id, client.id, e);
+
+                let error_data = serde_json::json!({
+                    "error": format!("Failed to fetch template: {}", e),
+                    "template_id": template_id,
+                    "error_type": "template_fetch_failed"
+                });
+                let _ = supabase.update_client_status(&client.id, "failed", Some(error_data)).await;
+                continue;
             }
-            
-            if let Some(_email) = client.email() {
-                let result = send_client_email(&supabase, provider.as_ref(), &template, &client, &attachments, execution_id).await;
-                
-                match result {
-                    Ok(message_id) => {
-                        let mut new_custom_data = client.custom_data.clone().unwrap_or(serde_json::json!({}));
-                        if let Some(obj) = new_custom_data.as_object_mut() {
-                            obj.insert("message_id".to_string(), serde_json::Value::String(message_id));
-                            obj.insert("email_sent_at".to_string(), serde_json::Value::String(chrono::Utc::now().to_rfc3339()));
-                        }
-                        let _ = supabase.update_client_status(&client.id, "sent", Some(new_custom_data)).await;
-                    }
-                    Err(e) => {
-                        let mut new_custom_data = client.custom_data.clone().unwrap_or(serde_json::json!({}));
-                        if let Some(obj) = new_custom_data.as_object_mut() {
-                            obj.insert("error".to_string(), serde_json::Value::String(e.to_string()));
-                        }
-                        let _ = supabase.update_client_status(&client.id, "failed", Some(new_custom_data)).await;
+        };
+
+        let result = send_client_email(&supabase, provider.as_ref(), &template, &client, &attachments, execution_id).await;
+
+        match result {
+            Ok(message_id) => {
+                let mut new_custom_data = client.custom_data.clone().unwrap_or(serde_json::json!({}));
+                if let Some(obj) = new_custom_data.as_object_mut() {
+                    obj.insert("message_id".to_string(), serde_json::Value::String(message_id));
+                    obj.insert("email_sent_at".to_string(), serde_json::Value::String(chrono::Utc::now().to_rfc3339()));
+                    obj.insert("template_id".to_string(), serde_json::Value::String(template_id));
+                    if let Some(threshold_id) = &client.threshold_id {
+                        obj.insert("threshold_id".to_string(), serde_json::Value::String(threshold_id.clone()));
                     }
                 }
+                let _ = supabase.update_client_status(&client.id, "sent", Some(new_custom_data)).await;
+            }
+            Err(e) => {
+                let mut new_custom_data = client.custom_data.clone().unwrap_or(serde_json::json!({}));
+                if let Some(obj) = new_custom_data.as_object_mut() {
+                    obj.insert("error".to_string(), serde_json::Value::String(e.to_string()));
+                    obj.insert("template_id".to_string(), serde_json::Value::String(template_id));
+                }
+                let _ = supabase.update_client_status(&client.id, "failed", Some(new_custom_data)).await;
             }
         }
     }

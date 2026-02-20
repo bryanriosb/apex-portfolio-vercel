@@ -28,6 +28,10 @@ export interface CollectionClient {
     // Status
     status: ClientStatus
 
+    // Template and Threshold (for dynamic template assignment)
+    email_template_id?: string | null
+    threshold_id?: string | null
+
     // Email tracking
     email_sent_at?: string | null
     email_delivered_at?: string | null
@@ -58,6 +62,8 @@ export interface CollectionClientInsert {
     invoices?: any[] | null
     custom_data?: Record<string, any>
     status?: ClientStatus
+    email_template_id?: string | null
+    threshold_id?: string | null
 }
 
 export interface CollectionClientUpdate {

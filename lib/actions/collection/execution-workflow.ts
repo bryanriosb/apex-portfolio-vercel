@@ -7,6 +7,7 @@ import { BatchStrategyService } from '@/lib/services/collection/batch-strategy-s
 import { SQSBatchService } from '@/lib/services/collection/sqs-batch-service'
 import { EmailReputationService } from '@/lib/services/collection/email-reputation-service'
 import { getCurrentUser } from '@/lib/services/auth/supabase-auth'
+import { ClientProcessor } from '@/lib/services/collection/client-processor'
 
 interface CreateExecutionWorkflowParams {
   executionData: CollectionExecutionInsert
@@ -77,44 +78,26 @@ export async function createExecutionWithClientsAction({
       throw new Error(`Error creating execution: ${execError?.message}`)
     }
 
-    // 2. Prepare Clients Data
-    const clientsToInsert: CollectionClientInsert[] = clients.map((client) => {
-      const totalAmount =
-        client.total?.total_amount_due ??
-        client.invoices.reduce(
-          (sum: number, inv: any) => sum + Number(inv.amount_due || 0),
-          0
-        )
-
-      const totalDaysOverdue = client.total?.total_days_overdue ?? 0
-
-      const email = client.customer?.email || client.invoices[0]?.email
-      const fullName =
-        client.customer?.full_name || client.invoices[0]?.full_name
-      const companyName =
-        client.customer?.company_name || client.invoices[0]?.company_name
-      const phone = client.customer?.phone || client.invoices[0]?.phone
-      const nit = client.nit
-
-      return {
+    // 2. Process clients with thresholds and prepare data for insertion
+    const processedClients = await ClientProcessor.processClientsWithThresholds(
+      {
+        clients,
+        business_account_id: executionData.business_id,
         execution_id: execution.id,
-        customer_id: client.customer?.id,
-        invoices: client.invoices,
-        status: 'pending',
-        custom_data: {
-          invoices_count: client.invoices.length,
-          total_amount_due: totalAmount,
-          total_days_overdue: totalDaysOverdue,
-          total_invoices:
-            client.total?.total_invoices ?? client.invoices.length,
-          email,
-          full_name: fullName,
-          company_name: companyName,
-          phone,
-          nit,
-        },
       }
-    })
+    )
+
+    const clientsToInsert: CollectionClientInsert[] = processedClients.map(
+      (processed) => ({
+        execution_id: processed.execution_id!,
+        customer_id: processed.customer_id,
+        invoices: processed.invoices,
+        status: processed.status as CollectionClientInsert['status'],
+        email_template_id: processed.email_template_id,
+        threshold_id: processed.threshold_id,
+        custom_data: processed.custom_data,
+      })
+    )
 
     console.log(`Creating execution with ${clientsToInsert.length} clients`)
 

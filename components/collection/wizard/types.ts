@@ -1,6 +1,5 @@
 // types.ts - Tipos compartidos del wizard de campañas
 import { BusinessCustomer } from '@/lib/models/customer/business-customer'
-import { CollectionTemplate } from '@/lib/models/collection'
 
 export interface WizardStep {
   id: number
@@ -16,13 +15,13 @@ export const WIZARD_STEPS: WizardStep[] = [
   },
   {
     id: 2,
-    title: 'Configurar Email',
-    description: 'Selecciona plantilla y adjuntos',
+    title: 'Revisar Umbrales',
+    description: 'Verifica la asignación de plantillas según días de mora',
   },
   {
     id: 3,
-    title: 'Revisar y Enviar',
-    description: 'Confirma los detalles antes de iniciar',
+    title: 'Configurar Envío',
+    description: 'Selecciona estrategia y programa la ejecución',
   },
 ]
 
@@ -66,9 +65,8 @@ export interface FileData {
 }
 
 export interface EmailConfig {
-  templateId: string
+  // Ya no se selecciona plantilla - se asigna por umbral automáticamente
   attachmentIds: string[]
-  selectedTemplate?: CollectionTemplate
 }
 
 // Sample template data for download

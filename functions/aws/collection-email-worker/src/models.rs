@@ -28,6 +28,8 @@ pub struct CollectionClient {
     pub status: String,
     pub invoices: Option<serde_json::Value>,
     pub custom_data: Option<serde_json::Value>,
+    pub email_template_id: Option<String>,
+    pub threshold_id: Option<String>,
 }
 
 impl CollectionClient {

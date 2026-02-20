@@ -11,6 +11,9 @@ export { Step3Content } from './Step3Content'
 // Sidebar component
 export { CampaignInfoSidebar } from './CampaignInfoSidebar'
 
+// Threshold Preview
+export { ThresholdPreview } from './ThresholdPreview'
+
 // Types
 export type {
   WizardStep,

@@ -11,6 +11,8 @@ export * from './execution-batch'
 export * from './batch-queue-message'
 export * from './daily-sending-limit'
 export * from './warmup-progression-rule'
+export * from './notification-threshold'
+export * from './attachment-rule'
 
 // Re-export commonly used types
 export type {
@@ -92,3 +94,16 @@ export type {
     WarmupProgressionRule,
     WarmupProgressionRuleInsert,
 } from './warmup-progression-rule'
+
+export type {
+    NotificationThreshold,
+    NotificationThresholdInsert,
+    NotificationThresholdUpdate,
+} from './notification-threshold'
+
+export type {
+    AttachmentRule,
+    AttachmentRuleInsert,
+    AttachmentRuleType,
+    ResolvedAttachment,
+} from './attachment-rule'

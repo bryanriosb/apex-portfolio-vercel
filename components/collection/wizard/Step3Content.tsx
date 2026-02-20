@@ -23,6 +23,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { FileData, EmailConfig, StrategyType, DatabaseStrategy } from './types'
+import { ThresholdPreview } from './ThresholdPreview'
+import { useThresholdPreview } from '@/hooks/collection/use-threshold-preview'
 
 interface Step3ContentProps {
   fileData: FileData | null
@@ -67,13 +69,44 @@ export function Step3Content({
 }: Step3ContentProps) {
   if (!fileData) return null
 
-  const totalInvoices = Array.from(fileData.groupedClients.values()).reduce(
-    (acc, curr) => acc + curr.invoices.length,
+  // Debug: Verificar datos de clientes
+  console.log('[Step3Content] fileData.groupedClients:', {
+    size: fileData.groupedClients.size,
+    clients: Array.from(fileData.groupedClients.values()).map(c => ({
+      nit: c.nit,
+      status: c.status,
+      daysOverdue: c.total?.total_days_overdue,
+      invoices: c.invoices?.length
+    }))
+  })
+
+  // Usar el mismo hook que Step2 para consistencia
+  const { previewData, unassignedCount, totalClients, isLoading } = useThresholdPreview(
+    fileData.groupedClients
+  )
+
+  // Debug: Verificar resultado del hook
+  console.log('[Step3Content] useThresholdPreview result:', {
+    totalClients,
+    unassignedCount,
+    previewData: previewData.map(d => ({
+      thresholdName: d.threshold?.name,
+      count: d.count,
+      daysFrom: d.threshold?.days_from,
+      daysTo: d.threshold?.days_to
+    }))
+  })
+
+  // Calcular totales basados en los datos del hook
+  // totalClients ya excluye los no válidos (status !== 'found')
+  const validClients = totalClients
+  const totalInvoices = previewData.reduce(
+    (acc, curr) => acc + curr.clients.reduce((sum, client) => sum + client.invoices.length, 0),
     0
   )
-  const validClients = Array.from(fileData.groupedClients.values()).filter(
-    (c) => c.status === 'found'
-  ).length
+  
+  // Total de clientes en el CSV (incluyendo no válidos)
+  const totalClientsInCsv = fileData.groupedClients.size
 
   const selectedStrategy = strategies.find((s) => s.id === selectedStrategyId)
 
@@ -103,7 +136,7 @@ export function Step3Content({
           <CardContent>
             <div className="text-2xl font-bold">{validClients}</div>
             <p className="text-xs text-muted-foreground">
-              De {fileData.groupedClients.size} totales
+              De {totalClientsInCsv} totales
             </p>
           </CardContent>
         </Card>
@@ -121,18 +154,23 @@ export function Step3Content({
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Plantilla</CardTitle>
+            <CardTitle className="text-sm font-medium">Configuración</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-sm font-medium truncate">
-              {emailConfig.selectedTemplate?.name || 'Seleccionada'}
+            <div className="text-sm font-medium">
+              Por umbrales
             </div>
             <p className="text-xs text-muted-foreground">
-              {emailConfig.attachmentIds.length} adjuntos
+              {emailConfig.attachmentIds.length} adjuntos globales
             </p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Threshold Preview */}
+      {fileData?.groupedClients && fileData.groupedClients.size > 0 && (
+        <ThresholdPreview clients={fileData.groupedClients} />
+      )}
 
       {/* Execution Mode */}
       <Card>
