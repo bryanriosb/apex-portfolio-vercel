@@ -74,48 +74,31 @@ export class CollectionService {
      * @returns EventBridge cron expression in UTC
      */
     private static convertToCronExpression(localDate: Date, timezone: string): string {
-        // The input date should already be in the correct timezone context
-        // We use toLocaleString to get the components in the target timezone
+        // The input date (localDate) is already in UTC format from new Date() parsing
+        // We just need to extract the UTC components for the cron expression
+        // EventBridge requires UTC times
         
-        const options: Intl.DateTimeFormatOptions = {
+        // Get UTC components directly - localDate is already in UTC
+        const utcMinutes = localDate.getUTCMinutes()
+        const utcHours = localDate.getUTCHours()
+        const utcDayOfMonth = localDate.getUTCDate()
+        const utcMonth = localDate.getUTCMonth() + 1
+        const utcYear = localDate.getUTCFullYear()
+        
+        // For logging, show the local time in the specified timezone
+        const localTimeStr = localDate.toLocaleString('es-CO', {
             timeZone: timezone,
             year: 'numeric',
             month: '2-digit',
             day: '2-digit',
             hour: '2-digit',
             minute: '2-digit',
-            second: '2-digit',
             hour12: false
-        }
-        
-        const formatter = new Intl.DateTimeFormat('en-US', options)
-        const parts = formatter.formatToParts(localDate)
-        
-        const getPart = (type: string) => parts.find(p => p.type === type)?.value
-        
-        const year = parseInt(getPart('year') || '0', 10)
-        const month = parseInt(getPart('month') || '1', 10)
-        const day = parseInt(getPart('day') || '1', 10)
-        const hours = parseInt(getPart('hour') || '0', 10)
-        const minutes = parseInt(getPart('minute') || '0', 10)
-        
-        // Convert to UTC for EventBridge
-        // For America/Bogota (UTC-5), we add 5 hours to get UTC
-        let offsetHours = 5 // Bogota is UTC-5
-        
-        // Create UTC date by adding offset
-        const utcDate = new Date(localDate.getTime() + (offsetHours * 60 * 60 * 1000))
-        
-        // Get UTC components for cron
-        const utcMinutes = utcDate.getUTCMinutes()
-        const utcHours = utcDate.getUTCHours()
-        const utcDayOfMonth = utcDate.getUTCDate()
-        const utcMonth = utcDate.getUTCMonth() + 1
-        const utcYear = utcDate.getUTCFullYear()
+        })
 
-        console.log(`[scheduleExecution] Timezone conversion: ${timezone} -> UTC`)
-        console.log(`[scheduleExecution] Local time (${timezone}): ${year}-${month}-${day} ${hours}:${minutes}`)
-        console.log(`[scheduleExecution] UTC time: ${utcYear}-${utcMonth}-${utcDayOfMonth} ${utcHours}:${utcMinutes}`)
+        console.log(`[scheduleExecution] Input timezone: ${timezone}`)
+        console.log(`[scheduleExecution] Local time (${timezone}): ${localTimeStr}`)
+        console.log(`[scheduleExecution] UTC time: ${utcYear}-${String(utcMonth).padStart(2, '0')}-${String(utcDayOfMonth).padStart(2, '0')} ${String(utcHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}`)
         console.log(`[scheduleExecution] Cron expression: cron(${utcMinutes} ${utcHours} ${utcDayOfMonth} ${utcMonth} ? ${utcYear})`)
 
         return `cron(${utcMinutes} ${utcHours} ${utcDayOfMonth} ${utcMonth} ? ${utcYear})`
