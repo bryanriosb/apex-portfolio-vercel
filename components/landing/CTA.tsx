@@ -7,7 +7,7 @@ import { ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react'
 
 const benefits = [
   'Sin tarjeta de crédito',
-  'Configuración en 15 minutos',
+  'Configuración en 10 minutos',
   'Soporte 24/7 incluido',
 ]
 
@@ -24,7 +24,7 @@ export function CTA() {
         >
           {/* Background layers */}
           <div className="absolute inset-0 bg-gradient-to-r from-secondary via-accent to-secondary" />
-          <div className="absolute inset-0 bg-[url('/27l4R4D3Ig-beluvio.jpg')] bg-cover bg-center opacity-10" />
+          <div className="absolute inset-0 bg-[url('/27l4R4D3Ig-APEX.jpg')] bg-cover bg-center opacity-10" />
 
           {/* Animated blobs - subtle */}
           <div className="absolute -top-20 -left-20 w-[400px] h-[400px] bg-primary/20 rounded-full blur-[100px] animate-blob" />
@@ -63,7 +63,7 @@ export function CTA() {
                 transition={{ duration: 0.5, delay: 0.2 }}
                 className="text-lg text-white/80 max-w-2xl mx-auto mb-8"
               >
-                Únete y optimiza su gestión con Beluvio una herramienta pensada
+                Únete y optimiza su gestión con APEX una herramienta pensada
                 para tu negocio de belleza. Comienza gratis y ve los resultados
                 desde el primer día.
               </motion.p>

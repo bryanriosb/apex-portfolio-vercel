@@ -6,14 +6,9 @@ import type {
   BusinessAccountInsert,
   BusinessAccountUpdate,
 } from '@/lib/models/business-account/business-account'
-import type {
-  BusinessAccountMember,
-  BusinessAccountMemberInsert,
-  BusinessAccountMemberUpdate,
-} from '@/lib/models/business-account/business-account-member'
-import { userRoles } from '../types/enums'
 import { getCurrentUser } from '@/lib/services/auth/supabase-auth'
 import { USER_ROLES } from '@/const/roles'
+import { userRoles } from '../types/enums'
 
 export interface BusinessAccountListResponse {
   data: BusinessAccount[]
@@ -39,8 +34,8 @@ export async function fetchBusinessAccountsAction(params?: {
     }
 
     // Verificar si el usuario tiene permisos para ver cuentas
-    const canViewAccounts = currentUser.role === USER_ROLES.COMPANY_ADMIN || 
-                           currentUser.role === USER_ROLES.BUSINESS_ADMIN
+    const canViewAccounts = currentUser.role === USER_ROLES.COMPANY_ADMIN ||
+      currentUser.role === USER_ROLES.BUSINESS_ADMIN
 
     if (!canViewAccounts) {
       return { data: [], total: 0, total_pages: 0 }
@@ -233,13 +228,13 @@ export async function deleteBusinessAccountAction(
 
     const client = await getSupabaseAdminClient()
 
-    // 0. Obtener todos los miembros antes de eliminar para eliminar sus usuarios de auth
-    const { data: members } = await client
-      .from('business_account_members')
-      .select('user_profile_id, users_profile!inner(user_id)')
-      .eq('business_account_id', id)
+    // 0. Obtener todos los usuarios asociados a esta cuenta buscando sus metadatos
+    const { data: usersData, error: usersError } = await client.auth.admin.listUsers()
 
-    const userIds = members?.map((m: any) => m.users_profile.user_id).filter(Boolean) || []
+    // Filtramos los que pertenecen a la cuenta
+    const userIds = usersData?.users
+      ?.filter(u => u.user_metadata?.business_account_id === id)
+      ?.map(u => u.id) || []
 
     // 1. Eliminar todas las sucursales asociadas
     const { error: businessesError } = await client
@@ -252,34 +247,7 @@ export async function deleteBusinessAccountAction(
       throw new Error(`Error al eliminar sucursales: ${businessesError.message}`)
     }
 
-    // 2. Eliminar todos los miembros de la cuenta
-    const { error: membersError } = await client
-      .from('business_account_members')
-      .delete()
-      .eq('business_account_id', id)
-
-    if (membersError) {
-      console.error('Error deleting members:', membersError)
-      throw new Error(`Error al eliminar miembros: ${membersError.message}`)
-    }
-
-    // 3. Eliminar users_profile de los miembros
-    if (members && members.length > 0) {
-      const profileIds = members.map((m: any) => m.user_profile_id).filter(Boolean)
-      if (profileIds.length > 0) {
-        const { error: profilesError } = await client
-          .from('users_profile')
-          .delete()
-          .in('id', profileIds)
-
-        if (profilesError) {
-          console.error('Error deleting user profiles:', profilesError)
-          throw new Error(`Error al eliminar perfiles de usuario: ${profilesError.message}`)
-        }
-      }
-    }
-
-    // 4. Eliminar usuarios de Supabase Auth
+    // 2. Eliminar usuarios de Supabase Auth
     if (userIds.length > 0) {
       for (const userId of userIds) {
         try {
@@ -291,7 +259,7 @@ export async function deleteBusinessAccountAction(
       }
     }
 
-    // 5. Finalmente eliminar la cuenta
+    // 3. Finalmente eliminar la cuenta
     const { error: accountError } = await client
       .from('business_accounts')
       .delete()
@@ -323,13 +291,12 @@ export async function deleteBusinessAccountsAction(
 
     const client = await getSupabaseAdminClient()
 
-    // 0. Obtener todos los miembros antes de eliminar para eliminar sus usuarios de auth
-    const { data: members } = await client
-      .from('business_account_members')
-      .select('user_profile_id, users_profile!inner(user_id)')
-      .in('business_account_id', ids)
+    // 0. Obtener todos los usuarios asociados filtrando por business_account_id
+    const { data: usersData } = await client.auth.admin.listUsers()
 
-    const userIds = members?.map((m: any) => m.users_profile.user_id).filter(Boolean) || []
+    const userIds = usersData?.users
+      ?.filter(u => ids.includes(u.user_metadata?.business_account_id))
+      ?.map(u => u.id) || []
 
     // 1. Eliminar todas las sucursales asociadas a estas cuentas
     const { error: businessesError } = await client
@@ -342,46 +309,18 @@ export async function deleteBusinessAccountsAction(
       throw new Error(`Error al eliminar sucursales: ${businessesError.message}`)
     }
 
-    // 2. Eliminar todos los miembros de estas cuentas
-    const { error: membersError } = await client
-      .from('business_account_members')
-      .delete()
-      .in('business_account_id', ids)
-
-    if (membersError) {
-      console.error('Error deleting members:', membersError)
-      throw new Error(`Error al eliminar miembros: ${membersError.message}`)
-    }
-
-    // 3. Eliminar users_profile de los miembros
-    if (members && members.length > 0) {
-      const profileIds = members.map((m: any) => m.user_profile_id).filter(Boolean)
-      if (profileIds.length > 0) {
-        const { error: profilesError } = await client
-          .from('users_profile')
-          .delete()
-          .in('id', profileIds)
-
-        if (profilesError) {
-          console.error('Error deleting user profiles:', profilesError)
-          throw new Error(`Error al eliminar perfiles de usuario: ${profilesError.message}`)
-        }
-      }
-    }
-
-    // 4. Eliminar usuarios de Supabase Auth
+    // 2. Eliminar usuarios de Supabase Auth
     if (userIds.length > 0) {
       for (const userId of userIds) {
         try {
           await client.auth.admin.deleteUser(userId)
         } catch (authError) {
           console.error(`Error deleting auth user ${userId}:`, authError)
-          // Continuar con los demás usuarios aunque uno falle
         }
       }
     }
 
-    // 5. Finalmente eliminar las cuentas
+    // 3. Finalmente eliminar las cuentas
     const { error: accountsError } = await client
       .from('business_accounts')
       .delete()
@@ -435,177 +374,7 @@ export async function getUserBusinessAccountsAction(
   }
 }
 
-export async function addAccountMemberAction(
-  data: BusinessAccountMemberInsert
-): Promise<{ data: BusinessAccountMember | null; error: string | null }> {
-  try {
-    // Usar cliente admin para bypass RLS al agregar miembros
-    // La validación de permisos se hace a nivel de aplicación
-    const client = await getSupabaseAdminClient()
-    const { data: member, error } = await client
-      .from('business_account_members')
-      .insert(data)
-      .select()
-      .single()
 
-    if (error) throw error
-
-    return { data: member, error: null }
-  } catch (error: any) {
-    return { data: null, error: error.message }
-  }
-}
-
-export async function updateAccountMemberAction(
-  id: string,
-  data: BusinessAccountMemberUpdate
-): Promise<{ data: BusinessAccountMember | null; error: string | null }> {
-  try {
-    const client = await getSupabaseClient()
-    const { data: member, error } = await client
-      .from('business_account_members')
-      .update(data)
-      .eq('id', id)
-      .select()
-      .single()
-
-    if (error) throw error
-
-    return { data: member, error: null }
-  } catch (error: any) {
-    return { data: null, error: error.message }
-  }
-}
-
-export async function removeAccountMemberAction(
-  id: string
-): Promise<{ success: boolean; error: string | null }> {
-  try {
-    const currentUser = await getCurrentUser()
-    if (!currentUser) {
-      return { success: false, error: 'Usuario no autenticado' }
-    }
-
-    const client = await getSupabaseAdminClient()
-
-    // Obtener información del miembro a eliminar
-    const { data: memberToDelete, error: memberError } = await client
-      .from('business_account_members')
-      .select('role, business_account_id')
-      .eq('id', id)
-      .single()
-
-    if (memberError || !memberToDelete) {
-      return { success: false, error: 'Miembro no encontrado' }
-    }
-
-    // Contar cuántos administradores/owners hay en la cuenta
-    const { data: admins, error: adminError } = await client
-      .from('business_account_members')
-      .select('id, role')
-      .eq('business_account_id', memberToDelete.business_account_id)
-      .in('role', ['owner', 'admin'])
-      .eq('status', 'active')
-
-    if (adminError) throw adminError
-
-    const adminCount = admins?.length || 0
-    const isLastAdmin = adminCount === 1 && (memberToDelete.role === 'owner' || memberToDelete.role === 'admin')
-
-    // Si es el último administrador
-    if (isLastAdmin) {
-      // Solo company_admin puede eliminar al último administrador
-      if (currentUser.role !== USER_ROLES.COMPANY_ADMIN) {
-        return {
-          success: false,
-          error: 'No puedes eliminar al único administrador de la cuenta. Debe haber al menos un administrador.'
-        }
-      }
-    }
-
-    // Si es business_admin intentando eliminar un admin (y hay más de uno)
-    if (currentUser.role === USER_ROLES.BUSINESS_ADMIN &&
-        (memberToDelete.role === 'owner' || memberToDelete.role === 'admin')) {
-      // Verificar que no sea el último admin
-      if (adminCount <= 1) {
-        return {
-          success: false,
-          error: 'No puedes eliminar al único administrador de la cuenta.'
-        }
-      }
-    }
-
-    // Proceder con la eliminación
-    const { error: deleteError } = await client
-      .from('business_account_members')
-      .delete()
-      .eq('id', id)
-
-    if (deleteError) throw deleteError
-
-    return { success: true, error: null }
-  } catch (error: any) {
-    return { success: false, error: error.message }
-  }
-}
-
-export async function getAccountMembersAction(
-  accountId: string
-): Promise<{ data: any[] | null; error: string | null }> {
-  try {
-    const client = await getSupabaseAdminClient()
-
-    // Get members with user_profile info
-    const { data: members, error } = await client
-      .from('business_account_members')
-      .select(
-        `
-        *,
-        users_profile:user_profile_id (
-          id,
-          user_id,
-          role
-        )
-      `
-      )
-      .eq('business_account_id', accountId)
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
-
-    if (!members || members.length === 0) {
-      return { data: [], error: null }
-    }
-
-    // Get auth user data for each member
-    const membersWithAuthData = await Promise.all(
-      members.map(async (member: any) => {
-        if (!member.users_profile?.user_id) {
-          return member
-        }
-
-        const { data: authUser } = await client.auth.admin.getUserById(
-          member.users_profile.user_id
-        )
-
-        return {
-          ...member,
-          users_profile: {
-            ...member.users_profile,
-            full_name: authUser.user?.user_metadata?.full_name ||
-                       authUser.user?.user_metadata?.name ||
-                       'Sin nombre',
-            email: authUser.user?.email || 'Sin email',
-          },
-        }
-      })
-    )
-
-    return { data: membersWithAuthData, error: null }
-  } catch (error: any) {
-    return { data: null, error: error.message }
-  }
-}
 
 export async function isAccountAdminAction(
   userId: string,
@@ -650,23 +419,27 @@ export async function findUserProfileByEmailAction(
   error: string | null
 }> {
   try {
-    const client = await getSupabaseClient()
+    const client = await getSupabaseAdminClient()
 
-    // Buscar en users_profile por email
-    const { data: profile, error } = await client
-      .from('users_profile')
-      .select('id, email, full_name')
-      .eq('email', email)
-      .single()
+    // Buscar en auth users
+    const { data: { users }, error } = await client.auth.admin.listUsers()
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return { data: null, error: 'Usuario no encontrado con ese email' }
-      }
-      throw error
+    if (error) throw error
+
+    const foundUser = users?.find(u => u.email === email)
+
+    if (!foundUser) {
+      return { data: null, error: 'Usuario no encontrado con ese email' }
     }
 
-    return { data: profile, error: null }
+    return {
+      data: {
+        id: foundUser.id,
+        email: foundUser.email || '',
+        full_name: foundUser.user_metadata?.full_name || foundUser.user_metadata?.name || null
+      },
+      error: null
+    }
   } catch (error: any) {
     return { data: null, error: error.message }
   }
@@ -683,7 +456,7 @@ export async function updateTutorialStartedAction(
     }
 
     const client = await getSupabaseClient()
-    
+
     const { data: account, error } = await client
       .from('business_accounts')
       .update({ tutorial_started: tutorialStarted })
@@ -704,70 +477,57 @@ export async function createMemberWithAccountAction(data: {
   name: string
   email: string
   password: string
-  role: userRoles // Rol del sistema (business_monitor, business_admin)
+  role: userRoles
   accountId: string
 }): Promise<{ success: boolean; error: string | null }> {
   try {
     const client = await getSupabaseAdminClient()
 
-    // 1. Create user in Supabase Auth
+    // 1. Fetch details from the business_account
+    const { data: accountData, error: accountErr } = await client.from('business_accounts').select('*').eq('id', data.accountId).single();
+    if (accountErr || !accountData) return { success: false, error: 'Cuenta de negocio no encontrada' }
+
+    // Obtenemos los businesses hijos
+    const { data: businessesData } = await client.from('businesses').select('*').eq('business_account_id', data.accountId)
+    const firstBusiness = businessesData && businessesData.length > 0 ? businessesData[0] : null
+
+    // 2. Create user directamente (sin función SQL)
+    const authUserData = {
+      email: data.email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: data.name,
+        name: data.name,
+        email_verified: true,
+        business_account_id: data.accountId,
+        role: data.role,
+        business_id: firstBusiness?.id || null,
+        businesses: businessesData?.map(b => ({
+          id: b.id,
+          name: b.name,
+          business_account_id: data.accountId
+        })) || [],
+        tenant_name: accountData.tenant_name || `${data.email.split('@')[1]?.split('.')[0] || 'default'}-${data.accountId.slice(0, 8)}`,
+        business_type: firstBusiness?.type || 'TECH',
+        subscription_plan: accountData.subscription_plan || 'trial',
+      },
+      app_metadata: {
+        provider: 'email',
+        providers: ['email'],
+        business_account_id: data.accountId,
+        role: data.role,
+        business_id: firstBusiness?.id || null,
+      }
+    }
+
     const { data: authData, error: authError } =
-      await client.auth.admin.createUser({
-        email: data.email,
-        password: data.password,
-        email_confirm: true, // Auto-confirm email
-        user_metadata: {
-          full_name: data.name,
-          name: data.name,
-        },
-      })
+      await client.auth.admin.createUser(authUserData)
 
     if (authError || !authData.user) {
       return {
         success: false,
         error: authError?.message || 'Error al crear usuario en Auth',
-      }
-    }
-
-    // 2. Create users_profile
-    const { data: profileData, error: profileError } = await client
-      .from('users_profile')
-      .insert({
-        user_id: authData.user.id,
-        role: data.role, // Rol del sistema (business_monitor o business_admin)
-      })
-      .select()
-      .single()
-
-    if (profileError || !profileData) {
-      // If profile creation fails, delete the auth user to maintain consistency
-      await client.auth.admin.deleteUser(authData.user.id)
-      return {
-        success: false,
-        error: profileError?.message || 'Error al crear perfil de usuario',
-      }
-    }
-
-    // 3. Create business_account_member
-    // El rol en la cuenta es 'admin' si es business_admin, sino 'member'
-    const accountMemberRole = data.role === 'business_admin' ? 'admin' : 'member'
-
-    const { error: memberError } = await client
-      .from('business_account_members')
-      .insert({
-        business_account_id: data.accountId,
-        user_profile_id: profileData.id,
-        role: accountMemberRole, // 'admin' o 'member'
-        status: 'active',
-      })
-
-    if (memberError) {
-      // If member creation fails, delete both profile and auth user
-      await client.from('users_profile').delete().eq('id', profileData.id)
-      await client.auth.admin.deleteUser(authData.user.id)
-      return {
-        success: false,
-        error: memberError.message || 'Error al agregar miembro a la cuenta',
       }
     }
 

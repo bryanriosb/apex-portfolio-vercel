@@ -111,6 +111,14 @@ export function ThresholdPreview({ clients }: ThresholdPreviewProps) {
                 ))}
               </p>
             )}
+            <p className="text-sm mt-3">
+              <a
+                href="/admin/settings/collection"
+                className="underline font-medium hover:text-destructive/80"
+              >
+                Configurar umbrales →
+              </a>
+            </p>
           </AlertDescription>
         </Alert>
       )}
@@ -135,11 +143,10 @@ export function ThresholdPreview({ clients }: ThresholdPreviewProps) {
               return (
                 <div
                   key={data.threshold?.id || 'unassigned'}
-                  className={`p-4 rounded-lg border transition-all cursor-pointer flex flex-col ${
-                    isSelected
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-primary/50'
-                  }`}
+                  className={`p-4 border transition-all cursor-pointer flex flex-col ${isSelected
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50'
+                    }`}
                   onClick={() =>
                     setSelectedThreshold(
                       isSelected ? null : data.threshold?.id || null
@@ -170,7 +177,7 @@ export function ThresholdPreview({ clients }: ThresholdPreviewProps) {
                         >
                           {truncateText(
                             data.threshold?.email_template?.name ||
-                              'No asignado',
+                            'No asignado',
                             50
                           )}
                         </span>
@@ -193,9 +200,8 @@ export function ThresholdPreview({ clients }: ThresholdPreviewProps) {
                     </div>
 
                     <ChevronRight
-                      className={`h-5 w-5 text-muted-foreground transition-transform shrink-0 ml-2 ${
-                        isSelected ? 'rotate-90' : ''
-                      }`}
+                      className={`h-5 w-5 text-muted-foreground transition-transform shrink-0 ml-2 ${isSelected ? 'rotate-90' : ''
+                        }`}
                     />
                   </div>
 
@@ -303,7 +309,7 @@ function ClientListDialog({ clients, thresholdName }: ClientListDialogProps) {
               clients.map((client) => (
                 <div
                   key={client.nit}
-                  className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent"
+                  className="flex items-center justify-between p-3 border border-border hover:bg-accent"
                 >
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">

@@ -15,6 +15,8 @@ import {
 import { toast } from 'sonner'
 import * as XLSX from 'xlsx'
 import { fetchCustomersByNitsAction } from '@/lib/actions/collection/wizard'
+import { getCollectionConfigAction } from '@/lib/actions/collection/config'
+import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import { CampaignInfoSidebar } from './CampaignInfoSidebar'
 import { FileData, TEMPLATE_DATA } from './types'
 
@@ -43,6 +45,7 @@ export function Step1Content({
 }: Step1ContentProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingProgress, setProcessingProgress] = useState(0)
+  const { activeBusiness } = useActiveBusinessStore()
 
   const downloadTemplate = () => {
     const worksheet = XLSX.utils.json_to_sheet(TEMPLATE_DATA)
@@ -121,7 +124,7 @@ export function Step1Content({
           onChange={onFileSelect}
           className="hidden"
         />
-        
+
         {/* Download Template Button */}
         <div className="flex justify-end">
           <Button
@@ -137,12 +140,12 @@ export function Step1Content({
 
         {/* File Upload Area */}
         <div
-          className="border-2 border-dashed p-12 text-center hover:border-primary transition-colors cursor-pointer"
+          className="border-2 border-dashed p-12 text-center transition-colors cursor-pointer hover:border-primary"
           onClick={() => fileInputRef.current?.click()}
         >
           {fileData ? (
             <div className="space-y-3">
-              <FileSpreadsheet className="h-12 w-12 mx-auto text-primary" />
+              <FileSpreadsheet className="h-10 w-10 mx-auto text-primary" />
               <div>
                 <p className="text-lg font-medium">{fileData.fileName}</p>
                 <p className="text-sm text-muted-foreground">
@@ -150,13 +153,13 @@ export function Step1Content({
                 </p>
               </div>
               {fileData.valid ? (
-                <div className="flex items-center justify-center gap-2 text-green-600">
-                  <CheckCircle className="h-5 w-5" />
+                <div className="flex items-center justify-center gap-2 text-primary">
+                  <CheckCircle className="h-4 w-4" />
                   <span className="font-medium">Formato válido</span>
                 </div>
               ) : (
-                <div className="flex items-center justify-center gap-2 text-red-600">
-                  <AlertCircle className="h-5 w-5" />
+                <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                  <AlertCircle className="h-4 w-4" />
                   <span className="font-medium">Faltan columnas requeridas</span>
                 </div>
               )}
@@ -225,14 +228,14 @@ export function Step1Content({
             <h4 className="font-medium mb-4 text-muted-foreground flex justify-between items-center">
               <span>Resumen de Procesamiento</span>
               <div className="flex gap-4 text-sm">
-                <span className="text-green-600 flex items-center gap-1">
+                <span className="text-primary flex items-center gap-1">
                   <CheckCircle className="h-3 w-3" />
                   {Array.from(fileData.groupedClients.values()).filter(
                     (c) => c.status === 'found'
                   ).length}{' '}
                   Encontrados
                 </span>
-                <span className="text-red-500 flex items-center gap-1">
+                <span className="text-muted-foreground flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" />
                   {Array.from(fileData.groupedClients.values()).filter(
                     (c) => c.status === 'not_found'
@@ -281,9 +284,9 @@ export function Step1Content({
                         </td>
                         <td className="p-2 text-right">
                           {client.status === 'found' ? (
-                            <span className="text-green-600 text-xs font-medium">Listo</span>
+                            <span className="text-primary text-xs font-medium">Listo</span>
                           ) : (
-                            <span className="text-red-500 text-xs font-medium">Faltan datos</span>
+                            <span className="text-muted-foreground text-xs font-medium">Faltan datos</span>
                           )}
                         </td>
                       </tr>

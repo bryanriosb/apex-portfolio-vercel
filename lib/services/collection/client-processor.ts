@@ -68,7 +68,7 @@ export const ClientProcessor = {
               total_invoices: clientData.total?.total_invoices,
               days_overdue: daysOverdue,
               // Include customer data for email rendering in worker
-              email: clientData.customer?.email,
+              emails: clientData.customer?.emails ?? [],
               full_name: clientData.customer?.full_name,
               phone: clientData.customer?.phone,
               company_name: clientData.customer?.company_name,
@@ -105,7 +105,7 @@ export const ClientProcessor = {
             days_overdue: daysOverdue,
             threshold_name: threshold.name,
             // Include customer data for email rendering in worker
-            email: clientData.customer?.email,
+            emails: clientData.customer?.emails ?? [],
             full_name: clientData.customer?.full_name,
             phone: clientData.customer?.phone,
             company_name: clientData.customer?.company_name,
@@ -120,7 +120,7 @@ export const ClientProcessor = {
           params.business_id,
           clientData.total?.total_days_overdue || 0
         )
-        
+
         processedClients.push({
           execution_id: params.execution_id,
           customer_id: clientData.customer?.id,
@@ -134,7 +134,7 @@ export const ClientProcessor = {
             total_invoices: clientData.total?.total_invoices,
             days_overdue: clientData.total?.total_days_overdue || 0,
             // Include customer data for email rendering in worker
-            email: clientData.customer?.email,
+            emails: clientData.customer?.emails ?? [],
             full_name: clientData.customer?.full_name,
             phone: clientData.customer?.phone,
             company_name: clientData.customer?.company_name,

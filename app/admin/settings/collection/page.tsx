@@ -2,8 +2,8 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
+  GeneralTab,
   DeliveryStrategiesTab,
-  DomainReputationTab,
   ThresholdsTab,
 } from '@/components/collection/config'
 
@@ -20,19 +20,19 @@ export default function CollectionSettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="strategies" className="w-full">
+      <Tabs defaultValue="general" className="w-full">
         <TabsList className="grid w-full grid-cols-3 lg:w-[600px]">
+          <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="strategies">Estrategias de Envío</TabsTrigger>
-          <TabsTrigger value="domains">Reputación de Dominios</TabsTrigger>
           <TabsTrigger value="thresholds">Umbrales de Días</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="strategies" className="mt-6">
-          <DeliveryStrategiesTab />
+        <TabsContent value="general" className="mt-6">
+          <GeneralTab />
         </TabsContent>
 
-        <TabsContent value="domains" className="mt-6">
-          <DomainReputationTab />
+        <TabsContent value="strategies" className="mt-6">
+          <DeliveryStrategiesTab />
         </TabsContent>
 
         <TabsContent value="thresholds" className="mt-6">

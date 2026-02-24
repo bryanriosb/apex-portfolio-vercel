@@ -53,22 +53,22 @@ export function Footer() {
           {/* Brand column */}
           <div className="col-span-2">
             <Link href="/" className="inline-block mb-6">
-              <Image src="/logo.png" alt="Beluvio" width={140} height={40} />
+              <Image src="/logo.png" alt="APEX" width={140} height={40} />
             </Link>
             <p className="text-muted-foreground text-sm mb-6 max-w-xs">
-      La plataforma todo-en-uno para empresas en el sector de la belleza y
-      salud, spas, clínicas, centros de estética, salones de belleza,
-      entre otros.
+              La plataforma todo-en-uno para empresas en el sector de la belleza y
+              salud, spas, clínicas, centros de estética, salones de belleza,
+              entre otros.
             </p>
 
             {/* Contact info */}
             <div className="space-y-3 text-sm">
               <a
-                href="mailto:hola@beluvio.com"
+                href="mailto:hola@APEX.com"
                 className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Mail className="h-4 w-4 text-secondary" />
-                beluvio@borls.com
+                APEX@borls.com
               </a>
               <a
                 href="tel:+1234567890"
@@ -192,7 +192,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="py-6 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <p>
-            © {new Date().getFullYear()} Beluvio es solución de{' '}
+            © {new Date().getFullYear()} APEX es solución de{' '}
             <a
               className="underline text-secondary"
               href="https://borls.com"

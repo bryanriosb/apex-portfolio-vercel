@@ -30,7 +30,8 @@ export const ScrollyLanding: React.FC = () => {
   const [isMobile, setIsMobile] = React.useState(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
   const router = useRouter()
-  const [isLoading, setIsLoading] = React.useState(false)
+  const [isDemoLoading, setIsDemoLoading] = React.useState(false)
+  const [isLoginLoading, setIsLoginLoading] = React.useState(false)
 
   const TOTAL_FRAMES = 7
 
@@ -59,35 +60,35 @@ export const ScrollyLanding: React.FC = () => {
     const handleWheel = (e: WheelEvent) => {
       // Solo aplicar snap en desktop (no en móvil)
       if (isMobile) return
-      
+
       e.preventDefault()
-      
+
       if (isScrolling) return
-      
+
       // Acumular el scroll
       scrollAccumulator += e.deltaY
-      
+
       // Solo cambiar si se acumuló suficiente scroll
       if (Math.abs(scrollAccumulator) >= SCROLL_THRESHOLD) {
         const direction = scrollAccumulator > 0 ? 1 : -1
         const newSection = Math.max(0, Math.min(TOTAL_FRAMES - 1, activeSection + direction))
-        
+
         if (newSection !== activeSection) {
           isScrolling = true
           scrollAccumulator = 0 // Resetear acumulador
-          
+
           setActiveSection(newSection)
-          
+
           // Calcular progreso basado en sección
           const progress = newSection / (TOTAL_FRAMES - 1)
           setScrollProgress(progress)
-          
+
           // Scroll a la posición exacta de la sección
           window.scrollTo({
             top: newSection * window.innerHeight,
             behavior: 'smooth'
           })
-          
+
           // Prevenir múltiples scrolls rápidos
           scrollTimeout = setTimeout(() => {
             isScrolling = false
@@ -105,7 +106,7 @@ export const ScrollyLanding: React.FC = () => {
       const totalHeight = containerRef.current.scrollHeight - window.innerHeight
       const progress = Math.min(scrollY / totalHeight, 1)
       setScrollProgress(progress)
-      
+
       // En móvil, actualizar la sección activa basada en scroll posición
       if (isMobile) {
         const sectionHeight = window.innerHeight
@@ -177,14 +178,20 @@ export const ScrollyLanding: React.FC = () => {
 
   const goSignUp = (event: React.MouseEvent) => {
     event.preventDefault()
-    setIsLoading(true)
+    setIsDemoLoading(true)
     router.push('/auth/sign-up')
+  }
+
+  const goSignIn = (event: React.MouseEvent) => {
+    event.preventDefault()
+    setIsLoginLoading(true)
+    router.push('/auth/sign-in')
   }
 
   return (
     <div
       ref={containerRef}
-      className="relative bg-[#F8FAFC]"
+      className="relative bg-[#F8FAFC] overflow-x-hidden"
       style={isMobile ? undefined : { height: `${TOTAL_FRAMES * 100}vh` }}
     >
       {/* Background - Video en desktop, estático en móvil */}
@@ -217,7 +224,7 @@ export const ScrollyLanding: React.FC = () => {
       <nav className="fixed top-0 w-full z-50 px-4 sm:px-6 md:px-12 py-4 sm:py-6 flex items-center justify-between border-b-2 border-gray-900 bg-white/90 backdrop-blur-md">
         <div className="flex items-center gap-3 sm:gap-4 text-left">
           <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#0052FF] flex items-center justify-center shadow-[3px_3px_0px_#000] sm:shadow-[4px_4px_0px_#000] border-2 border-gray-900">
-            <Crosshair className="text-white w-5 h-5 sm:w-6 sm:h-6" />
+            <Crosshair className="text-white w-5 h-5 sm:w-7 sm:h-7" />
           </div>
           <div className="flex flex-col">
             <span className="text-gray-900 font-black text-lg sm:text-xl tracking-tighter leading-none uppercase">
@@ -232,51 +239,64 @@ export const ScrollyLanding: React.FC = () => {
           {navItems.map((item) => (
             <button
               key={item.label}
-              onClick={() =>
-                window.scrollTo({
-                  top: item.index * window.innerHeight,
-                  behavior: 'smooth',
-                })
-              }
-              className={`text-xs font-black transition-all duration-300 uppercase tracking-widest relative group ${
-                (
+              onClick={() => {
+                setActiveSection(item.index)
+                const progress = item.index / (TOTAL_FRAMES - 1)
+                setScrollProgress(progress)
+                if (!isMobile) {
+                  window.scrollTo({
+                    top: item.index * window.innerHeight,
+                    behavior: 'smooth',
+                  })
+                }
+              }}
+              className={`text-xs font-black transition-all duration-300 uppercase tracking-widest relative group ${(
+                item.index === 1
+                  ? [1, 2, 3].includes(activeSection)
+                  : activeSection === item.index
+              )
+                ? 'text-[#0052FF]'
+                : 'text-gray-900 hover:text-[#0052FF]'
+                }`}
+            >
+              {item.label}
+              <span
+                className={`absolute -bottom-1 left-0 h-0.5 bg-[#0052FF] transition-all duration-300 ${(
                   item.index === 1
                     ? [1, 2, 3].includes(activeSection)
                     : activeSection === item.index
                 )
-                  ? 'text-[#0052FF]'
-                  : 'text-gray-900 hover:text-[#0052FF]'
-              }`}
-            >
-              {item.label}
-              <span
-                className={`absolute -bottom-1 left-0 h-0.5 bg-[#0052FF] transition-all duration-300 ${
-                  (
-                    item.index === 1
-                      ? [1, 2, 3].includes(activeSection)
-                      : activeSection === item.index
-                  )
-                    ? 'w-full'
-                    : 'w-0 group-hover:w-full'
-                }`}
+                  ? 'w-full'
+                  : 'w-0 group-hover:w-full'
+                  }`}
               />
             </button>
           ))}
         </div>
-        <Button
-          onClick={goSignUp}
-          className="text-white hover:bg-[#0052FF] hover:text-white font-black text-[10px] sm:text-xs uppercase tracking-widest rounded-none px-4 sm:px-8 py-4 sm:py-6 border-2 border-gray-900 shadow-[3px_3px_0px_#000] sm:shadow-[4px_4px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
-        >
-          <span className="hidden sm:inline">Agendar Demo</span>
-          <span className="sm:hidden">Demo</span>
-          {isLoading && <Loading className="w-4 h-4 ml-2 text-white" />}
-        </Button>
+        <div className='flex gap-4'>
+          <Button
+            onClick={goSignUp}
+            className="text-white hover:bg-[#0052FF] hover:text-white font-black text-[10px] sm:text-xs uppercase tracking-widest rounded-none px-4 sm:px-8 py-4 sm:py-6 border-2 border-gray-900 shadow-[3px_3px_0px_#000] sm:shadow-[4px_4px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+          >
+            <span className="hidden sm:inline">Iniciar Demo</span>
+            <span className="sm:hidden">Demo</span>
+            {isDemoLoading && <Loading className="w-4 h-4 ml-2 text-white" />}
+          </Button>
+          <Button
+            onClick={goSignIn}
+            className="text-gray-900 hover:text-white bg-transparent hover:bg-[#0052FF] hover:text-white font-black text-[10px] sm:text-xs uppercase tracking-widest rounded-none px-4 sm:px-8 py-4 sm:py-6 border-2 border-gray-900 shadow-[3px_3px_0px_#000] sm:shadow-[4px_4px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+          >
+            <span className="hidden sm:inline">Iniciar Sesión</span>
+            <span className="sm:hidden">Sesion</span>
+            {isLoginLoading && <Loading className="w-4 h-4 ml-2 text-white" />}
+          </Button>
+        </div>
       </nav>
 
       {/* Main Content - Desktop: Fixed sections, Mobile: Stacked sections */}
       {isMobile ? (
         // Mobile Layout: Sections stacked vertically
-        <div className="relative z-10 pt-20">
+        <div className="relative z-10 pt-20 overflow-x-hidden">
           <section className="min-h-screen flex items-center justify-center px-4 py-8">
             <Frame0ROI />
           </section>
@@ -321,12 +341,17 @@ export const ScrollyLanding: React.FC = () => {
         {Array.from({ length: TOTAL_FRAMES }).map((_, i) => (
           <button
             key={i}
-            onClick={() =>
-              window.scrollTo({
-                top: i * window.innerHeight,
-                behavior: 'smooth',
-              })
-            }
+            onClick={() => {
+              setActiveSection(i)
+              const progress = i / (TOTAL_FRAMES - 1)
+              setScrollProgress(progress)
+              if (!isMobile) {
+                window.scrollTo({
+                  top: i * window.innerHeight,
+                  behavior: 'smooth',
+                })
+              }
+            }}
             className="flex items-center gap-4 group cursor-pointer"
           >
             <span

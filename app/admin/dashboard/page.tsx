@@ -23,6 +23,7 @@ import { StatsCards } from '@/components/dashboard/collection/StatsCards'
 import { ActiveExecutions } from '@/components/dashboard/collection/ActiveExecutions'
 import { RecentExecutions } from '@/components/dashboard/collection/RecentExecutions'
 import { ReputationOverview } from '@/components/dashboard/collection/ReputationOverview'
+import { BlacklistMonitor } from '@/components/dashboard/collection/BlacklistMonitor'
 import {
   DashboardStats,
   ActiveExecution,
@@ -257,20 +258,21 @@ export default function DashboardPage() {
         formatDate={formatDate}
       />
 
-      {/* Grid de 2 columnas para Ejecuciones y Reputación */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-        <RecentExecutions
-          executions={recentExecutions}
-          loading={recentLoading}
-          formatDate={formatDate}
-          getStatusColor={getStatusColor}
-        />
+      {/* Sección de Campañas Recientes - Ancho completo */}
+      <RecentExecutions
+        executions={recentExecutions}
+        loading={recentLoading}
+        formatDate={formatDate}
+        getStatusColor={getStatusColor}
+      />
+      {/* Sección de Lista Negra - Ancho completo */}
+      <BlacklistMonitor />
 
-        <ReputationOverview
-          profiles={reputationProfiles}
-          loading={reputationLoading}
-        />
-      </div>
+      {/* Sección de Reputación de Dominios - Ancho completo */}
+      <ReputationOverview
+        profiles={reputationProfiles}
+        loading={reputationLoading}
+      />
     </div>
   )
 }

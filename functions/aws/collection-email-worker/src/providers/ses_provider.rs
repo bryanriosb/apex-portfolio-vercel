@@ -64,10 +64,13 @@ impl EmailProvider for SesProvider {
 
         let mut builder = MessageBuilder::new()
             .from(message.from.as_str())
-            .to(message.to.as_str())
             .subject(message.subject.as_str())
             .text_body(message.text_body.as_str())
             .html_body(html_with_pixel);
+
+        for recipient in &message.to {
+            builder = builder.to(recipient.as_str());
+        }
 
         if !message.attachments.is_empty() {
             info!("Adding {} attachments to email", message.attachments.len());

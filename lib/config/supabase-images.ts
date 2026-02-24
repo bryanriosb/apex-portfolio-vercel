@@ -8,14 +8,14 @@ export const getImageUrl = (imagePath: string, size: 'mobile' | 'tablet' | 'desk
 
 // URLs específicas para las imágenes del landing
 export const LANDING_IMAGES = {
-  hero: getImageUrl('salon-de-belleza-moderno-beluvio', 'desktop'),
+  hero: getImageUrl('salon-de-belleza-moderno-APEX', 'desktop'),
   services: {
-    treatment: getImageUrl('mujer-recibiendo-tratameinto-facial-en-salon-estetica-beluvio', 'desktop'),
-    haircare: getImageUrl('tratamiento-capilar-en-peluqieria-beluvio', 'desktop'),
+    treatment: getImageUrl('mujer-recibiendo-tratameinto-facial-en-salon-estetica-APEX', 'desktop'),
+    haircare: getImageUrl('tratamiento-capilar-en-peluqieria-APEX', 'desktop'),
   },
-  features: getImageUrl('centro-cirugia-plastica-beluvio', 'desktop'),
-  about: getImageUrl('tratamiento-facial-por-experto-beluvio', 'desktop'),
-  openGraph: getImageUrl('salon-de-belleza-moderno-beluvio', 'desktop'),
+  features: getImageUrl('centro-cirugia-plastica-APEX', 'desktop'),
+  about: getImageUrl('tratamiento-facial-por-experto-APEX', 'desktop'),
+  openGraph: getImageUrl('salon-de-belleza-moderno-APEX', 'desktop'),
 }
 
 export default LANDING_IMAGES

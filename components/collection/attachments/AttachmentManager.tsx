@@ -174,20 +174,22 @@ export function AttachmentManager({
     )
 
     return (
-        <div className="space-y-4">
-            {/* Header / Actions */}
-            <div className="flex items-center justify-between gap-4">
+        <div className="space-y-3">
+            {/* Header / Actions - Compact layout */}
+            <div className="flex items-center justify-between gap-3">
                 {mode === 'select' && (
-                    <Input
-                        placeholder="Buscar adjuntos..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="max-w-sm"
-                    />
+                    <div className="relative flex-1 max-w-sm">
+                        <Input
+                            placeholder="Buscar adjuntos..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="h-9" // Compact height
+                        />
+                    </div>
                 )}
 
-                {/* Always show Upload button, positioned according to mode */}
-                <div className={cn("relative", mode === 'manage' && "ml-auto")}>
+                {/* Upload button */}
+                <div className={cn("relative flex-shrink-0", mode === 'manage' && "ml-auto")}>
                     <input
                         ref={fileInputRef}
                         type="file"
@@ -197,6 +199,8 @@ export function AttachmentManager({
                         disabled={uploading}
                     />
                     <Button
+                        size={mode === 'select' ? 'sm' : 'default'}
+                        variant={mode === 'select' ? 'secondary' : 'default'}
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading}
                     >
@@ -205,7 +209,7 @@ export function AttachmentManager({
                         ) : (
                             <Upload className="mr-2 h-4 w-4" />
                         )}
-                        {uploading ? 'Subiendo...' : 'Subir Nuevo'}
+                        {uploading ? 'Subiendo...' : 'Subir'}
                     </Button>
                 </div>
             </div>
@@ -214,62 +218,74 @@ export function AttachmentManager({
             {mode === 'manage' ? (
                 // Table View
                 <div key={refreshKey}>
-                    {/* Using key to force unmount/remount on upload to refresh table */}
                     <AttachmentsList />
                 </div>
             ) : (
-                // Grid View (Select Mode)
-                <ScrollArea className="h-[300px] border p-4">
-                    {loading ? (
-                        <div className="flex items-center justify-center h-[300px]">
-                            <Loading className="h-8 w-8 text-muted-foreground" />
-                        </div>
-                    ) : filteredAttachments.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground">
-                            <Paperclip className="h-12 w-12 mb-4 opacity-20" />
-                            <p>No hay adjuntos disponibles</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-                            {filteredAttachments.map((attachment) => {
-                                const isSelected = selectedIds.includes(attachment.id)
-                                return (
-                                    <Card
-                                        key={attachment.id}
-                                        className={cn(
-                                            "cursor-pointer transition-all hover:border-primary",
-                                            isSelected && "border-2 border-primary bg-primary/5"
-                                        )}
-                                        onClick={() => toggleSelection(attachment.id)}
-                                    >
-                                        <CardContent className="p-4 flex items-start gap-3 relative">
-                                            <div className="flex-shrink-0 mt-1">
+                // Compact Grid View (Select Mode)
+                <div className="border  overflow-hidden bg-background">
+                    <ScrollArea className="max-h-[180px]"> {/* Approx 3 rows height */}
+                        {loading ? (
+                            <div className="flex items-center justify-center p-8">
+                                <Loading className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                        ) : filteredAttachments.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center p-8 text-muted-foreground text-sm">
+                                <Paperclip className="h-8 w-8 mb-3 opacity-20" />
+                                <p>No hay adjuntos disponibles</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 text-sm">
+                                {filteredAttachments.map((attachment, index) => {
+                                    const isSelected = selectedIds.includes(attachment.id)
+                                    // Add border bottom to all except last two on desktop, or last one on mobile
+                                    const isLastRow = index >= filteredAttachments.length - (filteredAttachments.length % 2 === 0 ? 2 : 1)
+
+                                    return (
+                                        <div
+                                            key={attachment.id}
+                                            className={cn(
+                                                "flex items-center gap-3 p-3 transition-colors cursor-pointer group hover:bg-muted/50",
+                                                isSelected && "bg-primary/5 hover:bg-primary/10",
+                                                "border-b md:border-r border-border md:odd:border-r md:even:border-r-0",
+                                                isLastRow && "md:border-b-0"
+                                            )}
+                                            onClick={() => toggleSelection(attachment.id)}
+                                        >
+                                            <div className="flex-shrink-0">
                                                 <Checkbox
                                                     checked={isSelected}
                                                     onCheckedChange={() => toggleSelection(attachment.id)}
+                                                    className={cn("transition-all", isSelected && "border-primary bg-primary text-primary-foreground")}
                                                 />
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-medium text-sm truncate" title={attachment.name}>
-                                                    {attachment.name}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {((attachment.file_size_bytes || 0) / 1024).toFixed(1)} KB
-                                                    • {format(new Date(attachment.created_at), 'dd MMM yyyy', { locale: es })}
-                                                </p>
+                                            <div className="flex items-center justify-center w-8 h-8 bg-muted/50 text-muted-foreground group-hover:text-foreground transition-colors">
+                                                <FileIcon className="h-4 w-4" />
                                             </div>
-                                        </CardContent>
-                                    </Card>
-                                )
-                            })}
-                        </div>
-                    )}
-                </ScrollArea>
+                                            <div className="flex-1 min-w-0 flex items-center justify-between">
+                                                <div className="flex flex-col overflow-hidden mr-4">
+                                                    <span className={cn("text-sm font-medium truncate", isSelected && "text-primary")}>
+                                                        {attachment.name}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground truncate">
+                                                        {format(new Date(attachment.created_at), 'dd MMM yyyy', { locale: es })}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-muted-foreground whitespace-nowrap">
+                                                    {((attachment.file_size_bytes || 0) / 1024).toFixed(1)} KB
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        )}
+                    </ScrollArea>
+                </div>
             )}
 
-            {mode === 'select' && (
-                <div className="text-sm text-muted-foreground text-right">
-                    {selectedIds.length} archivo(s) seleccionado(s)
+            {mode === 'select' && selectedIds.length > 0 && (
+                <div className="text-xs text-muted-foreground text-right font-medium">
+                    {selectedIds.length} archivo{selectedIds.length !== 1 ? 's' : ''} seleccionado{selectedIds.length !== 1 ? 's' : ''}
                 </div>
             )}
         </div>

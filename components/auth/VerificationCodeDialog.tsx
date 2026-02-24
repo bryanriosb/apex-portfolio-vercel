@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Loader2 } from 'lucide-react'
 import {
   Dialog,
@@ -19,6 +19,7 @@ interface VerificationCodeDialogProps {
   type: 'email' | 'phone'
   value: string
   onVerify: (code: string) => Promise<void>
+  onResend?: () => Promise<void>
 }
 
 export function VerificationCodeDialog({
@@ -27,9 +28,49 @@ export function VerificationCodeDialog({
   type,
   value,
   onVerify,
+  onResend,
 }: VerificationCodeDialogProps) {
   const [code, setCode] = useState('')
   const [isVerifying, setIsVerifying] = useState(false)
+  const [isResending, setIsResending] = useState(false)
+  const [countdown, setCountdown] = useState(40)
+  const [canResend, setCanResend] = useState(false)
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout
+    if (open && countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            setCanResend(true)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+    return () => clearInterval(timer)
+  }, [open, countdown])
+
+  useEffect(() => {
+    if (open) {
+      setCountdown(40)
+      setCanResend(false)
+      setCode('')
+    }
+  }, [open])
+
+  const handleResend = async () => {
+    if (!canResend || !onResend) return
+    setIsResending(true)
+    try {
+      await onResend()
+      setCountdown(40)
+      setCanResend(false)
+    } finally {
+      setIsResending(false)
+    }
+  }
 
   const handleVerify = async () => {
     if (code.length !== 6) return
@@ -50,7 +91,10 @@ export function VerificationCodeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Verificar {type === 'email' ? 'correo electrónico' : 'teléfono'}</DialogTitle>
           <DialogDescription>
@@ -90,6 +134,30 @@ export function VerificationCodeDialog({
               'Verificar'
             )}
           </Button>
+
+          {onResend && (
+            <div className="flex items-center justify-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleResend}
+                disabled={!canResend || isResending}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                {isResending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enviando...
+                  </>
+                ) : canResend ? (
+                  'Reenviar código'
+                ) : (
+                  `Reenviar código (${countdown}s)`
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

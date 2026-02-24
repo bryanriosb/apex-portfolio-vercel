@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react'
 import { BuilderHeader } from './BuilderHeader'
 import { VariablesSidebar } from './VariablesSidebar'
 import { PreviewDialog } from './PreviewDialog'
+import { QuickTemplatesPanel } from './QuickTemplatesPanel'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { TemplateService } from '@/lib/services/collection'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import { TemplateType } from '@/lib/models/collection/template'
+import type { QuickTemplate } from '@/lib/data-templates/const/quick-templates'
 
 const EmailEditor = dynamic(
     () => import('./EmailEditor').then((mod) => mod.EmailEditor),
@@ -29,6 +31,7 @@ export function TemplateBuilder({ id }: { id?: string }) {
     const [editorInstance, setEditorInstance] = useState<any>(null)
     const [previewOpen, setPreviewOpen] = useState(false)
     const [isLoading, setIsLoading] = useState(!!id)
+    const [templateSelected, setTemplateSelected] = useState(!!id)
 
     // Cargar datos si estamos editando
     useEffect(() => {
@@ -54,11 +57,21 @@ export function TemplateBuilder({ id }: { id?: string }) {
     }, [id, router])
 
     const handleInsertVariable = (variable: string, isRaw: boolean = false) => {
-        if (editorInstance) {
-            const content = isRaw ? variable : `{{${variable}}} `
-            editorInstance.chain().focus().insertContent(content).run()
-        } else {
+        if (!editorInstance) {
             toast.error('El editor no está listo')
+            return
+        }
+
+        if (isRaw) {
+            // Raw HTML snippets (e.g. invoice table) bypass insertContent which
+            // fails schema validation on complex table structures with empty cells.
+            const currentHtml = editorInstance.getHTML()
+            const appended = currentHtml.replace(/<\/body>$/, '') + variable + '<p> </p>'
+            editorInstance.commands.setContent(appended, false)
+            const newHtml = editorInstance.getHTML()
+            setContent(newHtml)
+        } else {
+            editorInstance.chain().focus().insertContent(`{{${variable}}} `).run()
         }
     }
 
@@ -122,8 +135,34 @@ export function TemplateBuilder({ id }: { id?: string }) {
         setPreviewOpen(true)
     }
 
+    const handleQuickSelect = (template: QuickTemplate) => {
+        setTemplateName(template.name)
+        setSubject(template.subject)
+        setContent(template.content_html)
+        setTemplateType(template.template_type)
+        setTemplateSelected(true)
+    }
+
     if (isLoading) {
         return <div className="h-screen flex items-center justify-center dark:bg-gray-950 dark:text-white">Cargando plantilla...</div>
+    }
+
+    if (!templateSelected) {
+        return (
+            <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950">
+                <BuilderHeader
+                    templateName={templateName}
+                    onNameChange={setTemplateName}
+                    onSave={handleSave}
+                    onPreview={handlePreview}
+                    isSaving={isSaving}
+                />
+                <QuickTemplatesPanel
+                    onSelect={handleQuickSelect}
+                    onStartBlank={() => setTemplateSelected(true)}
+                />
+            </div>
+        )
     }
 
     return (

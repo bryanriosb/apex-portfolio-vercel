@@ -27,7 +27,8 @@ const sqsClient = new SQSClient({
  * Controla la distribución y procesamiento de mensajes
  */
 export class SQSBatchService {
-  private static readonly SQS_BATCH_QUEUE_URL = process.env.SQS_BATCH_QUEUE_URL || ''
+  private static readonly SQS_BATCH_QUEUE_URL =
+    process.env.SQS_BATCH_QUEUE_URL || ''
   private static readonly MAX_BATCH_SIZE = 10 // SQS permite máximo 10 mensajes por batch
 
   /**
@@ -147,20 +148,18 @@ export class SQSBatchService {
               }
 
               // Insertar log ENQUEUED para Control Tower
-              await supabase
-                .from('execution_audit_logs')
-                .insert({
-                  execution_id: batch.execution_id,
-                  batch_id: batch.id,
-                  event: 'ENQUEUED',
-                  worker_id: 'wizard',
-                  details: {
-                    batch_number: batch.batch_number,
-                    total_clients: batch.total_clients,
-                    scheduled_for: batch.scheduled_for,
-                    sqs_message_id: success.MessageId,
-                  },
-                })
+              await supabase.from('execution_audit_logs').insert({
+                execution_id: batch.execution_id,
+                batch_id: batch.id,
+                event: 'ENQUEUED',
+                worker_id: 'wizard',
+                details: {
+                  batch_number: batch.batch_number,
+                  total_clients: batch.total_clients,
+                  scheduled_for: batch.scheduled_for,
+                  sqs_message_id: success.MessageId,
+                },
+              })
 
               queuedCount++
             }
@@ -274,21 +273,19 @@ export class SQSBatchService {
         .single()
 
       // Insertar log ENQUEUED para Control Tower
-      await supabase
-        .from('execution_audit_logs')
-        .insert({
-          execution_id: batch.execution_id,
-          batch_id: batch.id,
-          event: 'ENQUEUED',
-          worker_id: 'retry-system',
-          details: {
-            batch_number: batch.batch_number,
-            total_clients: batch.total_clients,
-            scheduled_for: batch.scheduled_for,
-            sqs_message_id: result.MessageId,
-            is_retry: true,
-          },
-        })
+      await supabase.from('execution_audit_logs').insert({
+        execution_id: batch.execution_id,
+        batch_id: batch.id,
+        event: 'ENQUEUED',
+        worker_id: 'retry-system',
+        details: {
+          batch_number: batch.batch_number,
+          total_clients: batch.total_clients,
+          scheduled_for: batch.scheduled_for,
+          sqs_message_id: result.MessageId,
+          is_retry: true,
+        },
+      })
 
       return message as BatchQueueMessage
     } catch (error) {
@@ -351,7 +348,7 @@ export class SQSBatchService {
     const now = Date.now()
     const delayMs = scheduledTime - now
 
-    // SQS permite máximo 15 minutos (900 segundos) de delay
+    // SQS permite máximo 10 minutos (900 segundos) de delay
     const maxDelaySeconds = 900
     const delaySeconds = Math.floor(delayMs / 1000)
 

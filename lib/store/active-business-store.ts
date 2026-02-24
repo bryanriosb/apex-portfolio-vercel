@@ -15,11 +15,13 @@ interface ActiveBusinessState {
   isLoading: boolean
   lastFetched: number | null
   cacheDuration: number
+  userId: string | null // Track which user owns this data
   setActiveBusiness: (business: Business) => void
   setBusinesses: (businesses: Business[]) => void
-  initializeFromSession: (businesses: Business[]) => void
-  loadBusinesses: (businessAccountId: string) => Promise<void>
+  initializeFromSession: (businesses: Business[], userId: string) => void
+  loadBusinesses: (businessAccountId: string, userId: string) => Promise<void>
   reset: () => void
+  validateUserSession: (currentUserId: string) => boolean
 }
 
 export const useActiveBusinessStore = create<ActiveBusinessState>()(
@@ -30,27 +32,70 @@ export const useActiveBusinessStore = create<ActiveBusinessState>()(
       isLoading: false,
       lastFetched: null,
       cacheDuration: 5 * 60 * 1000, // 5 minutes
+      userId: null,
 
       setActiveBusiness: (business) => set({ activeBusiness: business }),
 
       setBusinesses: (businesses) => set({ businesses }),
 
-      initializeFromSession: (businesses) => {
-        const current = get().activeBusiness
+      validateUserSession: (currentUserId: string) => {
+        const state = get()
+        // If no userId stored or different user, data is stale
+        if (!state.userId || state.userId !== currentUserId) {
+          console.log('[ActiveBusinessStore] Usuario diferente detectado, limpiando datos...')
+          set({ 
+            activeBusiness: null, 
+            businesses: [], 
+            lastFetched: null,
+            userId: currentUserId 
+          })
+          return false
+        }
+        return true
+      },
+
+      initializeFromSession: (businesses, userId) => {
+        const state = get()
+        
+        // Validate user session first
+        if (state.userId && state.userId !== userId) {
+          console.log('[ActiveBusinessStore] Cambio de usuario detectado, reseteando...')
+          set({
+            businesses,
+            activeBusiness: businesses[0] || null,
+            userId,
+          })
+          return
+        }
+
+        const current = state.activeBusiness
         const validBusiness = current ? businesses.find((b) => b.id === current.id) : null
 
         set({
           businesses,
           activeBusiness: validBusiness || businesses[0] || null,
+          userId,
         })
       },
 
-      loadBusinesses: async (businessAccountId: string) => {
+      loadBusinesses: async (businessAccountId: string, userId: string) => {
         const state = get()
         const now = Date.now()
 
-        // Check if cache is valid
+        // Validate user session
+        if (state.userId && state.userId !== userId) {
+          console.log('[ActiveBusinessStore] Usuario diferente, invalidando caché...')
+          set({ 
+            activeBusiness: null, 
+            businesses: [], 
+            lastFetched: null,
+            userId 
+          })
+        }
+
+        // Check if cache is valid (only for same user)
         if (
+          state.userId === userId &&
           state.businesses.length > 0 &&
           state.lastFetched &&
           now - state.lastFetched < state.cacheDuration
@@ -73,19 +118,16 @@ export const useActiveBusinessStore = create<ActiveBusinessState>()(
             business_account_id: b.business_account_id,
           }))
 
+          const currentActive = state.activeBusiness
+          const isValidActive = currentActive && loadedBusinesses.find(b => b.id === currentActive.id)
+
           set({
             businesses: loadedBusinesses,
             lastFetched: now,
             isLoading: false,
+            userId,
+            activeBusiness: isValidActive ? currentActive : loadedBusinesses[0] || null,
           })
-
-          // Initialize active business if needed
-          const currentActive = state.activeBusiness
-          if (!currentActive || !loadedBusinesses.find(b => b.id === currentActive.id)) {
-            set({
-              activeBusiness: loadedBusinesses[0] || null,
-            })
-          }
         } catch (error) {
           console.error('Error loading businesses:', error)
           set({ isLoading: false })
@@ -97,7 +139,8 @@ export const useActiveBusinessStore = create<ActiveBusinessState>()(
         activeBusiness: null, 
         businesses: [], 
         isLoading: false, 
-        lastFetched: null 
+        lastFetched: null,
+        userId: null 
       }),
     }),
     {
@@ -105,7 +148,8 @@ export const useActiveBusinessStore = create<ActiveBusinessState>()(
       partialize: (state) => ({ 
         activeBusiness: state.activeBusiness,
         businesses: state.businesses,
-        lastFetched: state.lastFetched 
+        lastFetched: state.lastFetched,
+        userId: state.userId 
       }),
     }
   )

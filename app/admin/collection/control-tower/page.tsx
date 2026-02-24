@@ -55,7 +55,7 @@ function LockStatusCard({ lock }: { lock: { is_locked: boolean, locked_by: strin
                             {lock.is_locked ? 'Locked' : 'Unlocked'}
                         </span>
                     </div>
-                    
+
                     {lock.is_locked && lock.locked_by && (
                         <>
                             <div className="flex items-center justify-between">
@@ -64,7 +64,7 @@ function LockStatusCard({ lock }: { lock: { is_locked: boolean, locked_by: strin
                                     {lock.locked_by.substring(0, 8)}...
                                 </span>
                             </div>
-                            
+
                             {lock.locked_at && (
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm text-muted-foreground">Locked At</span>
@@ -73,7 +73,7 @@ function LockStatusCard({ lock }: { lock: { is_locked: boolean, locked_by: strin
                                     </span>
                                 </div>
                             )}
-                            
+
                             {lock.time_remaining_seconds !== null && (
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm text-muted-foreground">Expires In</span>
@@ -84,7 +84,7 @@ function LockStatusCard({ lock }: { lock: { is_locked: boolean, locked_by: strin
                             )}
                         </>
                     )}
-                    
+
                     <div className="pt-2 border-t">
                         <p className="text-xs text-muted-foreground">
                             Prevents multiple workers from scheduling EventBridge simultaneously
@@ -163,7 +163,7 @@ function ActivityLog({ logs }: { logs: Array<{ id: string, event: string, batch_
 export default function ControlTowerPage() {
     const { activeBusiness } = useActiveBusinessStore()
     const businessId = activeBusiness?.business_account_id || ''
-    
+
     const { stats, lock, recentLogs, isConnected } = useRealtimeControlTower(businessId)
 
     const handleRefresh = () => {
@@ -204,7 +204,7 @@ export default function ControlTowerPage() {
                 <LockStatusCard lock={lock} />
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+            {/* <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
                 <Card className="col-span-3">
                     <CardHeader>
                         <CardTitle>Infrastructure Health</CardTitle>
@@ -229,7 +229,7 @@ export default function ControlTowerPage() {
                         </div>
                     </CardContent>
                 </Card>
-            </div>
+            </div> */}
         </div>
     )
 }

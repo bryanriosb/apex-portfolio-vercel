@@ -46,7 +46,7 @@ const statusConfig: Record<
     sent: {
         label: 'Enviado',
         variant: 'default',
-        color: 'text-blue-600',
+        color: 'text-primary',
     },
     delivered: {
         label: 'Entregado',

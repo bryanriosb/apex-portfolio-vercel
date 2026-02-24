@@ -46,8 +46,8 @@ export async function sendEmailVerificationAction(email: string): Promise<{
     // Enviar email usando Contiguity
     const result = await sendEmailMailgun({
       to: email,
-      from: 'Beluvio <not-reply@borls.com>',
-      subject: 'Código de verificación - Beluvio',
+      from: 'APEX <notify@borls.com>',
+      subject: 'Código de verificación - APEX',
       body: {
         text: `Tu código de verificación es: ${code}. Este código expirará en 10 minutos.`,
       },
@@ -97,7 +97,7 @@ export async function sendSMSVerificationAction(phone: string): Promise<{
     // Enviar SMS
     await sendSMSContiguity({
       to: phone,
-      message: `Beluvio - ${code}. Expira en 10 minutos.`,
+      message: `APEX - ${code}. Expira en 10 minutos.`,
     })
 
     return { success: true }

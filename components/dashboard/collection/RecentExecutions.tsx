@@ -52,12 +52,17 @@ export const RecentExecutions: React.FC<RecentExecutionsProps> = ({
       <Card className="shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold">
-              <h2 className="font-semibold tracking-tight flex items-center gap-2">
-                <Zap className="h-5 w-5" />
-                Campañas Recientes
-              </h2>
-            </CardTitle>
+            <div>
+              <CardTitle className="text-base font-semibold">
+                <h2 className="font-semibold tracking-tight flex items-center gap-2">
+                  <Zap className="h-5 w-5" />
+                  Campañas Recientes
+                </h2>
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Historial de campañas de cobro ejecutadas y su rendimiento
+              </p>
+            </div>
             <Link href="/admin/collection/executions">
               <Button variant="ghost" size="sm" className="h-8 text-xs">
                 Ver Todas
@@ -95,68 +100,68 @@ export const RecentExecutions: React.FC<RecentExecutionsProps> = ({
               </Link>
             </div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-2">
               {executions.slice(0, 5).map((exec) => {
                 const StatusIcon = getStatusIcon(exec.status)
                 return (
                   <Link
                     key={exec.id}
                     href={`/admin/collection/executions/${exec.id}`}
-                    className="flex items-center gap-3 py-3 px-2 -mx-2 rounded-lg hover:bg-muted/50 transition-colors group"
+                    className="flex items-center gap-4 py-4 px-3 -mx-3 hover:bg-muted/50 transition-colors group border border-transparent hover:border-border"
                   >
                     {/* Icono de estado */}
                     <div
-                      className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${getStatusColor(exec.status)}`}
+                      className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${getStatusColor(exec.status)}`}
                     >
-                      <StatusIcon className="h-4 w-4" />
+                      <StatusIcon className="h-5 w-5" />
                     </div>
 
-                    {/* Info principal */}
+                    {/* Info principal - Expandida */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
+                      <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-medium text-sm truncate">
                           {exec.name}
                         </h3>
                         <Badge
                           variant="outline"
-                          className="text-[10px] h-4 px-1.5"
+                          className="text-[10px] h-4 px-1.5 shrink-0"
                         >
                           {formatDate(exec.created_at)}
                         </Badge>
                       </div>
-                      {/* Indicadores compactos */}
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Users className="h-3 w-3" />
-                          {exec.total_clients}
+                      {/* Indicadores expandidos en grid */}
+                      <div className="grid grid-cols-4 gap-2 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
+                          <Users className="h-4 w-4" />
+                          <span className="font-medium text-foreground">{exec.total_clients}</span> clientes
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Send className="h-3 w-3" />
-                          {exec.emails_sent}
+                        <span className="flex items-center gap-1.5">
+                          <Send className="h-4 w-4" />
+                          <span className="font-medium text-foreground">{exec.emails_sent}</span> enviados
                         </span>
-                        <span className="flex items-center gap-1">
-                          <MailOpen className="h-3 w-3" />
-                          {exec.emails_opened || 0}
+                        <span className="flex items-center gap-1.5">
+                          <MailOpen className="h-4 w-4" />
+                          <span className="font-medium text-foreground">{exec.emails_opened || 0}</span> abiertos
                         </span>
-                        <span className="flex items-center gap-1 text-red-600">
-                          <AlertTriangle className="h-3 w-3" />
-                          {exec.emails_bounced || 0}
+                        <span className="flex items-center gap-1.5 text-red-600">
+                          <AlertTriangle className="h-4 w-4" />
+                          <span className="font-medium">{exec.emails_bounced || 0}</span> fallidos
                         </span>
                       </div>
                     </div>
 
-                    {/* Métrica principal */}
+                    {/* Métrica de rendimiento */}
                     <div className="text-right shrink-0">
                       <div className="text-lg font-semibold leading-none">
                         {exec.avg_open_rate?.toFixed(0) || 0}%
                       </div>
-                      <div className="text-[10px] text-muted-foreground">
-                        abiertos
+                      <div className="text-xs text-muted-foreground">
+                        tasa apertura
                       </div>
                     </div>
 
                     {/* Flecha */}
-                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                   </Link>
                 )
               })}

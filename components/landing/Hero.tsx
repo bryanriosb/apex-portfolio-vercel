@@ -202,7 +202,7 @@ export function Hero() {
               <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-secondary/20 z-10 group-hover:opacity-0 transition-opacity duration-500" />
               <Image
                 src={LANDING_IMAGES.hero}
-                alt="Profesional de estética usando software de gestión Beluvio para administrar citas y clientes en su salón de belleza"
+                alt="Profesional de estética usando software de gestión APEX para administrar citas y clientes en su salón de belleza"
                 fill
                 className="object-cover transition-transform duration-700 group-hover:scale-105"
                 priority
@@ -335,7 +335,7 @@ export function Hero() {
           transition={{ duration: 1.5, repeat: Infinity }}
           className="flex flex-col items-center gap-2 text-muted-foreground"
         >
-            <span className="text-xs">Descubre más</span>
+          <span className="text-xs">Descubre más</span>
           <svg
             className="h-5 w-5"
             fill="none"

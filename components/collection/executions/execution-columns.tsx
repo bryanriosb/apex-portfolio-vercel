@@ -92,10 +92,10 @@ export const executionColumns: ColumnDef<CollectionExecution>[] = [
       const rate = row.original.open_rate
       const color =
         rate >= 40
-          ? 'text-green-600'
+          ? 'text-primary'
           : rate >= 20
             ? 'text-yellow-600'
-            : 'text-red-600'
+            : 'text-muted-foreground'
 
       return (
         <div className={`text-sm font-medium ${color}`}>{rate.toFixed(1)}%</div>
@@ -109,7 +109,7 @@ export const executionColumns: ColumnDef<CollectionExecution>[] = [
       const rate = row.original.bounce_rate
       const color =
         rate < 2
-          ? 'text-green-600'
+          ? 'text-primary'
           : rate < 5
             ? 'text-yellow-600'
             : 'text-red-600'

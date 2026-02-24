@@ -37,7 +37,7 @@ export class GenericImportService {
     return `import_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
   }
 
-  private updateProgress(
+  public updateProgress(
     sessionId: string,
     updates: Partial<ImportProgress>,
     onProgress?: (progress: ImportProgress) => void
@@ -55,7 +55,7 @@ export class GenericImportService {
   }
 
   // Nuevo método para actualización atómica del progreso
-  private incrementProgress(
+  public incrementProgress(
     sessionId: string,
     message: string,
     onProgress?: (progress: ImportProgress) => void
@@ -75,7 +75,7 @@ export class GenericImportService {
     }
   }
 
-  private createInitialProgress(
+  public createInitialProgress(
     sessionId: string,
     total: number
   ): ImportProgress {
@@ -133,17 +133,15 @@ export class GenericImportService {
             // Actualizar progreso de forma atómica
             this.incrementProgress(
               actualSessionId,
-              `Procesado: ${
-                item.name || item.code || `Item ${globalIndex + 1}`
+              `Procesado: ${item.name || item.code || `Item ${globalIndex + 1}`
               }`,
               options.onProgress
             )
 
             return result
           } catch (error: any) {
-            const errorMessage = `Error en item ${globalIndex + 1}: ${
-              error.message
-            }`
+            const errorMessage = `Error en item ${globalIndex + 1}: ${error.message
+              }`
 
             errors.push(errorMessage)
             this.updateProgress(
@@ -177,7 +175,7 @@ export class GenericImportService {
       const finalProgress = progressStore.get(actualSessionId)
       const finalErrors = finalProgress?.errors || errors
       const success = finalErrors.length === 0
-      
+
       const endTime = Date.now()
       this.updateProgress(
         actualSessionId,

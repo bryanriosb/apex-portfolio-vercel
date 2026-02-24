@@ -101,7 +101,7 @@ export default function SuscriptionPage() {
       <Tabs defaultValue="subscription" className="space-y-6">
         <TabsList>
           <TabsTrigger value="subscription">Mi Suscripción</TabsTrigger>
-          <TabsTrigger value="plans">Cambiar Plan</TabsTrigger>
+          {/* <TabsTrigger value="plans">Cambiar Plan</TabsTrigger> */}
           <TabsTrigger value="payment-methods">Métodos de Pago</TabsTrigger>
           <TabsTrigger value="history">Historial</TabsTrigger>
         </TabsList>

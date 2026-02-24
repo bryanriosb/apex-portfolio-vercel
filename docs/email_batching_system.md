@@ -10,7 +10,7 @@ Sistema implementado para gestión de cobranza escalable con AWS SES, diseñado 
 ✅ **Escalabilidad**: Soporta de 50 a 50,000+ emails por campaña  
 ✅ **Observabilidad**: Tracking completo de métricas de entrega  
 ✅ **Flexibilidad**: Estrategias configurables (Ramp-Up, Batch, Conservative)  
-✅ **Resiliencia**: SQS + Dead Letter Queue para manejo de fallos  
+✅ **Resiliencia**: SQS + Dead Letter Queue para manejo de fallos
 
 ---
 
@@ -86,19 +86,21 @@ Sistema implementado para gestión de cobranza escalable con AWS SES, diseñado 
 **Uso**: Nuevos dominios o IPs sin historial de envío
 
 | Día | Límite Diario | Batch Size | Intervalo |
-|-----|---------------|------------|-----------|
+| --- | ------------- | ---------- | --------- |
 | 1   | 50 emails     | 25         | 60 min    |
 | 2   | 100 emails    | 50         | 60 min    |
 | 3-5 | 150 emails    | 75         | 60 min    |
 | 6+  | 200 emails    | 100        | 60 min    |
 
 **Condiciones de Progresión**:
+
 - Open Rate > 20%
 - Delivery Rate > 95%
 - Bounce Rate < 5%
 - Sin complaints
 
 **Ejemplo con 4200 clientes**:
+
 ```
 Día 1: 50 clientes (2 batches de 25)
 Día 2: 100 clientes (2 batches de 50)
@@ -115,14 +117,15 @@ Total: ~26 días para completar
 
 **Uso**: Dominios con reputación establecida (warm-up completado)
 
-| Parámetro | Valor Default | Configurable |
-|-----------|---------------|--------------|
-| Batch Size | 500 emails | 100-1000 |
-| Intervalo | 30 minutos | 15-120 min |
-| Batches/día | 100 | 10-200 |
-| Concurrentes | 5 | 1-10 |
+| Parámetro    | Valor Default | Configurable |
+| ------------ | ------------- | ------------ |
+| Batch Size   | 500 emails    | 100-1000     |
+| Intervalo    | 30 minutos    | 15-120 min   |
+| Batches/día  | 100           | 10-200       |
+| Concurrentes | 5             | 1-10         |
 
 **Ejemplo con 4200 clientes**:
+
 ```
 Batch 1 (T+0): 500 clientes
 Batch 2 (T+30min): 500 clientes
@@ -136,10 +139,10 @@ Total: ~4-5 horas para completar
 
 **Uso**: Dominios con problemas de reputación
 
-| Día | Límite | Batch Size | Requisitos |
-|-----|--------|------------|------------|
-| 1-2 | 10-20  | 10         | 25% opens  |
-| 3-5 | 30     | 15         | 25% opens  |
+| Día | Límite | Batch Size | Requisitos   |
+| --- | ------ | ---------- | ------------ |
+| 1-2 | 10-20  | 10         | 25% opens    |
+| 3-5 | 30     | 15         | 25% opens    |
 | 6+  | 50     | 25         | 98% delivery |
 
 ---
@@ -156,22 +159,22 @@ CREATE TABLE email_reputation_profiles (
     business_id UUID REFERENCES businesses(id),
     domain VARCHAR(255) NOT NULL,
     sending_ip VARCHAR(45),
-    
+
     -- Warm-up status
     is_warmed_up BOOLEAN DEFAULT FALSE,
     current_warmup_day INTEGER DEFAULT 0,
-    
+
     -- Métricas
     total_emails_sent INTEGER DEFAULT 0,
     total_emails_delivered INTEGER DEFAULT 0,
     total_emails_opened INTEGER DEFAULT 0,
     delivery_rate DECIMAL(5,2) DEFAULT 0.00,
     open_rate DECIMAL(5,2) DEFAULT 0.00,
-    
+
     -- Límites
     daily_sending_limit INTEGER DEFAULT 50,
     current_strategy VARCHAR(20),
-    
+
     -- Flags
     has_reputation_issues BOOLEAN DEFAULT FALSE
 );
@@ -187,17 +190,17 @@ CREATE TABLE delivery_strategies (
     business_id UUID REFERENCES businesses(id),
     name VARCHAR(100),
     strategy_type VARCHAR(20), -- 'ramp_up', 'batch', 'conservative'
-    
+
     -- Ramp-up config
     rampup_day_1_limit INTEGER DEFAULT 50,
     rampup_day_2_limit INTEGER DEFAULT 100,
     rampup_day_3_5_limit INTEGER DEFAULT 150,
-    
+
     -- Batch config
     batch_size INTEGER DEFAULT 100,
     batch_interval_minutes INTEGER DEFAULT 60,
     max_batches_per_day INTEGER DEFAULT 50,
-    
+
     -- Thresholds
     min_open_rate_threshold DECIMAL(5,2) DEFAULT 20.00,
     max_bounce_rate_threshold DECIMAL(5,2) DEFAULT 5.00
@@ -213,17 +216,17 @@ CREATE TABLE execution_batches (
     id UUID PRIMARY KEY,
     execution_id UUID REFERENCES collection_executions(id),
     strategy_id UUID REFERENCES delivery_strategies(id),
-    
+
     batch_number INTEGER,
     batch_name VARCHAR(255),
     status VARCHAR(20), -- 'pending', 'queued', 'processing', 'completed'
-    
+
     total_clients INTEGER,
     client_ids UUID[], -- Array de collection_clients
-    
+
     scheduled_for TIMESTAMPTZ,
     sqs_message_id VARCHAR(255),
-    
+
     -- Métricas
     emails_sent INTEGER DEFAULT 0,
     emails_delivered INTEGER DEFAULT 0,
@@ -239,11 +242,11 @@ CREATE TABLE execution_batches (
 CREATE TABLE batch_queue_messages (
     id UUID PRIMARY KEY,
     batch_id UUID REFERENCES execution_batches(id),
-    
+
     sqs_queue_url TEXT,
     sqs_message_id VARCHAR(255),
     sqs_receipt_handle TEXT,
-    
+
     status VARCHAR(20), -- 'queued', 'in_flight', 'processed', 'failed'
     receive_count INTEGER DEFAULT 0,
     max_receives INTEGER DEFAULT 3
@@ -259,12 +262,12 @@ CREATE TABLE daily_sending_limits (
     id UUID PRIMARY KEY,
     reputation_profile_id UUID REFERENCES email_reputation_profiles(id),
     date DATE,
-    
+
     daily_limit INTEGER,
     emails_sent INTEGER DEFAULT 0,
     emails_delivered INTEGER DEFAULT 0,
     emails_opened INTEGER DEFAULT 0,
-    
+
     limit_reached BOOLEAN DEFAULT FALSE,
     paused_until TIMESTAMPTZ,
     can_progress_to_next_day BOOLEAN DEFAULT FALSE
@@ -282,6 +285,7 @@ CREATE TABLE daily_sending_limits (
 **Ubicación**: `/lib/services/collection/email-reputation-service.ts`
 
 **Responsabilidades**:
+
 - Crear/obtener perfiles de reputación por dominio
 - Validar cuotas diarias disponibles
 - Actualizar métricas de entrega (delivery, open, bounce)
@@ -311,6 +315,7 @@ pauseSending(reputationProfileId, reason, pauseMinutes)
 **Ubicación**: `/lib/services/collection/batch-strategy-service.ts`
 
 **Responsabilidades**:
+
 - Seleccionar estrategia según reputación
 - Algoritmos de división de clientes en batches
 - Cálculo de tiempos de envío óptimos
@@ -346,6 +351,7 @@ getExecutionProgress(executionId)
 **Algoritmos**:
 
 #### Algoritmo Ramp-Up
+
 ```typescript
 // Distribuye clientes en múltiples días según límites de warm-up
 
@@ -353,18 +359,18 @@ function calculateRampUpBatches(clients, executionId, strategy, reputation):
   clientIndex = 0
   currentDay = hoy
   batchNumber = 1
-  
+
   while clientIndex < totalClients:
     // Determinar límite del día actual
     dailyLimit = getRampUpLimitForDay(warmupDay + floor(batchNumber/2))
-    
+
     // Crear batch
     batchSize = min(strategy.batch_size, dailyLimit, remainingClients)
     batchClients = clients[clientIndex : clientIndex + batchSize]
-    
+
     // Calcular hora de envío (respetando preferencias)
     sendTime = calculateSendTime(currentDay, 9, 17, avoidWeekends=true)
-    
+
     createBatch({
       execution_id: executionId,
       batch_number: batchNumber,
@@ -372,28 +378,29 @@ function calculateRampUpBatches(clients, executionId, strategy, reputation):
       client_ids: batchClients.map(c => c.id),
       scheduled_for: sendTime
     })
-    
+
     clientIndex += batchSize
     batchNumber++
-    
+
     // Si llenamos el día, pasar al siguiente
     if emailsToday >= dailyLimit:
       currentDay += 1 día
 ```
 
 #### Algoritmo Batch
+
 ```typescript
 // Divide en batches grandes con intervalos cortos
 
 function calculateBatchBatches(clients, executionId, strategy, options):
   batchSize = options.customBatchSize || strategy.batch_size || 500
   interval = strategy.batch_interval_minutes || 30
-  
+
   batches = []
   for i from 0 to clients.length step batchSize:
     batchClients = clients[i : i + batchSize]
     scheduledTime = now + (i/batchSize * interval minutos)
-    
+
     batches.push({
       execution_id: executionId,
       batch_number: i/batchSize + 1,
@@ -401,7 +408,7 @@ function calculateBatchBatches(clients, executionId, strategy, options):
       client_ids: batchClients.map(c => c.id),
       scheduled_for: scheduledTime
     })
-  
+
   return batches
 ```
 
@@ -410,6 +417,7 @@ function calculateBatchBatches(clients, executionId, strategy, options):
 **Ubicación**: `/lib/services/collection/sqs-batch-service.ts`
 
 **Responsabilidades**:
+
 - Encolar batches en SQS
 - Gestionar dead letter queue
 - Reintentar batches fallidos
@@ -457,11 +465,11 @@ const result = await createExecutionWithClientsAction({
   },
   clients: clients, // 4200 clientes
   strategyConfig: {
-    strategyType: 'ramp_up',      // Estrategia conservadora
-    domain: 'bore.sas',           // Dominio remitente
-    sendingIp: '192.168.1.1',     // IP dedicada (opcional)
-    startImmediately: true,       // Encolar inmediatamente
-  }
+    strategyType: 'ramp_up', // Estrategia conservadora
+    domain: 'bore.sas', // Dominio remitente
+    sendingIp: '192.168.1.1', // IP dedicada (opcional)
+    startImmediately: true, // Encolar inmediatamente
+  },
 })
 
 // Resultado esperado:
@@ -489,12 +497,12 @@ const result = await createExecutionWithClientsAction({
   },
   clients: clients, // 4200 clientes
   strategyConfig: {
-    strategyType: 'batch',        // Estrategia agresiva
-    domain: 'bore.sas',           // Dominio con buena reputación
-    customBatchSize: 500,         // 500 clientes por batch
+    strategyType: 'batch', // Estrategia agresiva
+    domain: 'bore.sas', // Dominio con buena reputación
+    customBatchSize: 500, // 500 clientes por batch
     customIntervals: [0, 30, 30, 30, 30, 30, 30, 30, 30], // Intervalos entre batches
     startImmediately: true,
-  }
+  },
 })
 
 // Resultado esperado:
@@ -525,7 +533,7 @@ const result = await createExecutionWithClientsAction({
     strategyType: 'ramp_up',
     domain: 'bore.sas',
     startImmediately: false, // No encolar ahora, esperar al scheduled_at
-  }
+  },
 })
 ```
 
@@ -645,28 +653,28 @@ aws lambda create-event-source-mapping \
 ✅ **Rate Limiting**: Límites diarios configurables por dominio  
 ✅ **Engagement Tracking**: Monitorea opens, clicks, bounces  
 ✅ **Complaint Detection**: Pausa automática ante complaints  
-✅ **Bounce Handling**: Hard bounces = blacklist automático  
+✅ **Bounce Handling**: Hard bounces = blacklist automático
 
 ### 2. Observabilidad
 
 ✅ **Métricas en Tiempo Real**: Dashboard con delivery rate, open rate  
 ✅ **Batch Tracking**: Cada grupo tiene estado y métricas individuales  
 ✅ **SQS Monitoring**: Tracking de mensajes in-flight, processed, failed  
-✅ **Error Logging**: Cada fallo registrado con contexto  
+✅ **Error Logging**: Cada fallo registrado con contexto
 
 ### 3. Resiliencia
 
 ✅ **Dead Letter Queue**: Mensajes fallidos >3 veces van a DLQ  
 ✅ **Retry Automático**: Reintentos configurables (default: 3)  
 ✅ **Graceful Degradation**: Si un batch falla, los demás continúan  
-✅ **Circuit Breaker**: Pausa automática ante tasas de bounce altas  
+✅ **Circuit Breaker**: Pausa automática ante tasas de bounce altas
 
 ### 4. Escalabilidad
 
 ✅ **SQS Distributed**: Cola distribuida soporta miles de mensajes  
 ✅ **Lambda Concurrency**: 10 lambdas procesando simultáneamente  
 ✅ **Batching Eficiente**: Procesa hasta 500 emails por batch  
-✅ **Horizontal Scaling**: Agregar más consumers si se necesita  
+✅ **Horizontal Scaling**: Agregar más consumers si se necesita
 
 ---
 
@@ -699,13 +707,13 @@ struct SQSRecord {
 async fn function_handler(event: SQSEvent, _ctx: Context) -> Result<Value, Error> {
     for record in event.Records {
         let message: SQSMessage = serde_json::from_str(&record.body)?;
-        
+
         // 1. Obtener batch de Supabase
         let batch = get_batch(&message.batch_id).await?;
-        
+
         // 2. Obtener clientes del batch
         let clients = get_clients(&message.client_ids).await?;
-        
+
         // 3. Enviar emails via SES
         for client in clients {
             match send_email(&client).await {
@@ -717,14 +725,14 @@ async fn function_handler(event: SQSEvent, _ctx: Context) -> Result<Value, Error
                 }
             }
         }
-        
+
         // 4. Actualizar métricas del batch
         update_batch_completed(&message.batch_id).await?;
-        
+
         // 5. Actualizar métricas de reputación
         update_reputation_metrics(&message.execution_id).await?;
     }
-    
+
     Ok(json!({"status": "ok"}))
 }
 ```
@@ -738,7 +746,7 @@ async fn function_handler(event: SQSEvent, _ctx: Context) -> Result<Value, Error
 ```
 4200 clientes → 1 Lambda → Procesa todos → 30-60 min
 Problemas:
-- Timeout risk (>15 min)
+- Timeout risk (>10 min)
 - No rate limiting → Spam risk
 - No observability por batch
 - Todo o nada (si falla, todos pierden)
@@ -812,18 +820,21 @@ if (queueDepth > 500) {
 ## 📝 Checklist de Implementación
 
 ### Phase 1: Database (Completado ✅)
+
 - [x] Crear tablas SQL
 - [x] Configurar RLS policies
 - [x] Crear índices
 - [x] Insertar estrategias por defecto
 
 ### Phase 2: Backend Services (Completado ✅)
+
 - [x] EmailReputationService
 - [x] BatchStrategyService
 - [x] SQSBatchService
 - [x] Actualizar execution-workflow.ts
 
 ### Phase 3: AWS Infrastructure (Pendiente)
+
 - [ ] Crear SQS Queue (FIFO)
 - [ ] Crear Dead Letter Queue
 - [ ] Configurar Lambda Trigger
@@ -831,18 +842,21 @@ if (queueDepth > 500) {
 - [ ] Configurar variables de entorno
 
 ### Phase 4: Lambda Updates (Pendiente)
+
 - [ ] Modificar collection-email-worker para leer SQS
 - [ ] Actualizar lógica de procesamiento por batch
 - [ ] Agregar manejo de SQS receipt handle
 - [ ] Testing de integración
 
 ### Phase 5: UI/UX (Pendiente)
+
 - [ ] Selector de estrategia en wizard
 - [ ] Dashboard de progreso por batch
 - [ ] Visualización de métricas de reputación
 - [ ] Alertas de warm-up status
 
 ### Phase 6: Testing & Optimización (Pendiente)
+
 - [ ] Testing con 100 clientes
 - [ ] Testing con 1000 clientes
 - [ ] Testing con 5000+ clientes
@@ -856,15 +870,20 @@ if (queueDepth > 500) {
 ### Problema: Emails van a Spam
 
 **Causas posibles**:
+
 1. Warm-up no completado
 2. Bounce rate alto
 3. Contenido spammy
 4. No SPF/DKIM configurado
 
 **Solución**:
+
 ```typescript
 // 1. Verificar reputación del dominio
-const profile = await EmailReputationService.getReputationProfileById(supabase, profileId)
+const profile = await EmailReputationService.getReputationProfileById(
+  supabase,
+  profileId
+)
 
 if (!profile.is_warmed_up) {
   // Cambiar a estrategia más conservadora
@@ -872,7 +891,12 @@ if (!profile.is_warmed_up) {
 }
 
 // 2. Pausar y analizar
-await EmailReputationService.pauseSending(supabase, profileId, 'spam_investigation', 1440) // 24h
+await EmailReputationService.pauseSending(
+  supabase,
+  profileId,
+  'spam_investigation',
+  1440
+) // 24h
 
 // 3. Revisar métricas
 const metrics = await getDomainMetrics(domain)
@@ -882,11 +906,13 @@ console.log(`Bounce: ${metrics.bounceRate}%, Opens: ${metrics.openRate}%`)
 ### Problema: Batches no se procesan
 
 **Causas posibles**:
+
 1. Lambda no está escuchando SQS
 2. Visibility timeout muy corto
 3. Errores en Lambda
 
 **Solución**:
+
 ```bash
 # 1. Verificar mapping
 aws lambda list-event-source-mappings --function-name collection-email-worker
@@ -903,15 +929,17 @@ aws logs tail /aws/lambda/collection-email-worker --follow
 ### Problema: Cuota diaria agotada
 
 **Causas**:
+
 1. Demasiados batches programados para hoy
 2. Múltiples ejecuciones simultáneas
 
 **Solución**:
+
 ```typescript
 // 1. Verificar cuota disponible
 const quota = await EmailReputationService.getRemainingDailyQuota(
-  supabase, 
-  profileId, 
+  supabase,
+  profileId,
   new Date()
 )
 

@@ -22,6 +22,37 @@ impl SupabaseService {
         }
     }
 
+    pub async fn get_business_name(&self, business_id: &str) -> String {
+        let url = format!("{}/rest/v1/businesses?id=eq.{}&select=name", self.base_url, business_id);
+        
+        let response = match self.client.get(&url)
+            .header("apikey", &self.api_key)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .send()
+            .await {
+                Ok(r) => r,
+                Err(e) => {
+                    log::error!("Failed to request business name: {}", e);
+                    return "APEX".to_string();
+                }
+            };
+
+        if !response.status().is_success() {
+            log::error!("Failed to fetch business name: status {}", response.status());
+            return "APEX".to_string();
+        }
+
+        if let Ok(businesses) = response.json::<Vec<serde_json::Value>>().await {
+            if let Some(first) = businesses.first() {
+                if let Some(name) = first.get("name").and_then(|v| v.as_str()) {
+                    return name.to_string();
+                }
+            }
+        }
+        
+        "APEX".to_string()
+    }
+
     pub async fn get_execution(&self, execution_id: &str) -> Result<CollectionExecution, Box<dyn Error + Send + Sync>> {
         let url = format!("{}/rest/v1/collection_executions?id=eq.{}&select=*", self.base_url, execution_id);
         
@@ -341,5 +372,28 @@ impl SupabaseService {
 
         log::warn!("Batch {} moved to DLQ: {}", batch_id, error_message);
         Ok(())
+    }
+
+    pub async fn get_blacklisted_emails(&self, business_id: &str) -> Result<std::collections::HashSet<String>, Box<dyn Error + Send + Sync>> {
+        let url = format!("{}/rest/v1/email_blacklist?business_id=eq.{}&select=email", self.base_url, business_id);
+        
+        let response = self.client.get(&url)
+            .header("apikey", &self.api_key)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to fetch blacklist: {}", response.status()).into());
+        }
+
+        let blacklist: Vec<serde_json::Value> = response.json().await?;
+        let emails: std::collections::HashSet<String> = blacklist
+            .into_iter()
+            .filter_map(|item| item.get("email").and_then(|v| v.as_str()).map(|s| s.to_lowercase()))
+            .collect();
+
+        log::info!("Fetched {} blacklisted emails for business {}", emails.len(), business_id);
+        Ok(emails)
     }
 }

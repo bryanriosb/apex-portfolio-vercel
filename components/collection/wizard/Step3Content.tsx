@@ -178,10 +178,10 @@ export function Step3Content({
       )}
 
       {/* Fallback Template Alert & Selection */}
-      {unassignedCount > 0 && (
-        <Card className="border-yellow-200 bg-yellow-50">
+      {unassignedCount > 0 && !isLoading && (
+        <Card className="border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2 text-yellow-800">
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
               <AlertTriangle className="h-4 w-4" />
               Atención: {unassignedCount} clientes sin umbral asignado
             </CardTitle>
@@ -191,7 +191,7 @@ export function Step3Content({
               Estos clientes no coinciden con ningún rango de días de los umbrales configurados.
               Seleccione una plantilla de respaldo para enviarles correo, o no se les enviará nada.
             </p>
-            
+
             <div className="space-y-2">
               <Label className="text-yellow-900">Plantilla de Respaldo (Fallback)</Label>
               <Select
@@ -269,16 +269,20 @@ export function Step3Content({
 
       {/* Domain Configuration */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Info className="h-4 w-4" />
-            Dominio Remitente
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Seleccionar Dominio</Label>
-            <div className="flex gap-2">
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div className="space-y-1 max-w-sm">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Info className="h-4 w-4" />
+                Dominio Remitente
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                El dominio que se mostrará como remitente de los correos.
+                Los dominios nuevos comenzarán a generar reputación desde cero.
+              </p>
+            </div>
+
+            <div className="flex-1 w-full md:max-w-xs space-y-2">
               <Select
                 value={senderDomain}
                 onValueChange={(value: string) => {
@@ -289,16 +293,12 @@ export function Step3Content({
                   }
                 }}
               >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Seleccionar un dominio verificado" />
+                <SelectTrigger className="w-full h-9 text-sm">
+                  <SelectValue placeholder="Seleccionar un dominio" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="custom">
-                    ✍️ Usar otro dominio...
-                  </SelectItem>
-                  {availableDomains.length > 0 && (
-                    <div className="h-px bg-muted my-1" />
-                  )}
+                  <SelectItem value="custom">✍️ Usar otro dominio...</SelectItem>
+                  {availableDomains.length > 0 && <div className="h-px bg-muted my-1" />}
                   {availableDomains.map((domain) => (
                     <SelectItem key={domain} value={domain}>
                       {domain}
@@ -306,27 +306,21 @@ export function Step3Content({
                   ))}
                 </SelectContent>
               </Select>
+
+              {(senderDomain === '' || !availableDomains.includes(senderDomain)) && (
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <Input
+                    id="customDomain"
+                    type="text"
+                    placeholder="ejemplo.com"
+                    value={senderDomain}
+                    onChange={(e) => onDomainChange(e.target.value)}
+                    className="h-9 text-sm"
+                  />
+                </div>
+              )}
             </div>
           </div>
-
-          {(senderDomain === '' ||
-            !availableDomains.includes(senderDomain)) && (
-            <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-              <Label htmlFor="customDomain">Escribir Dominio</Label>
-              <Input
-                id="customDomain"
-                type="text"
-                placeholder="ejemplo.com"
-                value={senderDomain}
-                onChange={(e) => onDomainChange(e.target.value)}
-              />
-            </div>
-          )}
-
-          <p className="text-xs text-muted-foreground">
-            Dominio que aparecerá como remitente. Los dominios nuevos comenzarán
-            a generar reputación desde cero.
-          </p>
         </CardContent>
       </Card>
 
@@ -368,27 +362,31 @@ export function Step3Content({
 
       {/* Advanced Options */}
       <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="showAdvancedOptions"
-              checked={showAdvancedOptions}
-              onChange={(e) => onAdvancedOptionsChange(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-            />
-            <Label
-              htmlFor="showAdvancedOptions"
-              className="text-sm font-medium cursor-pointer flex items-center gap-2"
-            >
+        <div
+          className="p-4 flex flex-row items-center justify-between cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => onAdvancedOptionsChange(!showAdvancedOptions)}
+        >
+          <div className="space-y-0.5">
+            <Label className="text-sm font-medium flex items-center gap-2 cursor-pointer">
               <Settings className="h-4 w-4" />
               Opciones Avanzadas
             </Label>
+            <p className="text-xs text-muted-foreground">
+              Configuraciones adicionales de envío (tamaño de lote, etc.)
+            </p>
           </div>
-        </CardHeader>
+          <input
+            type="checkbox"
+            checked={showAdvancedOptions}
+            onChange={(e) => onAdvancedOptionsChange(e.target.checked)}
+            className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+
         {showAdvancedOptions && (
-          <CardContent className="animate-in fade-in slide-in-from-top-2">
-            <div className="space-y-2">
+          <CardContent className="pt-0 pb-4 animate-in fade-in slide-in-from-top-2 border-t mt-4">
+            <div className="space-y-2 mt-4">
               <Label htmlFor="customBatchSize">
                 Tamaño de Lote Personalizado
               </Label>
@@ -405,6 +403,7 @@ export function Step3Content({
                     value ? parseInt(value, 10) : undefined
                   )
                 }}
+                className="max-w-[200px]"
               />
               <p className="text-xs text-muted-foreground">
                 Número de correos por lote. Dejar vacío para usar el valor por
@@ -416,11 +415,11 @@ export function Step3Content({
       </Card>
 
       {/* Summary */}
-      <div className="bg-yellow-50 border border-yellow-200 p-4">
-        <h4 className="font-medium text-yellow-900 mb-2">
+      <div className="bg-muted/30 border p-4">
+        <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
           Resumen de Ejecución
         </h4>
-        <p className="text-sm text-yellow-800">
+        <p className="text-sm text-muted-foreground">
           {executionMode === 'immediate'
             ? `Se crearán ${validClients} registros de cobro y el envío comenzará inmediatamente usando la estrategia "${selectedStrategy?.name || 'Por Defecto'}".`
             : `Se crearán ${validClients} registros y el envío se programará para el ${scheduledDate ? scheduledDate.toLocaleDateString() : '...'} a las ${scheduledTime} usando la estrategia "${selectedStrategy?.name || 'Por Defecto'}".`}{' '}
@@ -448,13 +447,17 @@ function ExecutionModeOption({
       <RadioGroupItem value={value} id={value} className="peer sr-only" />
       <Label
         htmlFor={value}
-        className="flex flex-col items-center justify-between border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer h-full"
+        className="flex items-center gap-3 border-2 border-border bg-card p-3 hover:bg-muted/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-colors"
       >
-        <div className="mb-2">{icon}</div>
-        <span className="text-sm font-semibold">{title}</span>
-        <span className="text-xs text-muted-foreground text-center mt-1">
-          {description}
-        </span>
+        <div className="flex shrink-0 items-center justify-center bg-muted/50 p-2 text-foreground">
+          {icon}
+        </div>
+        <div className="flex flex-col">
+          <span className="text-sm font-semibold leading-none mb-1 text-foreground">{title}</span>
+          <span className="text-xs text-muted-foreground">
+            {description}
+          </span>
+        </div>
       </Label>
     </div>
   )
@@ -480,23 +483,27 @@ function StrategyCard({
       />
       <Label
         htmlFor={strategy.id}
-        className={`flex flex-col items-start justify-between border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer h-full ${isSelected ? 'ring-0.5 ring-primary' : ''}`}
+        className={`flex items-start gap-3 border-2 border-border bg-card p-3 hover:bg-muted/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-colors ${isSelected ? 'border-primary bg-primary/5' : ''}`}
       >
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex shrink-0 items-center justify-center bg-muted/50 p-2 text-foreground">
           {icon}
-          <span className="text-sm font-semibold">{strategy.name}</span>
-          {isDefault && (
-            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
-              Por Defecto
-            </span>
-          )}
         </div>
-        <span className="text-xs text-muted-foreground text-center mt-1">
-          {strategy.description || getStrategyTypeLabel(strategy.strategy_type)}
-        </span>
-        <span className="text-xs text-muted-foreground/70 italic mt-2">
-          {getStrategyDetails(strategy)}
-        </span>
+        <div className="flex flex-col min-w-0 flex-1">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm font-semibold truncate text-foreground">{strategy.name}</span>
+            {isDefault && (
+              <span className="text-[10px] uppercase font-bold tracking-wider bg-primary/10 text-primary px-1.5 py-0.5">
+                Por Defecto
+              </span>
+            )}
+          </div>
+          <span className="text-xs text-muted-foreground leading-snug">
+            {strategy.description || getStrategyTypeLabel(strategy.strategy_type)}
+          </span>
+          <span className="text-[11px] text-muted-foreground/70 italic mt-2 overflow-hidden text-ellipsis whitespace-nowrap" title={getStrategyDetails(strategy)}>
+            {getStrategyDetails(strategy)}
+          </span>
+        </div>
       </Label>
     </div>
   )

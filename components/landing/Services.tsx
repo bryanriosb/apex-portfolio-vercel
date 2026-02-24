@@ -29,7 +29,7 @@ const services = [
     name: 'Manicure y pedicure',
     gradient: 'from-pink-400 to-pink-600',
   },
-    { icon: Palette, name: 'Colorimetría', gradient: 'from-accent to-secondary' },
+  { icon: Palette, name: 'Colorimetría', gradient: 'from-accent to-secondary' },
   { icon: Brush, name: 'Maquillaje', gradient: 'from-rose-400 to-rose-600' },
   {
     icon: Eye,
@@ -76,7 +76,7 @@ export function Services() {
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-secondary/20" />
                   <Image
                     src={LANDING_IMAGES.services.haircare}
-                    alt="Profesional de peluquería realizando tratamiento capilar en salón de belleza gestionado con Beluvio"
+                    alt="Profesional de peluquería realizando tratamiento capilar en salón de belleza gestionado con APEX"
                     width={300}
                     height={400}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
@@ -93,7 +93,7 @@ export function Services() {
                   transition={{ duration: 0.5, delay: 0.3 }}
                   className="relative rounded-3xl bg-gradient-to-br from-secondary/80 to-accent/80 p-6 text-white overflow-hidden"
                 >
-                  <div className="absolute inset-0 bg-cover opacity-10" style={{backgroundImage: `url(${LANDING_IMAGES.services.treatment})`}} />
+                  <div className="absolute inset-0 bg-cover opacity-10" style={{ backgroundImage: `url(${LANDING_IMAGES.services.treatment})` }} />
                   <div className="relative">
                     <p className="text-5xl font-bold">98%</p>
                     <p className="text-white/80 text-sm mt-1">
@@ -147,7 +147,7 @@ export function Services() {
                   <div className="absolute inset-0 bg-gradient-to-br from-secondary/30 to-primary/20" />
                   <Image
                     src={LANDING_IMAGES.services.treatment}
-                    alt="Mujer recibiendo tratamiento facial en salon de estética utilizando sistema de gestión Beluvio"
+                    alt="Mujer recibiendo tratamiento facial en salon de estética utilizando sistema de gestión APEX"
                     width={300}
                     height={400}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
@@ -220,7 +220,7 @@ export function Services() {
             <div className="p-6 rounded-2xl bg-card border border-border/50">
               <p className="font-semibold mb-4 flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-secondary" />
-                 Personalización total
+                Personalización total
               </p>
               <div className="grid sm:grid-cols-2 gap-3">
                 {benefits.map((benefit, index) => (

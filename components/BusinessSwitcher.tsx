@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useCallback } from 'react'
-import { ChevronsUpDown, Store, Check, RefreshCw, Loader2, MapPinHouse, Building2, Building } from 'lucide-react'
+import { ChevronsUpDown, Check, RefreshCw, Building2, Building } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +31,7 @@ import Loading from './ui/loading'
 export function BusinessSwitcher() {
   const { isMobile, state } = useSidebar()
   const isCollapsed = state === 'collapsed'
-  const { businessAccountId, role, isLoading: isUserLoading } = useCurrentUser()
+  const { businessAccountId, role, isLoading: isUserLoading, user } = useCurrentUser()
   const {
     activeBusiness,
     businesses,
@@ -41,31 +41,29 @@ export function BusinessSwitcher() {
   } = useActiveBusinessStore()
 
   const handleRefreshBusinesses = useCallback(async () => {
-    if (!businessAccountId) return
+    if (!businessAccountId || !user?.id) return
     try {
       // Force reload by clearing cache first
-      await loadBusinesses(businessAccountId)
+      await loadBusinesses(businessAccountId, user.id)
     } catch (error) {
       console.error('Error refreshing businesses:', error)
     }
-  }, [businessAccountId, loadBusinesses])
+  }, [businessAccountId, loadBusinesses, user?.id])
 
   useEffect(() => {
-    if (role === USER_ROLES.BUSINESS_ADMIN && businessAccountId) {
-      // Resetear el estado actual antes de cargar nuevos negocios
-      // Esto evita que se muestren datos de una cuenta anterior
+    if (role === USER_ROLES.BUSINESS_ADMIN && businessAccountId && user?.id) {
+      // Validar que los datos corresponden al usuario actual
       const currentState = useActiveBusinessStore.getState()
-      const needsReset =
-        currentState.businesses.length > 0 &&
-        currentState.businesses[0]?.business_account_id !== businessAccountId
-
-      if (needsReset) {
+      
+      // Si el usuario cambió, resetear completamente
+      if (currentState.userId && currentState.userId !== user.id) {
+        console.log('[BusinessSwitcher] Cambio de usuario detectado, limpiando estado...')
         useActiveBusinessStore.getState().reset()
       }
 
-      loadBusinesses(businessAccountId)
+      loadBusinesses(businessAccountId, user.id)
     }
-  }, [role, businessAccountId, loadBusinesses])
+  }, [role, businessAccountId, loadBusinesses, user?.id])
 
   if (isUserLoading) {
     return null

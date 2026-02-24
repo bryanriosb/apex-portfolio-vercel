@@ -24,7 +24,6 @@ export interface BusinessAccount {
   plan_id: string | null
   custom_trial_days: number | null
   tutorial_started: boolean
-  created_by: string
   created_at: string
   updated_at: string
   mp_subscription_id: string | null
@@ -35,6 +34,7 @@ export interface BusinessAccount {
   payment_status: PaymentStatus
   payment_method_last4: string | null
   payment_method_brand: string | null
+  tenant_name: string | null
 }
 
 export class BusinessAccount implements BusinessAccount {
@@ -69,6 +69,7 @@ export class BusinessAccount implements BusinessAccount {
   payment_status: PaymentStatus
   payment_method_last4: string | null
   payment_method_brand: string | null
+  tenant_name: string | null
 
   constructor(data: BusinessAccount) {
     this.id = data.id
@@ -102,6 +103,7 @@ export class BusinessAccount implements BusinessAccount {
     this.payment_status = data.payment_status
     this.payment_method_last4 = data.payment_method_last4
     this.payment_method_brand = data.payment_method_brand
+    this.tenant_name = data.tenant_name
   }
 
   isActive(): boolean {
@@ -147,6 +149,7 @@ export interface BusinessAccountInsert {
   payment_status?: PaymentStatus
   payment_method_last4?: string | null
   payment_method_brand?: string | null
+  tenant_name?: string | null
 }
 
 export interface BusinessAccountUpdate {
@@ -177,4 +180,5 @@ export interface BusinessAccountUpdate {
   payment_status?: PaymentStatus
   payment_method_last4?: string | null
   payment_method_brand?: string | null
+  tenant_name?: string | null
 }

@@ -1,4 +1,5 @@
 import { getSupabaseAdminClient } from '@/lib/actions/supabase'
+import { EmailBlacklistService } from '@/lib/services/collection/email-blacklist-service'
 import type { EmailEvent } from '../parsers/ses-parser'
 
 /**
@@ -52,75 +53,82 @@ export async function processEmailEvent(
             throw eventError
         }
 
-            // Actualizar status del cliente según el evento
-            if (client) {
-                let newStatus = client.status
-                let shouldUpdateMetrics = true
+        // Actualizar status del cliente según el evento
+        if (client) {
+            let newStatus = client.status
+            let shouldUpdateMetrics = true
 
-                switch (event.eventType) {
-                    case 'delivered':
-                        newStatus = 'delivered'
-                        break
-                    case 'bounced':
-                        newStatus = 'bounced'
-                        break
-                    case 'complained':
-                        newStatus = 'complained'
-                        break
-                    case 'opened':
-                        // Solo actualizar si aún no está en un estado más avanzado
-                        if (client.status === 'sent' || client.status === 'delivered') {
-                            newStatus = 'opened'
-                        } else if (client.status === 'opened') {
-                            // Ya fue abierto anteriormente, no contar métricas duplicadas
-                            shouldUpdateMetrics = false
-                            console.log(`Client ${client.id} already opened, skipping duplicate metrics`)
-                        }
-                        break
-                    case 'clicked':
-                        // Click indica alto engagement, actualizar a 'opened' si aún no lo está
-                        if (client.status === 'sent' || client.status === 'delivered') {
-                            newStatus = 'opened'
-                        }
-                        // No cambiamos el status si ya está en 'opened', solo registramos el evento
-                        break
-                    case 'failed':
-                        newStatus = 'failed'
-                        break
-                }
-
-                if (newStatus !== client.status) {
-                    const updatedCustomData = {
-                        ...client.custom_data,
-                        [`${event.eventType}_at`]: event.timestamp,
+            switch (event.eventType) {
+                case 'delivered':
+                    newStatus = 'delivered'
+                    break
+                case 'bounced':
+                    newStatus = 'bounced'
+                    break
+                case 'complained':
+                    newStatus = 'complained'
+                    break
+                case 'opened':
+                    // Solo actualizar si aún no está en un estado más avanzado
+                    if (client.status === 'sent' || client.status === 'delivered') {
+                        newStatus = 'opened'
+                    } else if (client.status === 'opened') {
+                        // Ya fue abierto anteriormente, no contar métricas duplicadas
+                        shouldUpdateMetrics = false
+                        console.log(`Client ${client.id} already opened, skipping duplicate metrics`)
                     }
-
-                    const { error: updateError } = await supabase
-                        .from('collection_clients')
-                        .update({
-                            status: newStatus,
-                            custom_data: updatedCustomData,
-                        })
-                        .eq('id', client.id)
-
-                    if (updateError) {
-                        console.error('Error updating client status:', updateError)
-                        throw updateError
+                    break
+                case 'clicked':
+                    // Click indica alto engagement, actualizar a 'opened' si aún no lo está
+                    if (client.status === 'sent' || client.status === 'delivered') {
+                        newStatus = 'opened'
                     }
-
-                    console.log(
-                        `Updated client ${client.id} status: ${client.status} -> ${newStatus}`
-                    )
-                }
-
-                // =====================================================================
-                // SINCRONIZACIÓN DE MÉTRICAS DE REPUTACIÓN (CRÍTICO)
-                // =====================================================================
-                // Solo actualizar métricas si no es un evento de apertura duplicado
-                if (shouldUpdateMetrics) {
-                    await updateReputationMetrics(supabase, client.execution_id, event.eventType)
-                }
+                    // No cambiamos el status si ya está en 'opened', solo registramos el evento
+                    break
+                case 'failed':
+                    newStatus = 'failed'
+                    break
             }
+
+            if (newStatus !== client.status) {
+                const updatedCustomData = {
+                    ...client.custom_data,
+                    [`${event.eventType}_at`]: event.timestamp,
+                }
+
+                const { error: updateError } = await supabase
+                    .from('collection_clients')
+                    .update({
+                        status: newStatus,
+                        custom_data: updatedCustomData,
+                    })
+                    .eq('id', client.id)
+
+                if (updateError) {
+                    console.error('Error updating client status:', updateError)
+                    throw updateError
+                }
+
+                console.log(
+                    `Updated client ${client.id} status: ${client.status} -> ${newStatus}`
+                )
+            }
+
+            // =====================================================================
+            // SINCRONIZACIÓN DE MÉTRICAS DE REPUTACIÓN (CRÍTICO)
+            // =====================================================================
+            // Solo actualizar métricas si no es un evento de apertura duplicado
+            if (shouldUpdateMetrics) {
+                await updateReputationMetrics(supabase, client.execution_id, event.eventType)
+            }
+
+            // =====================================================================
+            // AGREGAR A BLACKLIST SI ES BOUNCE O COMPLAINT
+            // =====================================================================
+            if (event.eventType === 'bounced' || event.eventType === 'complained') {
+                await addToBlacklistFromEvent(supabase, client, event, provider)
+            }
+        }
 
         console.log(
             `Processed ${provider} ${event.eventType} event for ${event.email}`
@@ -294,20 +302,32 @@ async function recalculateProfileRates(supabase: any, profileId: string): Promis
         .eq('id', profileId)
         .single()
 
-    if (profile && profile.total_emails_sent > 0) {
-        const deliveryRate = (profile.total_emails_delivered / profile.total_emails_sent) * 100
-        const openRate = profile.total_emails_delivered > 0 ? (profile.total_emails_opened / profile.total_emails_delivered) * 100 : 0
-        const bounceRate = (profile.total_emails_bounced / profile.total_emails_sent) * 100
-        const complaintRate = (profile.total_complaints / profile.total_emails_sent) * 100
+    if (profile) {
+        // Use max(sent, delivered) as denominator to handle desync where delivered > sent
+        const baseSent = Math.max(profile.total_emails_sent || 0, profile.total_emails_delivered || 0)
+        if (baseSent === 0) return
+
+        const deliveryRate = Math.min(100, ((profile.total_emails_delivered || 0) / baseSent) * 100)
+        const openRate = profile.total_emails_delivered > 0
+            ? Math.min(100, ((profile.total_emails_opened || 0) / profile.total_emails_delivered) * 100)
+            : 0
+        const bounceRate = Math.min(100, ((profile.total_emails_bounced || 0) / baseSent) * 100)
+        const complaintRate = Math.min(100, ((profile.total_complaints || 0) / baseSent) * 100)
+
+        // Sync total_emails_sent if it's behind delivered (data desync)
+        const updatePayload: Record<string, number> = {
+            delivery_rate: Number(deliveryRate.toFixed(2)),
+            open_rate: Number(openRate.toFixed(2)),
+            bounce_rate: Number(bounceRate.toFixed(2)),
+            complaint_rate: Number(complaintRate.toFixed(2)),
+        }
+        if ((profile.total_emails_sent || 0) < (profile.total_emails_delivered || 0)) {
+            updatePayload.total_emails_sent = profile.total_emails_delivered
+        }
 
         await supabase
             .from('email_reputation_profiles')
-            .update({
-                delivery_rate: Number(deliveryRate.toFixed(2)),
-                open_rate: Number(openRate.toFixed(2)),
-                bounce_rate: Number(bounceRate.toFixed(2)),
-                complaint_rate: Number(complaintRate.toFixed(2)),
-            })
+            .update(updatePayload)
             .eq('id', profileId)
     }
 }
@@ -335,5 +355,65 @@ async function recalculateDailyRates(supabase: any, dailyLimitId: string): Promi
                 day_bounce_rate: Number(dayBounceRate.toFixed(2)),
             })
             .eq('id', dailyLimitId)
+    }
+}
+
+/**
+ * Agrega email a la blacklist cuando ocurre un bounce o complaint
+ */
+async function addToBlacklistFromEvent(
+    supabase: any,
+    client: any,
+    event: EmailEvent,
+    provider: string
+): Promise<void> {
+    try {
+        // Obtener business_id de la ejecución
+        const { data: execution, error: execError } = await supabase
+            .from('collection_executions')
+            .select('business_id')
+            .eq('id', client.execution_id)
+            .single()
+
+        if (execError || !execution) {
+            console.error('Error fetching execution for blacklist:', execError)
+            return
+        }
+
+        const businessId = execution.business_id
+
+        // Obtener customer_id del cliente
+        const customerId = client.customer_id || null
+
+        // Determinar tipo de bounce
+        const bounceType = event.eventType === 'bounced' 
+            ? (event.metadata?.bounceType as 'hard' | 'soft' | 'complaint') || 'hard'
+            : 'complaint'
+
+        // Obtener razón del bounce
+        const bounceReason = event.metadata?.bounceReason || 
+            event.metadata?.reason || 
+            (event.eventType === 'complained' ? 'User complaint' : 'Unknown bounce reason')
+
+        // Agregar a blacklist usando el servicio
+        const result = await EmailBlacklistService.addToBlacklist(
+            businessId,
+            event.email,
+            bounceType,
+            bounceReason,
+            customerId,
+            client.execution_id,
+            client.id,
+            provider
+        )
+
+        if (result.success) {
+            console.log(`✅ Added ${event.email} to blacklist (${bounceType}): ${bounceReason}`)
+        } else {
+            console.error(`❌ Failed to add ${event.email} to blacklist:`, result.error)
+        }
+    } catch (error) {
+        console.error('Error adding to blacklist from event:', error)
+        // No lanzamos el error para no interrumpir el procesamiento del webhook
     }
 }

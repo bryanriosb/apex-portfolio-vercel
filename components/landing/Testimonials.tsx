@@ -7,7 +7,7 @@ const testimonials = [
   {
     name: 'Maria Garcia',
     role: 'Dueña de Salon Elegance',
-    content: 'Desde que uso Beluvio, mis cancelaciones bajaron un 40%. Los recordatorios automáticos por WhatsApp son increíbles.',
+    content: 'Desde que uso APEX, mis cancelaciones bajaron un 40%. Los recordatorios automáticos por WhatsApp son increíbles.',
     rating: 5,
     highlight: 'Reduce cancelaciones',
   },
@@ -114,7 +114,7 @@ export function Testimonials() {
           </div>
           <div className="text-center">
             <p className="text-4xl font-bold bg-gradient-to-r from-secondary to-accent bg-clip-text text-transparent">98%</p>
-            <p className="text-sm text-muted-foreground mt-1">Recomendarían Beluvio</p>
+            <p className="text-sm text-muted-foreground mt-1">Recomendarían APEX</p>
           </div>
         </motion.div>
       </div>

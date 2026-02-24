@@ -16,6 +16,10 @@ export const AUTH_OPTIONS: AuthOptions = {
           label: 'Password',
           type: 'password',
         },
+        turnstileToken: {
+          label: 'Turnstile Token',
+          type: 'text',
+        },
       },
       async authorize(credentials) {
         const userSessionData = await authenticate(credentials)

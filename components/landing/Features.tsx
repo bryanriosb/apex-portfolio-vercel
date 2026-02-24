@@ -217,11 +217,11 @@ export function Features() {
                         </div>
                         <div>
                           <p className="text-white font-semibold text-sm">
-                            Asistente Beluvio
+                            Asistente APEX
                           </p>
                           <p className="text-white/60 text-xs flex items-center gap-1">
                             <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
-                             En línea
+                            En línea
                           </p>
                         </div>
                       </div>
@@ -237,7 +237,7 @@ export function Features() {
                         >
                           <div className="bg-primary/30 rounded-2xl rounded-tr-sm px-4 py-2 max-w-[80%]">
                             <p className="text-white text-sm">
-                               ¡Hola! Quiero agendar un corte para mañana
+                              ¡Hola! Quiero agendar un corte para mañana
                             </p>
                           </div>
                         </motion.div>
@@ -251,8 +251,8 @@ export function Features() {
                         >
                           <div className="bg-white/20 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[80%]">
                             <p className="text-white text-sm">
-                               ¡Perfecto! Tengo disponibilidad mañana a las 10:00,
-                               14:00 y 16:30. ¿Cuál prefieres?
+                              ¡Perfecto! Tengo disponibilidad mañana a las 10:00,
+                              14:00 y 16:30. ¿Cuál prefieres?
                             </p>
                           </div>
                         </motion.div>
@@ -280,8 +280,8 @@ export function Features() {
                         >
                           <div className="bg-white/20 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[80%]">
                             <p className="text-white text-sm">
-                               ¡Listo! Tu cita quedó agendada para mañana a las
-                               10:00. Te envío confirmación por WhatsApp
+                              ¡Listo! Tu cita quedó agendada para mañana a las
+                              10:00. Te envío confirmación por WhatsApp
                             </p>
                           </div>
                         </motion.div>

@@ -371,23 +371,23 @@ export async function fetchCompanyServiceAnalyticsAction(
     prices: number[]
   }>()
 
-   data.forEach(item => {
-     const serviceName = (item.services as any)?.name || 'Sin nombre'
-     const revenue = item.price_at_booking_cents || 0
+  data.forEach(item => {
+    const serviceName = (item.services as any)?.name || 'Sin nombre'
+    const revenue = item.price_at_booking_cents || 0
 
-     if (serviceStats.has(serviceName)) {
-       const stats = serviceStats.get(serviceName)!
-       stats.total_appointments += 1
-       stats.total_revenue += revenue
-       stats.prices.push(revenue)
-     } else {
-       serviceStats.set(serviceName, {
-         total_appointments: 1,
-         total_revenue: revenue,
-         prices: [revenue]
-       })
-     }
-   })
+    if (serviceStats.has(serviceName)) {
+      const stats = serviceStats.get(serviceName)!
+      stats.total_appointments += 1
+      stats.total_revenue += revenue
+      stats.prices.push(revenue)
+    } else {
+      serviceStats.set(serviceName, {
+        total_appointments: 1,
+        total_revenue: revenue,
+        prices: [revenue]
+      })
+    }
+  })
 
   const totalAppointments = Array.from(serviceStats.values()).reduce((sum, stats) => sum + stats.total_appointments, 0)
 

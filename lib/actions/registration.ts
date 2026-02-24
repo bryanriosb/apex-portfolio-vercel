@@ -1,6 +1,7 @@
 'use server'
 
 import { getSupabaseAdminClient } from './supabase'
+import { verifyTurnstileToken } from '@/lib/services/turnstile/turnstile-service'
 import type { BusinessType } from '@/lib/types/enums'
 
 export interface RegisterBusinessData {
@@ -14,6 +15,7 @@ export interface RegisterBusinessData {
   city: string
   state: string
   address: string
+  turnstileToken: string
 }
 
 export interface RegisterBusinessResult {
@@ -24,11 +26,38 @@ export interface RegisterBusinessResult {
 export async function registerBusinessAction(
   data: RegisterBusinessData
 ): Promise<RegisterBusinessResult> {
+  // Validate Turnstile token first
+  if (!data.turnstileToken) {
+    return {
+      success: false,
+      error: 'Verificación de seguridad requerida. Por favor, completa el captcha.',
+    }
+  }
+
+  const turnstileResult = await verifyTurnstileToken(data.turnstileToken)
+  if (!turnstileResult.success) {
+    return {
+      success: false,
+      error: turnstileResult.error || 'Verificación de seguridad fallida. Por favor, intenta de nuevo.',
+    }
+  }
+
   const client = await getSupabaseAdminClient()
 
   let authUserId: string | null = null
-  let userProfileId: string | null = null
-  let businessAccountId: string | null = null
+  const businessAccountId = crypto.randomUUID()
+  const businessId = crypto.randomUUID()
+  
+  // Generar tenant_name basado en el nombre del negocio
+  const tenantSlug = data.businessName
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .slice(0, 30)
+  const tenantName = `${tenantSlug}-${businessAccountId.slice(0, 8)}`
 
   try {
     // 1. Verificar que el email no exista
@@ -44,66 +73,11 @@ export async function registerBusinessAction(
       }
     }
 
-    // 2. Crear usuario en Supabase Auth
-    const authUserData: any = {
-      email: data.email,
-      password: data.password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: data.fullName,
-        name: data.fullName,
-      },
-    }
-
-    // Solo agregar phone si existe y no está vacío
-    if (data.phone && data.phone.trim() !== '') {
-      authUserData.phone = data.phone
-      authUserData.phone_confirm = true
-    }
-
-    const { data: authData, error: authError } =
-      await client.auth.admin.createUser(authUserData)
-
-    if (authError || !authData.user) {
-      console.error('Error creating auth user:', authError)
-      return {
-        success: false,
-        error: authError?.message || 'Error al crear la cuenta',
-      }
-    }
-
-    console.log('Auth user created successfully:', {
-      id: authData.user.id,
-      email: authData.user.email,
-      phone: authData.user.phone,
-      user_metadata: authData.user.user_metadata,
-    })
-
-    authUserId = authData.user.id
-
-    // 3. Crear users_profile con rol business_admin
-    const { data: profileData, error: profileError } = await client
-      .from('users_profile')
-      .insert({
-        user_id: authUserId,
-        role: 'business_admin',
-        city: data.city,
-        state: data.state,
-        country: 'CO',
-      })
-      .select()
-      .single()
-
-    if (profileError || !profileData) {
-      throw new Error(profileError?.message || 'Error al crear el perfil')
-    }
-
-    userProfileId = profileData.id
-
-    // 4. Crear business_account
-    const { data: accountData, error: accountError } = await client
+    // 2. Crear business_account PRIMERO
+    const { error: accountError } = await client
       .from('business_accounts')
       .insert({
+        id: businessAccountId,
         company_name: data.businessName,
         contact_name: data.fullName,
         contact_email: data.email,
@@ -117,37 +91,18 @@ export async function registerBusinessAction(
         settings: {
           professional_count: data.professionalCount,
         },
-        created_by: authUserId,
+        tenant_name: tenantName,
       })
-      .select()
-      .single()
 
-    if (accountError || !accountData) {
+    if (accountError) {
       throw new Error(
-        accountError?.message || 'Error al crear la cuenta de negocio'
+        accountError.message || 'Error al crear la cuenta de negocio'
       )
     }
 
-    businessAccountId = accountData.id
-
-    // 5. Crear business_account_member (vincular usuario a la cuenta)
-    const { error: memberError } = await client
-      .from('business_account_members')
-      .insert({
-        business_account_id: businessAccountId,
-        user_profile_id: userProfileId,
-        role: 'owner',
-        status: 'active',
-      })
-
-    if (memberError) {
-      throw new Error(
-        memberError.message || 'Error al vincular usuario a la cuenta'
-      )
-    }
-
-    // 6. Crear primera sucursal (business)
+    // 3. Crear primera sucursal (business) SEGUNDO
     const { error: businessError } = await client.from('businesses').insert({
+      id: businessId,
       business_account_id: businessAccountId,
       name: data.businessName,
       address: data.address,
@@ -161,7 +116,65 @@ export async function registerBusinessAction(
       throw new Error(businessError.message || 'Error al crear la sucursal')
     }
 
-    // 7. Iniciar período de trial
+    // 4. Crear usuario en Supabase Auth ULTIMO (con los IDs ya creados)
+    const authUserData: any = {
+      email: data.email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: data.fullName,
+        name: data.fullName,
+        email_verified: true,
+        role: 'business_admin',
+        business_id: businessId,
+        business_account_id: businessAccountId,
+        business_type: data.businessType,
+        subscription_plan: 'trial',
+        businesses: [{
+          id: businessId,
+          name: data.businessName,
+          business_account_id: businessAccountId
+        }],
+        tenant_name: tenantName,
+      },
+      app_metadata: {
+        provider: 'email',
+        providers: ['email'],
+        role: 'business_admin',
+        business_id: businessId,
+        business_account_id: businessAccountId,
+        business_type: data.businessType,
+        subscription_plan: 'trial',
+        businesses: [{
+          id: businessId,
+          name: data.businessName,
+          business_account_id: businessAccountId
+        }],
+        tenant_name: tenantName,
+      }
+    }
+
+    if (data.phone && data.phone.trim() !== '') {
+      authUserData.phone = data.phone
+      authUserData.phone_confirm = true
+    }
+
+    const { data: authData, error: authError } =
+      await client.auth.admin.createUser(authUserData)
+
+    if (authError || !authData.user) {
+      throw new Error(authError?.message || 'Error al crear el usuario')
+    }
+
+    authUserId = authData.user.id
+
+    console.log('Registration successful:', {
+      user_id: authUserId,
+      business_account_id: businessAccountId,
+      business_id: businessId,
+    })
+
+    // 5. Iniciar período de trial
     const { error: trialError } = await client.rpc('start_trial_for_account', {
       p_business_account_id: businessAccountId,
       p_custom_trial_days: null,
@@ -173,28 +186,17 @@ export async function registerBusinessAction(
 
     return { success: true }
   } catch (error: any) {
-    // Rollback en caso de error
-    if (businessAccountId) {
-      await client
-        .from('businesses')
-        .delete()
-        .eq('business_account_id', businessAccountId)
-      await client
-        .from('business_account_members')
-        .delete()
-        .eq('business_account_id', businessAccountId)
-      await client
-        .from('business_accounts')
-        .delete()
-        .eq('id', businessAccountId)
-    }
-
-    if (userProfileId) {
-      await client.from('users_profile').delete().eq('id', userProfileId)
-    }
-
+    // Rollback en caso de error (en orden inverso)
     if (authUserId) {
       await client.auth.admin.deleteUser(authUserId)
+    }
+
+    if (businessId) {
+      await client.from('businesses').delete().eq('id', businessId)
+    }
+
+    if (businessAccountId) {
+      await client.from('business_accounts').delete().eq('id', businessAccountId)
     }
 
     console.error('Registration error:', error)

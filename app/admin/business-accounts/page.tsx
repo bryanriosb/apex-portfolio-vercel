@@ -169,7 +169,7 @@ export default function BusinessAccountsPage() {
         }
         const result = await businessAccountService.createAccountWithOwner(
           accountData,
-          user.user_profile_id || undefined
+          user.id || undefined
         )
 
         if (result.success) {

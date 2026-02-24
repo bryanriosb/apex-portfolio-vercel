@@ -21,7 +21,7 @@ export async function sendEmailMailgun(params: {
   const { from, to, subject, body } = params
   try {
     const mailgun = await getMailgunClient()
-    const data = await mailgun.messages.create('beluvio.borls.com', {
+    const data = await mailgun.messages.create('apex.borls.com', {
       from,
       to,
       subject,

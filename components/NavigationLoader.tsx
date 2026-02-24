@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
+import Loading from './ui/loading'
 
 export function NavigationLoader({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -47,7 +47,7 @@ export function NavigationLoader({ children }: { children: React.ReactNode }) {
       {isNavigating && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
           <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <Loading className="h-10 w-10 text-primary" />
             <p className="text-sm text-muted-foreground">Cargando...</p>
           </div>
         </div>

@@ -1,3 +1,4 @@
+export { GeneralTab } from './GeneralTab'
 export { DeliveryStrategiesTab } from './DeliveryStrategiesTab'
 export { DomainReputationTab } from './DomainReputationTab'
 export { ThresholdsTab } from './ThresholdsTab'

@@ -11,9 +11,9 @@ import {
 } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Política de Cookies | Beluvio - Plataforma para Negocios de Belleza',
+  title: 'Política de Cookies | APEX - Plataforma para Negocios de Belleza',
   description:
-    'Política de cookies y tecnologías similares de Beluvio, conforme a la normativa colombiana y europea.',
+    'Política de cookies y tecnologías similares de APEX, conforme a la normativa colombiana y europea.',
   robots: 'index, follow',
 }
 
@@ -51,7 +51,7 @@ export default function PoliticaCookies() {
           <div className="bg-card/50 rounded-2xl p-8 border border-border/50">
             <p className="text-lg leading-relaxed text-muted-foreground">
               Esta Política de Cookies explica cómo BORLS SAS, propietaria de la
-              plataforma Beluvio, utiliza cookies y tecnologías similares en
+              plataforma APEX, utiliza cookies y tecnologías similares en
               nuestro sitio web y plataforma digital. Nuestro objetivo es ser
               transparentes sobre cómo recopilamos información para mejorar su
               experiencia.
@@ -72,7 +72,7 @@ export default function PoliticaCookies() {
             </p>
             <p className="text-muted-foreground">
               Las cookies son ampliamente utilizadas en internet y facilitan una
-              experiencia de usuario más eficiente y personalizada. En Beluvio,
+              experiencia de usuario más eficiente y personalizada. En APEX,
               utilizamos cookies tanto propias como de terceros.
             </p>
           </section>
@@ -291,7 +291,7 @@ export default function PoliticaCookies() {
                 <p className="text-sm text-yellow-700 dark:text-yellow-300">
                   Si deshabilita todas las cookies, algunas funcionalidades de
                   nuestro sitio web podrían no estar disponibles, lo que podría
-                  afectar su experiencia de uso de la plataforma Beluvio.
+                  afectar su experiencia de uso de la plataforma APEX.
                 </p>
               </div>
             </div>
@@ -350,25 +350,25 @@ export default function PoliticaCookies() {
             <h2 className="text-2xl font-semibold mb-4">Contacto</h2>
             <p className="text-muted-foreground mb-4">
               Si tiene alguna pregunta sobre nuestra Política de Cookies o sobre
-              cómo utilizamos las cookies en Beluvio, no dude en contactarnos:
+              cómo utilizamos las cookies en APEX, no dude en contactarnos:
             </p>
             <div className="space-y-2">
               <p className="flex items-center gap-2 text-muted-foreground">
                 <Mail className="h-4 w-4 text-secondary" />
-                <strong>Correo electrónico:</strong> privacy@borls.com
+                <strong>Correo electrónico:</strong> admin@borls.com
               </p>
               <p className="flex items-center gap-2 text-muted-foreground">
                 <Mail className="h-4 w-4 text-secondary" />
-                <strong>Correo alternativo:</strong> beluvio@borls.com
+                <strong>Correo alternativo:</strong> admin@borls.com
               </p>
               <p className="flex items-center gap-2 text-muted-foreground">
                 <Phone className="h-4 w-4 text-secondary" />
-                <strong>Teléfono:</strong> +57 321 727 8684
+                <strong>Teléfono:</strong> +57 3245134148
               </p>
               <p className="flex items-center gap-2 text-muted-foreground">
                 <Cookie className="h-4 w-4 text-secondary" />
                 <strong>Responsable de Protección de Datos:</strong>{' '}
-                privacy@borls.com
+                admin@borls.com
               </p>
             </div>
           </section>
@@ -400,7 +400,7 @@ export default function PoliticaCookies() {
           <div className="bg-card/50 rounded-2xl p-6 border border-border/50 mt-8">
             <p className="text-sm text-muted-foreground text-center">
               Esta Política de Cookies constituye un acuerdo legal entre usted y
-              BORLS SAS. Al continuar utilizando la plataforma Beluvio, usted
+              BORLS SAS. Al continuar utilizando la plataforma APEX, usted
               acepta el uso de cookies conforme a esta política.
             </p>
           </div>

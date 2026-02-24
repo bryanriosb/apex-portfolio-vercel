@@ -7,7 +7,6 @@ import { getReputationSummaryAction } from '@/lib/actions/collection/email-strat
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
@@ -136,8 +135,8 @@ export function DomainReputationTab() {
                       profile.has_reputation_issues
                         ? 'bg-red-100 text-red-700'
                         : profile.is_warmed_up
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-blue-100 text-blue-700'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-blue-100 text-blue-700'
                     )}
                   >
                     <Globe className="w-5 h-5" />
@@ -194,14 +193,14 @@ export function DomainReputationTab() {
                     <span
                       className={cn(
                         'font-medium',
-                        getRateColor(profile.delivery_rate, 'good')
+                        getRateColor(Math.min(100, profile.delivery_rate), 'good')
                       )}
                     >
-                      {profile.delivery_rate.toFixed(1)}%
+                      {Math.min(100, profile.delivery_rate).toFixed(1)}%
                     </span>
                   </div>
                   <Progress
-                    value={profile.delivery_rate}
+                    value={Math.min(100, profile.delivery_rate)}
                     className="h-2"
                     // @ts-ignore
                     indicatorClassName={getProgressColor(profile.delivery_rate, 'good')}
@@ -218,14 +217,14 @@ export function DomainReputationTab() {
                     <span
                       className={cn(
                         'font-medium',
-                        getRateColor(profile.open_rate, 'good')
+                        getRateColor(Math.min(100, profile.open_rate), 'good')
                       )}
                     >
-                      {profile.open_rate.toFixed(1)}%
+                      {Math.min(100, profile.open_rate).toFixed(1)}%
                     </span>
                   </div>
                   <Progress
-                    value={profile.open_rate}
+                    value={Math.min(100, profile.open_rate)}
                     className="h-2"
                     // @ts-ignore
                     indicatorClassName={getProgressColor(profile.open_rate, 'good')}

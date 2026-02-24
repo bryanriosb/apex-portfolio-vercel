@@ -9,7 +9,6 @@ import { SidebarSkeleton } from '@/components/SidebarSkeleton'
 import { getAccessibleModules } from '@/lib/actions/sidebar'
 import { NavigationLoader } from '@/components/NavigationLoader'
 import { PermissionsLoader } from '@/components/PermissionsLoader'
-import { TutorialProvider } from '@/components/tutorials/TutorialProvider'
 import { TrialProviderClient } from '@/components/trial/TrialProviderClient'
 import { getTrialDataFromServer } from '@/lib/services/trial/trial-server-service'
 
@@ -21,8 +20,7 @@ export default async function AdminLayout({
   // Obtener sesión del servidor
   const session = await getServerSession(AUTH_OPTIONS)
   const user = session?.user as any
-
-  console.log('session:', session)
+  const sidebarOpen = true
 
   // Obtener módulos accesibles desde el servidor
   const businessAccountId = user?.business_account_id || null
@@ -37,7 +35,7 @@ export default async function AdminLayout({
   const trialData = await getTrialDataFromServer()
 
   return (
-    <SidebarProvider defaultOpen={false}>
+    <SidebarProvider defaultOpen={sidebarOpen}>
       <Suspense fallback={<SidebarSkeleton />}>
         <AppSidebar accessibleModules={accessibleModules} />
       </Suspense>

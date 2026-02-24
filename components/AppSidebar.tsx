@@ -20,6 +20,7 @@ import { NavMain } from './NavMain'
 import { BusinessSwitcher } from './BusinessSwitcher'
 import { SubscriptionOnlyMenu } from './SubscriptionOnlyMenu'
 import { SelectSeparator } from './ui/select'
+import Logo from './Logo'
 
 interface AppSidebarProps {
   accessibleModules: string[]
@@ -177,7 +178,7 @@ export function AppSidebar({ accessibleModules }: AppSidebarProps) {
                   : 'scale-100 opacity-100'
               }`}
               alt="logo"
-              src="/beluvio-small.svg"
+              src="/APEX-small.svg"
               width={28}
               height={28}
               style={{
@@ -192,7 +193,7 @@ export function AppSidebar({ accessibleModules }: AppSidebarProps) {
                 isCollapsed ? 'absolute' : 'relative'
               }`}
               alt="logo"
-              src="/beluvio.svg"
+              src="/APEX.svg"
               width={120}
               height={20}
               style={{
@@ -202,32 +203,7 @@ export function AppSidebar({ accessibleModules }: AppSidebarProps) {
               }}
             />
             */}
-            <div
-              className={`font-bold text-3xl transition-all duration-300 ease-in-out dark:brightness-0 dark:invert ${
-                isCollapsed
-                  ? 'scale-100 opacity-100 absolute'
-                  : 'scale-100 opacity-100'
-              }`}
-              style={{
-                position: isCollapsed ? 'relative' : 'absolute',
-                transform: isCollapsed ? 'scale(1)' : 'scale(0)',
-                opacity: isCollapsed ? 1 : 0,
-              }}
-            >
-              P
-            </div>
-            <div
-              className={`font-bold text-3xl transition-all duration-300 ease-in-out dark:brightness-0 dark:invert ${
-                isCollapsed ? 'absolute' : 'relative'
-              }`}
-              style={{
-                position: isCollapsed ? 'absolute' : 'relative',
-                transform: isCollapsed ? 'scale(0)' : 'scale(1)',
-                opacity: isCollapsed ? 0 : 1,
-              }}
-            >
-              P-APEX
-            </div>
+            <Logo />
           </div>
         </div>
 

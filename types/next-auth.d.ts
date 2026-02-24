@@ -30,8 +30,6 @@ declare module 'next-auth' {
       name: string
       business_account_id: string
     }> | null
-    user_profile_id?: string | null
-    specialist_id?: string | null
   }
 }
 

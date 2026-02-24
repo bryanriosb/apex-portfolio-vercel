@@ -1,6 +1,6 @@
 {
-  "name": "Beluvio - Software de Gestión para Negocios de Belleza",
-  "short_name": "Beluvio",
+  "name": "APEX - Software de Gestión para Negocios de Belleza",
+  "short_name": "APEX",
   "description": "Plataforma todo-en-uno para gestionar tu estética, spa, barbería o centro de belleza. Agenda inteligente, WhatsApp integrado, asistente IA 24/7.",
   "start_url": "/",
   "display": "standalone",
@@ -9,7 +9,11 @@
   "orientation": "portrait-primary",
   "scope": "/",
   "lang": "es",
-  "categories": ["business", "productivity", "utilities"],
+  "categories": [
+    "business",
+    "productivity",
+    "utilities"
+  ],
   "icons": [
     {
       "src": "/favicon.ico",
@@ -17,7 +21,7 @@
       "type": "image/x-icon"
     },
     {
-      "src": "/beluvio.svg",
+      "src": "/APEX.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"

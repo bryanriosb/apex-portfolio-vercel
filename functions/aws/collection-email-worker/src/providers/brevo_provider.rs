@@ -85,9 +85,8 @@ impl BrevoProvider {
 #[async_trait]
 impl EmailProvider for BrevoProvider {
     async fn send_email(&self, message: EmailMessage) -> Result<SendResult, Box<dyn Error + Send + Sync>> {
-        info!("Sending email via Brevo to: {}", message.to);
+        info!("Sending email via Brevo to: {:?}", message.to);
 
-        // Convert attachments to base64
         let attachments = if !message.attachments.is_empty() {
             let brevo_attachments: Vec<BrevoAttachment> = message.attachments
                 .iter()
@@ -105,13 +104,15 @@ impl EmailProvider for BrevoProvider {
         };
 
         let sender = Self::parse_sender(&message.from);
-        
+
+        let recipients: Vec<BrevoRecipient> = message.to
+            .iter()
+            .map(|email| BrevoRecipient { email: email.clone(), name: None })
+            .collect();
+
         let request_body = BrevoEmailRequest {
             sender,
-            to: vec![BrevoRecipient {
-                email: message.to.clone(),
-                name: None,
-            }],
+            to: recipients,
             subject: message.subject.clone(),
             html_content: message.html_body.clone(),
             text_content: Some(message.text_body.clone()),
@@ -129,7 +130,7 @@ impl EmailProvider for BrevoProvider {
             .await?;
 
         let status = response.status();
-        
+
         if !status.is_success() {
             let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
             error!("Brevo API error ({}): {}", status, error_text);
@@ -137,7 +138,7 @@ impl EmailProvider for BrevoProvider {
         }
 
         let brevo_response: BrevoEmailResponse = response.json().await?;
-        
+
         info!("Email sent successfully via Brevo, message_id: {}", brevo_response.message_id);
 
         Ok(SendResult {
@@ -146,6 +147,7 @@ impl EmailProvider for BrevoProvider {
             metadata: None,
         })
     }
+
 
     fn provider_name(&self) -> &str {
         "Brevo"

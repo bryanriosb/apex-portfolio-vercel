@@ -6,13 +6,12 @@ import type { UserRole } from '@/const/roles'
 
 export interface AuthUser {
   id: string
+  username: string
   email: string
   name: string | null
   role: UserRole
   business_id?: string | null
   business_account_id?: string | null
-  user_profile_id?: string | null
-  specialist_id?: string | null
   business_type?: string | null
   subscription_plan?: string | null
   email_verified?: boolean
@@ -50,33 +49,6 @@ async function getAccountBusinesses(
     return businesses || []
   } catch (err) {
     console.error('Error in getAccountBusinesses:', err)
-    return null
-  }
-}
-
-/**
- * Get specialist data for a professional user
- * @param userProfileId - The user profile ID
- * @returns Specialist data or null
- */
-async function getSpecialistForProfessional(
-  userProfileId: string
-): Promise<{ id: string; business_id: string | null } | null> {
-  try {
-    const supabase = await getSupabaseAdminClient()
-    const { data: specialist, error } = await supabase
-      .from('specialists')
-      .select('id, business_id')
-      .eq('user_profile_id', userProfileId)
-      .single()
-
-    if (error || !specialist) {
-      return null
-    }
-
-    return specialist
-  } catch (err) {
-    console.error('Error in getSpecialistForProfessional:', err)
     return null
   }
 }
@@ -120,128 +92,49 @@ export async function authenticateWithSupabase(
       return null // Retornar null simula credenciales inválidas
     }
 
+    // Ya no usamos tablas legacy. Extraemos todo de user_metadata (o app_metadata)
+    const { user_metadata } = authData.user || {}
+    let businesses = user_metadata?.businesses || null
+    let businessId = user_metadata?.business_id || null
+    let businessAccountId = user_metadata?.business_account_id || null
+    let businessType = user_metadata?.business_type || null
+    let subscriptionPlan = user_metadata?.subscription_plan || null
+    let tenantName = user_metadata?.tenant_name || null
+    let instanceId = user_metadata?.instance_id || null
 
+    // Fallback: Si no hay businesses en metadata pero sí tenemos el businessAccountId, lo consultamos (por si se crearon más sucursales)
+    if ((!businesses || businesses.length === 0) && businessAccountId && userRole === 'business_admin') {
+      const fetchedBusinesses = await getAccountBusinesses(businessAccountId)
+      if (fetchedBusinesses && fetchedBusinesses.length > 0) {
+        businesses = fetchedBusinesses
 
-    // Para business relationships, seguir usando las tablas existentes por ahora
-    // Obtener user_profile_id desde metadata o buscarlo
-    let userProfileId = authData.user.user_metadata?.user_profile_id
+        // Si no teníamos los datos principales, los intentamos inferir del primer negocio
+        if (!businessId) businessId = businesses[0].id
 
-    if (!userProfileId) {
-      // Si no existe en metadata, buscar en la tabla users_profile (compatibilidad)
-      const { data: legacyProfile } = await supabase
-        .from('users_profile')
-        .select('id')
-        .eq('user_id', authData.user.id)
-        .single()
-
-      userProfileId = legacyProfile?.id || null
-    }
-
-    // Luego intentar obtener las membresías (puede que no tenga ninguna)
-    let membership = null
-    if (userProfileId) {
-      const { data: memberships } = await supabase
-        .from('business_account_members')
-        .select('business_account_id, role, status')
-        .eq('user_profile_id', userProfileId)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1)
-
-      membership = memberships?.[0] || null
-    }
-
-
-
-    // Si el usuario es business_admin y tiene una cuenta asociada, obtener sus negocios
-    let businesses = null
-    let specialistId: string | null = null
-    let businessId: string | null = null
-    let businessType: string | null = null
-    let subscriptionPlan: string | null = null
-
-    if (userRole === 'business_admin' && membership?.business_account_id) {
-
-      businesses = await getAccountBusinesses(membership.business_account_id)
-
-
-      // Obtener el tipo de negocio del primer negocio y el plan de la cuenta
-      if (businesses && businesses.length > 0) {
         const { data: firstBusiness } = await supabase
           .from('businesses')
           .select('type')
           .eq('id', businesses[0].id)
           .single()
 
-        if (firstBusiness) {
-          businessType = firstBusiness.type
-        }
-      }
-
-      // Obtener el plan de suscripción de la cuenta
-      const { data: account } = await supabase
-        .from('business_accounts')
-        .select('subscription_plan')
-        .eq('id', membership.business_account_id)
-        .single()
-
-      if (account) {
-        subscriptionPlan = account.subscription_plan
-      }
-    }
-
-    // Si el usuario es professional, obtener su specialist_id y business_id
-    if (userRole === 'professional' && userProfileId) {
-
-      const specialist = await getSpecialistForProfessional(userProfileId)
-
-      if (specialist) {
-        specialistId = specialist.id
-        businessId = specialist.business_id
-
-
-        // Obtener el business para el profesional
-        if (businessId) {
-          const { data: business } = await supabase
-            .from('businesses')
-            .select('id, name, business_account_id, type')
-            .eq('id', businessId)
-            .single()
-
-          if (business) {
-            businesses = [business]
-            businessType = business.type
-
-            // Obtener el plan de suscripción de la cuenta
-            const { data: account } = await supabase
-              .from('business_accounts')
-              .select('subscription_plan')
-              .eq('id', business.business_account_id)
-              .single()
-
-            if (account) {
-              subscriptionPlan = account.subscription_plan
-            }
-          }
-        }
+        if (firstBusiness && !businessType) businessType = firstBusiness.type
       }
     }
 
     return {
       id: authData.user.id,
+      username: authData.user.email || email,
       email: authData.user.email || email,
-      name: authData.user.user_metadata?.name || userRole || 'User',
+      name: user_metadata?.name || userRole || 'User',
       role: (userRole as UserRole) || 'customer',
-      business_id: businessId || authData.user.user_metadata?.business_id || null,
-      business_account_id: membership?.business_account_id || authData.user.user_metadata?.business_account_id || null,
-      business_type: businessType || authData.user.user_metadata?.business_type || null,
-      subscription_plan: subscriptionPlan || authData.user.user_metadata?.subscription_plan || null,
-      email_verified: authData.user.user_metadata?.email_verified || false,
-      tenant_name: authData.user.user_metadata?.tenant_name || null,
-      instance_id: authData.user.user_metadata?.instance_id || null,
+      business_id: businessId,
+      business_account_id: businessAccountId,
+      business_type: businessType,
+      subscription_plan: subscriptionPlan,
+      email_verified: user_metadata?.email_verified || false,
+      tenant_name: tenantName,
+      instance_id: instanceId,
       businesses,
-      user_profile_id: userProfileId,
-      specialist_id: specialistId,
       accessToken: authData.session?.access_token || null,
     }
   } catch (err) {
@@ -280,8 +173,8 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     // NextAuth ya tiene el user en la sesión con todos los datos
     const user = session.user as any
 
-    // Si el user de NextAuth ya tiene todos los campos, retornarlo directamente
-    if (user.id && user.role) {
+    // Si el user de NextAuth ya tiene todos los campos vitales, retornarlo directamente
+    if (user.id && user.role && user.business_id) {
       return user as AuthUser
     }
 
@@ -289,7 +182,6 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     const supabase = await getSupabaseAdminClient()
 
     // Get user from Supabase Auth usando el email de la sesión
-    // Primero listar usuarios para encontrar por email (no hay método directo por email en admin)
     const { data: { users }, error: listError } = await supabase.auth.admin.listUsers()
 
     if (listError) {
@@ -304,121 +196,48 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
       return null
     }
 
-    // Obtener role desde metadata del usuario de Supabase Auth
-    const userRole = authUser.user_metadata?.role || 'customer'
+    const { user_metadata } = authUser || {}
+    const userRole = user_metadata?.role || 'customer'
 
-    // Para business relationships, seguir usando las tablas existentes por ahora
-    // Obtener user_profile_id desde metadata o buscarlo
-    let userProfileId = authUser.user_metadata?.user_profile_id
+    let businesses = user_metadata?.businesses || null
+    let businessId = user_metadata?.business_id || null
+    let businessAccountId = user_metadata?.business_account_id || null
+    let businessType = user_metadata?.business_type || null
+    let subscriptionPlan = user_metadata?.subscription_plan || null
+    let tenantName = user_metadata?.tenant_name || null
+    let instanceId = user_metadata?.instance_id || null
 
-    if (!userProfileId) {
-      // Si no existe en metadata, buscar en la tabla users_profile (compatibilidad)
-      const { data: legacyProfile } = await supabase
-        .from('users_profile')
-        .select('id')
-        .eq('user_id', authUser.id)
-        .single()
+    if ((!businesses || businesses.length === 0) && businessAccountId && userRole === 'business_admin') {
+      const fetchedBusinesses = await getAccountBusinesses(businessAccountId)
+      if (fetchedBusinesses && fetchedBusinesses.length > 0) {
+        businesses = fetchedBusinesses
 
-      userProfileId = legacyProfile?.id || null
-    }
+        if (!businessId) businessId = businesses[0].id
 
-    // Intentar obtener las membresías (puede que no tenga ninguna)
-    let membership = null
-    if (userProfileId) {
-      const { data: memberships } = await supabase
-        .from('business_account_members')
-        .select('business_account_id, role, status')
-        .eq('user_profile_id', userProfileId)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1)
-
-      membership = memberships?.[0] || null
-    }
-
-    // Si el usuario es business_admin y tiene una cuenta asociada, obtener sus negocios
-    let businesses = null
-    let specialistId: string | null = null
-    let businessId: string | null = null
-    let businessType: string | null = null
-    let subscriptionPlan: string | null = null
-
-    if (userRole === 'business_admin' && membership?.business_account_id) {
-      businesses = await getAccountBusinesses(membership.business_account_id)
-
-      // Obtener el tipo de negocio del primer negocio y el plan de la cuenta
-      if (businesses && businesses.length > 0) {
         const { data: firstBusiness } = await supabase
           .from('businesses')
           .select('type')
           .eq('id', businesses[0].id)
           .single()
 
-        if (firstBusiness) {
-          businessType = firstBusiness.type
-        }
-      }
-
-      // Obtener el plan de suscripción de la cuenta
-      const { data: account } = await supabase
-        .from('business_accounts')
-        .select('subscription_plan')
-        .eq('id', membership.business_account_id)
-        .single()
-
-      if (account) {
-        subscriptionPlan = account.subscription_plan
-      }
-    }
-
-    // Si el usuario es professional, obtener su specialist_id y business_id
-    if (userRole === 'professional' && userProfileId) {
-      const specialist = await getSpecialistForProfessional(userProfileId)
-      if (specialist) {
-        specialistId = specialist.id
-        businessId = specialist.business_id
-
-        if (businessId) {
-          const { data: business } = await supabase
-            .from('businesses')
-            .select('id, name, business_account_id, type')
-            .eq('id', businessId)
-            .single()
-
-          if (business) {
-            businesses = [business]
-            businessType = business.type
-
-            // Obtener el plan de suscripción de la cuenta
-            const { data: account } = await supabase
-              .from('business_accounts')
-              .select('subscription_plan')
-              .eq('id', business.business_account_id)
-              .single()
-
-            if (account) {
-              subscriptionPlan = account.subscription_plan
-            }
-          }
-        }
+        if (firstBusiness && !businessType) businessType = firstBusiness.type
       }
     }
 
     return {
       id: authUser.id,
+      username: authUser.email || user.email || '',
       email: authUser.email || user.email || '',
-      name: authUser.user_metadata?.name || user.name || userRole || 'User',
+      name: user_metadata?.name || userRole || 'User',
       role: (userRole as UserRole) || 'customer',
-      business_id: businessId || authUser.user_metadata?.business_id || null,
-      business_account_id: membership?.business_account_id || authUser.user_metadata?.business_account_id || null,
-      business_type: businessType || authUser.user_metadata?.business_type || null,
-      subscription_plan: subscriptionPlan || authUser.user_metadata?.subscription_plan || null,
-      email_verified: authUser.user_metadata?.email_verified || false,
-      tenant_name: authUser.user_metadata?.tenant_name || null,
-      instance_id: authUser.user_metadata?.instance_id || null,
+      business_id: businessId,
+      business_account_id: businessAccountId,
+      business_type: businessType,
+      subscription_plan: subscriptionPlan,
+      email_verified: user_metadata?.email_verified || false,
+      tenant_name: tenantName,
+      instance_id: instanceId,
       businesses,
-      user_profile_id: userProfileId,
-      specialist_id: specialistId,
     }
   } catch (err) {
     console.error('Error getting current user:', err)
@@ -462,21 +281,6 @@ export async function createAdminAccount(
         success: false,
         error: authError?.message || 'Failed to create account',
       }
-    }
-
-    // Optional: Create user profile for backward compatibility
-    // This can be removed later when fully migrated to metadata
-    try {
-      await supabase
-        .from('users_profile')
-        .insert({
-          user_id: authData.user.id,
-          email: email,
-          role: 'company_admin',
-        })
-    } catch (profileError) {
-      // Log but don't fail if profile creation fails
-      console.warn('Profile creation failed (non-critical):', profileError)
     }
 
     return { success: true }

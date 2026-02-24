@@ -1,19 +1,31 @@
 'use server'
 
 import { authenticateWithSupabase } from './supabase-auth'
+import { verifyTurnstileToken } from '@/lib/services/turnstile/turnstile-service'
 
 export async function authenticate(
-  credentials: Record<'username' | 'password', string> | undefined
+  credentials: Record<'username' | 'password' | 'turnstileToken', string> | undefined
 ) {
   try {
     if (!credentials) return null
 
-    // Convert username to email for Supabase Auth
-    const { username, password } = credentials
+    const { username, password, turnstileToken } = credentials
+
+    // Validate Turnstile token
+    if (!turnstileToken) {
+      console.error('Turnstile token is missing')
+      return null
+    }
+
+    const turnstileResult = await verifyTurnstileToken(turnstileToken)
+    if (!turnstileResult.success) {
+      console.error('Turnstile verification failed:', turnstileResult.error)
+      return null
+    }
 
     // Authenticate with Supabase
     const user = await authenticateWithSupabase({
-      email: username, // In case username is actually an email
+      email: username,
       password,
     })
 
@@ -23,6 +35,7 @@ export async function authenticate(
     const userSessionData = {
       id: user.id,
       username: user.email,
+      email: user.email,
       name: user.name || 'Admin',
       role: user.role,
       business_id: user.business_id || user.businesses?.[0]?.id || null,
@@ -33,8 +46,6 @@ export async function authenticate(
       tenant_name: user.tenant_name,
       instance_id: user.instance_id,
       businesses: user.businesses,
-      user_profile_id: user.user_profile_id,
-      specialist_id: user.specialist_id || null,
       accessToken: user.accessToken,
     }
 

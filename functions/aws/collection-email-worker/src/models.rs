@@ -33,8 +33,33 @@ pub struct CollectionClient {
 }
 
 impl CollectionClient {
-    pub fn email(&self) -> Option<&str> {
-        self.custom_data.as_ref()?.get("email")?.as_str()
+    pub fn emails(&self) -> Vec<String> {
+        let Some(cd) = self.custom_data.as_ref() else {
+            return vec![];
+        };
+
+        // New format: emails is a JSON array
+        if let Some(arr) = cd.get("emails").and_then(|v| v.as_array()) {
+            let parsed: Vec<String> = arr
+                .iter()
+                .filter_map(|v| v.as_str())
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+            if !parsed.is_empty() {
+                return parsed;
+            }
+        }
+
+        // Legacy fallback: email is a single string (old records)
+        if let Some(email) = cd.get("email").and_then(|v| v.as_str()) {
+            let trimmed = email.trim().to_string();
+            if !trimmed.is_empty() {
+                return vec![trimmed];
+            }
+        }
+
+        vec![]
     }
 
     pub fn full_name(&self) -> Option<&str> {
@@ -102,4 +127,16 @@ impl BatchMessage {
     pub fn from_body(body: &str) -> Option<Self> {
         serde_json::from_str(body).ok()
     }
+}
+
+// Email Blacklist model
+#[derive(Deserialize, Debug, Clone)]
+pub struct EmailBlacklist {
+    pub id: String,
+    pub business_id: String,
+    pub email: String,
+    pub bounce_type: Option<String>,
+    pub bounce_reason: Option<String>,
+    pub provider: String,
+    pub bounced_at: String,
 }

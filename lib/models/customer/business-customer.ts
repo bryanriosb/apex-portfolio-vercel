@@ -15,7 +15,7 @@ export interface BusinessCustomer {
   company_name?: string | null
   nit: string
   full_name: string
-  email: string
+  emails: string[]
   phone?: string | null
   status: CustomerStatus
   category?: string | null
@@ -33,7 +33,7 @@ export class BusinessCustomerModel implements BusinessCustomer {
   company_name?: string | null
   nit: string
   full_name: string
-  email: string
+  emails: string[]
   phone?: string | null
   status: CustomerStatus
   category?: string | null
@@ -50,7 +50,7 @@ export class BusinessCustomerModel implements BusinessCustomer {
     this.company_name = data.company_name
     this.nit = data.nit
     this.full_name = data.full_name
-    this.email = data.email
+    this.emails = data.emails ?? []
     this.phone = data.phone
     this.status = data.status
     this.category = data.category
@@ -76,7 +76,7 @@ export interface BusinessCustomerInsert {
   company_name?: string | null
   nit: string
   full_name: string
-  email: string
+  emails: string[]
   phone?: string | null
   status?: CustomerStatus
   category?: string | null
@@ -89,7 +89,7 @@ export interface BusinessCustomerUpdate {
   company_name?: string | null
   nit?: string
   full_name?: string
-  email?: string
+  emails?: string[]
   phone?: string | null
   status?: CustomerStatus
   category?: string | null
@@ -103,7 +103,7 @@ export interface CreateCustomerInput {
   company_name?: string | null
   nit: string
   full_name: string
-  email: string
+  emails: string[]
   phone?: string | null
   status?: CustomerStatus
   category?: string | null

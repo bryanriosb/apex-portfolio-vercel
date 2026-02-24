@@ -91,10 +91,10 @@ export const SIDE_APP_MENU_ITEMS: MenuItem[] = [
         title: 'Adjuntos',
         url: '/admin/collection/attachments',
       },
-      {
-        title: 'Torre de Control',
-        url: '/admin/collection/control-tower',
-      },
+      // {
+      //   title: 'Torre de Control',
+      //   url: '/admin/collection/control-tower',
+      // }, )
     ],
   },
   {
@@ -106,6 +106,16 @@ export const SIDE_APP_MENU_ITEMS: MenuItem[] = [
       USER_ROLES.COMPANY_ADMIN,
       USER_ROLES.BUSINESS_ADMIN,
       USER_ROLES.PROFESSIONAL,
+    ],
+    items: [
+      {
+        title: 'Directiorio',
+        url: '/admin/customers',
+      },
+      {
+        title: 'Lista Negra',
+        url: '/admin/customers/blacklist',
+      },
     ],
   },
   {

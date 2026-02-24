@@ -351,13 +351,15 @@ export function GenericImportExportButtons({
 
               <Button
                 onClick={handleImport}
-                disabled={!selectedFile || !!currentSessionId}
+                disabled={!selectedFile || !!currentSessionId || (importProgress && importProgress.status === 'completed')}
               >
                 {!!currentSessionId ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Importando...
                   </>
+                ) : (importProgress && importProgress.status === 'completed') ? (
+                  `Importación Finalizada`
                 ) : (
                   `Importar ${config.displayName}`
                 )}

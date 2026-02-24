@@ -21,13 +21,8 @@ export const Frame5Gobernanza: React.FC<Frame5GobernanzaProps> = () => {
     {
       icon: <FileCheck />,
       title: 'Activos Legales',
-      desc: 'Validación criptográfica de documentos soporte de facturación.',
-      details: [
-        'Certificación bancaria',
-        'RUT válido',
-        'Firma digital',
-        'Trazabilidad',
-      ],
+      desc: 'Documentos soporte con trazabilidad auditada de envíos. Respaldado para cumplimiento DIAN.',
+      details: ['Certif. bancaria', 'RUT', 'Tracking', 'Adjuntos'],
     },
     {
       icon: <Shield />,

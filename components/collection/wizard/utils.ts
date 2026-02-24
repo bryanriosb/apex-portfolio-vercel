@@ -1,8 +1,64 @@
 // utils.ts - Utilidades para el wizard de campañas
 import * as XLSX from 'xlsx'
+import { parse, format, isValid } from 'date-fns'
 import { FileData, REQUIRED_COLUMNS, Invoice, GroupedClient } from './types'
 
-export async function parseInvoiceFile(file: File): Promise<FileData> {
+function tryParseDate(dateStr: string, inputFormat: string): Date | null {
+  if (!dateStr) return null
+
+  // Ensure it's a string and trim
+  const str = String(dateStr).trim()
+  if (!str) return null
+
+  // Map our simple formats to date-fns format strings
+  const formatMap: Record<string, string> = {
+    'DD-MM-AAAA': 'dd-MM-yyyy',
+    'MM-DD-AAAA': 'MM-dd-yyyy',
+    'AAAA-MM-DD': 'yyyy-MM-dd',
+    'DD/MM/AAAA': 'dd/MM/yyyy',
+    'MM/DD/AAAA': 'MM/dd/yyyy',
+  }
+
+  // If it's a predefined format, use the mapped version, otherwise assume it's a custom date-fns format
+  const fnsFormat = formatMap[inputFormat] || inputFormat
+
+  if (fnsFormat) {
+    const parsed = parse(str, fnsFormat, new Date())
+    if (isValid(parsed)) return parsed
+  }
+
+  return null
+}
+
+function formatDateOutput(date: Date | null, outputFormat: string, inputFormat?: string): string {
+  if (!date) return ''
+
+  if (outputFormat === 'same_as_input' && inputFormat) {
+    const inputFormatMap: Record<string, string> = {
+      'DD-MM-AAAA': 'dd-MM-yyyy',
+      'MM-DD-AAAA': 'MM-dd-yyyy',
+      'AAAA-MM-DD': 'yyyy-MM-dd',
+      'DD/MM/AAAA': 'dd/MM/yyyy',
+      'MM/DD/AAAA': 'MM/dd/yyyy',
+    }
+    const fnsFormat = inputFormatMap[inputFormat] || inputFormat
+    return format(date, fnsFormat)
+  }
+
+  const formatMap: Record<string, string> = {
+    'DD-MM-AAAA': 'dd-MM-yyyy',
+    'AAAA-MM-DD': 'yyyy-MM-dd',
+  }
+
+  const fnsFormat = formatMap[outputFormat] || outputFormat || 'dd-MM-yyyy'
+  return format(date, fnsFormat)
+}
+
+export async function parseInvoiceFile(
+  file: File,
+  inputFormat: string,
+  outputFormat: string = 'DD-MM-AAAA'
+): Promise<FileData> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
 
@@ -64,13 +120,25 @@ export async function parseInvoiceFile(file: File): Promise<FileData> {
           const amountDue = Number(rowData['amount_due'] || 0)
           const daysOverdue = Number(rowData['days_overdue'] || 0)
 
+          const rawInvoiceDate = rowData['invoice_date']
+          const rawDueDate = rowData['due_date']
+
+          const parsedInvoiceDate = tryParseDate(rawInvoiceDate, inputFormat)
+          const parsedDueDate = tryParseDate(rawDueDate, inputFormat)
+
+          const formattedInvoiceDate = parsedInvoiceDate ? formatDateOutput(parsedInvoiceDate, outputFormat, inputFormat) : String(rawInvoiceDate || '')
+          const formattedDueDate = parsedDueDate ? formatDateOutput(parsedDueDate, outputFormat, inputFormat) : String(rawDueDate || '')
+
           const invoice: Invoice = {
             amount_due: rowData['amount_due'],
             invoice_number: rowData['invoice_number'],
-            invoice_date: rowData['invoice_date'],
-            due_date: rowData['due_date'],
+            invoice_date: formattedInvoiceDate,
+            due_date: formattedDueDate,
             days_overdue: rowData['days_overdue'],
             ...rowData,
+            // Ensure we override the raw rowData with our formatted dates
+            invoice_date_raw: rawInvoiceDate,
+            due_date_raw: rawDueDate,
           }
 
           if (grouped.has(nit)) {

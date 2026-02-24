@@ -5,7 +5,7 @@ use crate::models::Attachment;
 /// Estructura que encapsula todos los datos necesarios para enviar un email
 #[derive(Debug, Clone)]
 pub struct EmailMessage {
-    pub to: String,
+    pub to: Vec<String>,
     pub subject: String,
     pub html_body: String,
     pub text_body: String,

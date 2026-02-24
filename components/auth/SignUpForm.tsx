@@ -46,19 +46,27 @@ import { ShieldCheck, CheckCircle2 } from 'lucide-react'
 import Loading from '../ui/loading'
 import { StateComboBox } from '@/components/ui/state-combobox'
 import { CityComboBox } from '@/components/ui/city-combobox'
+import { TurnstileWidget } from './TurnstileWidget'
 
 const BUSINESS_TYPES: { value: BusinessType; label: string }[] = [
-  { value: 'BEAUTY_SALON', label: 'Salón de Belleza' },
-  { value: 'HAIR_SALON', label: 'Peluquería' },
-  { value: 'BARBERSHOP', label: 'Barbería' },
-  { value: 'SPA', label: 'Spa' },
-  { value: 'AESTHETICS_CENTER', label: 'Centro de Estética' },
-  { value: 'MANICURE_PEDICURE_SALON', label: 'Salón de Manicure y Pedicure' },
-  { value: 'EYEBROWS_EYELASHES_SALON', label: 'Salón de Cejas y Pestañas' },
-  { value: 'MAKEUP_CENTER', label: 'Centro de Maquillaje' },
-  { value: 'PLASTIC_SURGERY_CENTER', label: 'Centro de Cirugía Plástica' },
-  { value: 'INDEPENDENT', label: 'Profesional Independiente' },
-  { value: 'CONSULTORY', label: 'Consultorio' },
+  { value: 'TECHNOLOGY', label: 'Tecnología' },
+  { value: 'FINANCE', label: 'Finanzas' },
+  { value: 'MARKETING', label: 'Marketing' },
+  { value: 'CONSULTORY', label: 'Consultoria' },
+  { value: 'EDUCATION', label: 'Educación' },
+  { value: 'HEALTH', label: 'Salud' },
+  { value: 'SPORT', label: 'Deportes' },
+  { value: 'FOOD', label: 'Comida' },
+  { value: 'BEAUTY', label: 'Belleza' },
+  { value: 'LEGAL', label: 'Legal' },
+  { value: 'MUSIC', label: 'Musica' },
+  { value: 'INDUSTRY', label: 'Industria' },
+  { value: 'INDEPENDENT', label: 'Independiente' },
+  { value: 'REAL_ESTATE', label: 'Inmobiliaria' },
+  { value: 'AUTOMOTIVE', label: 'Automotriz' },
+  { value: 'PETS', label: 'Mascotas' },
+  { value: 'LOGISTIC', label: 'Logistica' },
+  { value: 'OTHER', label: 'Otro' },
 ]
 
 const userSchema = z
@@ -77,7 +85,7 @@ const userSchema = z
   })
 
 const businessSchema = z.object({
-  businessName: z.string().min(2, 'El nombre del negocio es requerido'),
+  businessName: z.string().min(2, 'El nombre de la empresa es requerido'),
   businessType: z.string().min(1, 'Selecciona el tipo de negocio'),
   professionalCount: z.string().min(1, 'Indica cuántos profesionales'),
   city: z.string().min(1, 'La ciudad es requerida'),
@@ -95,6 +103,7 @@ export function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState<string>('')
 
   // Estados de verificación
   const [emailVerified, setEmailVerified] = useState(false)
@@ -269,6 +278,13 @@ export function SignUpForm() {
       toast.error('Debes verificar tu teléfono')
       return
     }
+
+    // Validar Turnstile
+    if (!turnstileToken) {
+      toast.error('Debes completar la verificación de seguridad')
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -283,19 +299,11 @@ export function SignUpForm() {
         city: values.city,
         state: values.state,
         address: toCamelCase(values.address),
+        turnstileToken,
       })
 
       if (result.success) {
-        toast.success('¡Cuenta creada exitosamente!', {
-          description: 'Ahora puedes iniciar sesión',
-          duration: 5000,
-          style: {
-            background: '#22c55e',
-            color: '#ffffff',
-            border: 'none',
-          },
-          className: 'font-medium',
-        })
+        toast.success('¡Cuenta creada exitosamente! Ahora puedes iniciar sesión')
         router.push('/auth/sign-in')
       } else {
         toast.error(result.error || 'Error al crear la cuenta')
@@ -550,10 +558,10 @@ export function SignUpForm() {
               name="businessName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nombre de tu negocio</FormLabel>
+                  <FormLabel>Nombre de la empresa</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Salón de Belleza XYZ"
+                      placeholder="Empresa XYZ"
                       disabled={isLoading}
                       {...field}
                     />
@@ -691,6 +699,11 @@ export function SignUpForm() {
               )}
             />
 
+            <TurnstileWidget
+              onSuccess={setTurnstileToken}
+              className="flex justify-center py-4"
+            />
+
             <div className="flex gap-3">
               <Button
                 type="button"
@@ -706,14 +719,18 @@ export function SignUpForm() {
               <Button
                 type="submit"
                 className="flex-1 gap-2"
-                disabled={isLoading}
+                disabled={isLoading || !turnstileToken}
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <UserPlus className="h-4 w-4" />
                 )}
-                {isLoading ? 'Creando cuenta...' : 'Crear cuenta'}
+                {isLoading 
+                  ? 'Creando cuenta...' 
+                  : !turnstileToken 
+                    ? 'Completa la verificación de seguridad' 
+                    : 'Crear cuenta'}
               </Button>
             </div>
           </div>
@@ -727,6 +744,7 @@ export function SignUpForm() {
         type="email"
         value={form.getValues('email')}
         onVerify={handleVerifyEmail}
+        onResend={handleSendEmailCode}
       />
 
       {/* Diálogo de verificación de teléfono */}
@@ -736,6 +754,7 @@ export function SignUpForm() {
         type="phone"
         value={form.getValues('phone') || ''}
         onVerify={handleVerifyPhone}
+        onResend={handleSendPhoneCode}
       />
     </Form>
   )
@@ -756,20 +775,18 @@ function StepIndicator({
   return (
     <div className="flex flex-col items-center gap-1">
       <div
-        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-          isActive
-            ? 'bg-primary text-primary-foreground'
-            : isCompleted
+        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${isActive
+          ? 'bg-primary text-primary-foreground'
+          : isCompleted
             ? 'bg-primary/20 text-primary'
             : 'bg-muted text-muted-foreground'
-        }`}
+          }`}
       >
         {isCompleted ? '✓' : step}
       </div>
       <span
-        className={`text-xs ${
-          isActive ? 'text-foreground' : 'text-muted-foreground'
-        }`}
+        className={`text-xs ${isActive ? 'text-foreground' : 'text-muted-foreground'
+          }`}
       >
         {label}
       </span>

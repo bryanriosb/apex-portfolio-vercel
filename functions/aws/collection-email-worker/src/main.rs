@@ -23,6 +23,7 @@ mod control_tower;
 use models::{LambdaEvent as CollectionEvent, SqsEvent, BatchMessage};
 use supabase::SupabaseService;
 use email_provider::{EmailProvider, EmailMessage};
+use std::collections::HashSet;
 
 use control_tower::ExecutionLogger;
 
@@ -179,7 +180,7 @@ fn wrap_with_styles(html_body: &str) -> String {
         <table role="presentation" style="width: 100%; border-collapse: collapse; border: 0; border-spacing: 0; background-color: #f4f4f4;">
             <tr>
                 <td align="center" style="padding: 0;">
-                    <table role="presentation" style="width: 700px; max-width: 700px; border-collapse: collapse; border: 0; border-spacing: 0; background-color: #ffffff;">
+                    <table role="presentation" style="width: 720px; max-width: 720px; border-collapse: collapse; border: 0; border-spacing: 0; background-color: #ffffff;">
                         <tr>
                             <td style="padding: 20px;">
                                 {html_body}
@@ -194,6 +195,11 @@ fn wrap_with_styles(html_body: &str) -> String {
             <tr>
                 <td style="font-family:sans-serif;vertical-align:top;padding-bottom:10px;padding-top:10px;color:#999999;font-size:12px;text-align:center" valign="top" align="center">
                 <span class="m_58810963162805476apple-link" style="color:#999999;font-size:12px;text-align:center">Si tiene dudas o inquietudes,  por favor comuníquese directamente con el comercio a través del contacto compartido</span>
+                </td>
+            </tr>
+            <tr>
+                <td style="font-family:sans-serif;vertical-align:top;padding-bottom:10px;padding-top:10px;color:#999999;font-size:12px;text-align:center" valign="top" align="center">
+                <span class="m_58810963162805476apple-link" style="color:#999999;font-size:12px;text-align:center">APEX - es una plataforma de cobro de cartera de BORLS S.A.S © 2026 Todos los derechos reservados | <a href="https://apex.borls.com" style="color:#999999;font-size:12px;text-align:center" target="_blank">https://apex.borls.com</a></span>
                 </td>
             </tr>
             </tbody>
@@ -491,6 +497,7 @@ async fn process_batch(
     batch_msg: &BatchMessage,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let execution = supabase.get_execution(&batch_msg.execution_id).await?;
+    let business_name = supabase.get_business_name(&batch_msg.business_id).await;
     
     if execution.status == "completed" || execution.status == "failed" {
         info!("Execution {} already finished, skipping batch", batch_msg.execution_id);
@@ -506,6 +513,12 @@ async fn process_batch(
         vec![]
     };
 
+    // Get blacklisted emails for this business
+    let blacklisted_emails = supabase.get_blacklisted_emails(&batch_msg.business_id).await.unwrap_or_else(|e| {
+        log::error!("Failed to fetch blacklist for business {}: {}", batch_msg.business_id, e);
+        HashSet::new()
+    });
+
     let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "pro".to_string()) == "dev";
 
     for (index, client) in clients.into_iter().enumerate() {
@@ -513,10 +526,36 @@ async fn process_batch(
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
 
-        if client.email().is_none() {
-            warn!("Client {} has no email, skipping", client.id);
+        let emails = client.emails();
+        if emails.is_empty() {
+            warn!("Client {} has no emails, skipping", client.id);
             continue;
         }
+
+        // Filter out blacklisted emails
+        let filtered_emails: Vec<String> = emails
+            .into_iter()
+            .filter(|email| {
+                let email_lower = email.to_lowercase();
+                let is_blacklisted = blacklisted_emails.contains(&email_lower);
+                if is_blacklisted {
+                    log::warn!("Skipping blacklisted email {} for client {}", email, client.id);
+                }
+                !is_blacklisted
+            })
+            .collect();
+
+        if filtered_emails.is_empty() {
+            log::warn!("All emails for client {} are blacklisted, marking as failed", client.id);
+            let error_data = serde_json::json!({
+                "error": "All emails are blacklisted",
+                "error_type": "blacklisted_emails"
+            });
+            let _ = supabase.update_client_status(&client.id, "failed", Some(error_data)).await;
+            continue;
+        }
+
+        let emails = filtered_emails;
 
         let template_id = if let Some(client_template) = &client.email_template_id {
             info!("Using client-specific template {} for client {}", client_template, client.id);
@@ -551,7 +590,7 @@ async fn process_batch(
             }
         };
 
-        let result = send_client_email(supabase, provider, &template, &client, &attachments, &batch_msg.execution_id).await;
+        let result = send_client_email(supabase, provider, &template, &client, &emails, &attachments, &batch_msg.execution_id, &business_name).await;
 
         match result {
             Ok(message_id) => {
@@ -615,6 +654,7 @@ async fn process_execution(execution_id: &str) -> Result<(), Box<dyn Error + Sen
     let provider = factory::create_email_provider().await;
     
     let execution = supabase.get_execution(execution_id).await?;
+    let business_name = supabase.get_business_name(&execution.business_id).await;
     
     if execution.status == "completed" || execution.status == "failed" {
         return Ok(());
@@ -626,6 +666,12 @@ async fn process_execution(execution_id: &str) -> Result<(), Box<dyn Error + Sen
         vec![]
     };
 
+    // Get blacklisted emails for this business
+    let blacklisted_emails = supabase.get_blacklisted_emails(&execution.business_id).await.unwrap_or_else(|e| {
+        log::error!("Failed to fetch blacklist for business {}: {}", execution.business_id, e);
+        HashSet::new()
+    });
+
     let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "pro".to_string()) == "dev";
 
     let clients = supabase.get_pending_clients(execution_id).await?;
@@ -635,10 +681,36 @@ async fn process_execution(execution_id: &str) -> Result<(), Box<dyn Error + Sen
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
 
-        if client.email().is_none() {
-            warn!("Client {} has no email, skipping", client.id);
+        let emails = client.emails();
+        if emails.is_empty() {
+            warn!("Client {} has no emails, skipping", client.id);
             continue;
         }
+
+        // Filter out blacklisted emails
+        let filtered_emails: Vec<String> = emails
+            .into_iter()
+            .filter(|email| {
+                let email_lower = email.to_lowercase();
+                let is_blacklisted = blacklisted_emails.contains(&email_lower);
+                if is_blacklisted {
+                    log::warn!("Skipping blacklisted email {} for client {}", email, client.id);
+                }
+                !is_blacklisted
+            })
+            .collect();
+
+        if filtered_emails.is_empty() {
+            log::warn!("All emails for client {} are blacklisted, marking as failed", client.id);
+            let error_data = serde_json::json!({
+                "error": "All emails are blacklisted",
+                "error_type": "blacklisted_emails"
+            });
+            let _ = supabase.update_client_status(&client.id, "failed", Some(error_data)).await;
+            continue;
+        }
+
+        let emails = filtered_emails;
 
         let template_id = if let Some(client_template) = &client.email_template_id {
             info!("Using client-specific template {} for client {}", client_template, client.id);
@@ -673,7 +745,7 @@ async fn process_execution(execution_id: &str) -> Result<(), Box<dyn Error + Sen
             }
         };
 
-        let result = send_client_email(&supabase, provider.as_ref(), &template, &client, &attachments, execution_id).await;
+        let result = send_client_email(&supabase, provider.as_ref(), &template, &client, &emails, &attachments, execution_id, &business_name).await;
 
         match result {
             Ok(message_id) => {
@@ -710,8 +782,10 @@ async fn send_client_email(
     provider: &dyn EmailProvider,
     template: &models::EmailTemplate,
     client: &models::CollectionClient,
+    emails: &[String],
     attachments: &[models::Attachment],
     execution_id: &str,
+    business_name: &str,
 ) -> Result<String, Box<dyn Error + Send + Sync>> {
     let mut template_data = client.custom_data.clone().unwrap_or(serde_json::json!({}));
     
@@ -760,15 +834,12 @@ async fn send_client_email(
     
     let text_body = "Por favor habilite HTML para ver este correo.";
     
-    let email = client.email().unwrap_or("");
-    
-    // Construir EmailMessage para el provider
     let email_message = EmailMessage {
-        to: email.to_string(),
+        to: emails.to_vec(),
         subject: template.subject.clone(),
         html_body: html_body.clone(),
         text_body: text_body.to_string(),
-        from: "manager@borls.com".to_string(),
+        from: format!("{} - Cartera <notify@borls.com>", business_name),
         attachments: attachments.to_vec(),
         client_id: Some(client.id.clone()),
         execution_id: Some(execution_id.to_string()),

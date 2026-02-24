@@ -121,10 +121,10 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
                             <>
                                 <div
                                     className={`text-2xl font-bold ${(stats?.avg_bounce_rate || 0) > 5
-                                            ? 'text-red-600'
-                                            : (stats?.avg_bounce_rate || 0) > 2
-                                                ? 'text-yellow-600'
-                                                : 'text-green-600'
+                                        ? 'text-red-600'
+                                        : (stats?.avg_bounce_rate || 0) > 2
+                                            ? 'text-yellow-600'
+                                            : 'text-primary'
                                         }`}
                                 >
                                     {stats?.avg_bounce_rate || 0}%

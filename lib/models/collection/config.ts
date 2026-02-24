@@ -1,7 +1,7 @@
 // Collection Config Models
 export interface CollectionConfig {
     id: string
-    business_account_id: string
+    business_id: string
 
     // Email config
     email_from_address: string
@@ -11,6 +11,10 @@ export interface CollectionConfig {
     // SES Config
     ses_configuration_set?: string | null
     ses_region: string
+
+    // Advanced Formatting
+    input_date_format: string
+    output_date_format?: string | null
 
     // Fallback config
     fallback_enabled: boolean
@@ -31,12 +35,14 @@ export interface CollectionConfig {
 }
 
 export interface CollectionConfigInsert {
-    business_account_id: string
+    business_id: string
     email_from_address: string
     email_from_name: string
     email_reply_to?: string | null
     ses_configuration_set?: string | null
     ses_region?: string
+    input_date_format: string
+    output_date_format?: string | null
     fallback_enabled?: boolean
     fallback_default_days?: number
     sms_from_number?: string | null
@@ -53,6 +59,8 @@ export interface CollectionConfigUpdate {
     email_reply_to?: string | null
     ses_configuration_set?: string | null
     ses_region?: string
+    input_date_format?: string
+    output_date_format?: string | null
     fallback_enabled?: boolean
     fallback_default_days?: number
     sms_from_number?: string | null

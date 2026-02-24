@@ -20,6 +20,7 @@ import { ArrowLeft, Mail, CheckCircle2 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { sendPasswordResetEmailAction } from '@/lib/actions/auth'
+import Logo from '@/components/Logo'
 
 const formSchema = z.object({
   email: z
@@ -83,13 +84,7 @@ export default function ForgotPasswordPage() {
       {/* Columna izquierda - Formulario */}
       <div className="relative flex items-center justify-center p-6 md:p-8 bg-card">
         <Link href="/" className="absolute top-6 left-6">
-          <Image
-            src="/logo.png"
-            alt="Beluvio"
-            width={120}
-            height={36}
-            priority
-          />
+          <Logo />
         </Link>
 
         <div className="w-full max-w-md space-y-6">
@@ -189,22 +184,10 @@ export default function ForgotPasswordPage() {
 
       {/* Columna derecha - Imagen */}
       <div className="relative hidden md:block">
-        <Image
-          src="/V0d4HpVHLp-beluvio.jpg"
-          alt="Beauty salon"
-          className="absolute inset-0 h-full w-full object-cover"
-          fill
-        />
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-secondary/30" />
+        <div className="absolute inset-0 bg-primary" />
         <div className="relative flex h-full items-center justify-center p-8">
           <div className="space-y-6 text-center">
-            <Image
-              src="/logo.png"
-              alt="Beluvio"
-              width={200}
-              height={60}
-              className="mx-auto drop-shadow-lg brightness-0 invert"
-            />
+            <Logo />
             <p className="text-lg text-white drop-shadow-md max-w-sm">
               Gestiona tu negocio de belleza de manera eficiente
             </p>

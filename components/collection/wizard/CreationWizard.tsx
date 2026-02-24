@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CheckCircle, AlertTriangle, Settings, Loader2, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
@@ -23,8 +23,12 @@ import {
 } from '@/lib/actions/collection/email-strategies'
 import { getActiveTemplatesByTypeAction } from '@/lib/actions/collection/template'
 import { fetchThresholdsAction } from '@/lib/actions/collection/notification-threshold'
+import { getCollectionConfigAction } from '@/lib/actions/collection/config'
+import { getCustomerCountAction } from '@/lib/actions/business-customer'
 import { CollectionTemplate } from '@/lib/models/collection'
+import { CollectionConfig } from '@/lib/models/collection/config'
 import * as XLSX from 'xlsx'
+import Link from 'next/link'
 
 // Import components
 import { Step1Content } from './Step1Content'
@@ -43,6 +47,7 @@ import {
 
 // Import utilities
 import { parseInvoiceFile } from './utils'
+import Loading from '@/components/ui/loading'
 
 export function CreationWizard() {
   const router = useRouter()
@@ -77,6 +82,12 @@ export function CreationWizard() {
   )
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
 
+  // Validation State
+  const [isDataLoaded, setIsDataLoaded] = useState(false)
+  const [hasCustomers, setHasCustomers] = useState(false)
+  const [hasThresholds, setHasThresholds] = useState(false)
+  const [collectionConfig, setCollectionConfig] = useState<CollectionConfig | null>(null)
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { activeBusiness } = useActiveBusinessStore()
 
@@ -86,20 +97,27 @@ export function CreationWizard() {
       if (!activeBusiness?.id || !activeBusiness?.business_account_id) return
 
       try {
-        const [businessStrategies, businessDomains, emailTemplates, thresholdsResponse] = await Promise.all([
+        const [businessStrategies, businessDomains, emailTemplates, thresholdsResponse, configResponse, customerCount] = await Promise.all([
           getBusinessStrategiesAction(activeBusiness.id),
           getBusinessDomainsAction(activeBusiness.id),
           getActiveTemplatesByTypeAction(activeBusiness.business_account_id, 'email'),
-          fetchThresholdsAction(activeBusiness.id), // Use business_id for thresholds
+          fetchThresholdsAction(activeBusiness.id),
+          getCollectionConfigAction(activeBusiness.id),
+          getCustomerCountAction(activeBusiness.id),
         ])
 
         setStrategies(businessStrategies)
         setAvailableDomains(businessDomains)
         setTemplates(emailTemplates)
+        setHasCustomers(customerCount > 0)
+        setHasThresholds(thresholdsResponse.data && thresholdsResponse.data.length > 0)
+        if (configResponse.success && configResponse.data) {
+          setCollectionConfig(configResponse.data)
+        }
 
         // Determine default template from lowest threshold
         // thresholdsResponse.data is already sorted by days_from ASC (see fetchThresholdsAction)
-        if (thresholdsResponse.data.length > 0) {
+        if (thresholdsResponse.data && thresholdsResponse.data.length > 0) {
           const lowestThreshold = thresholdsResponse.data[0]
           if (lowestThreshold.email_template_id) {
             setDefaultTemplateId(lowestThreshold.email_template_id)
@@ -126,6 +144,8 @@ export function CreationWizard() {
       } catch (error) {
         console.error('Error loading strategies/domains/templates:', error)
         toast.error('Error al cargar configuración de envío')
+      } finally {
+        setIsDataLoaded(true)
       }
     }
 
@@ -255,7 +275,9 @@ export function CreationWizard() {
     }
 
     try {
-      const data = await parseInvoiceFile(file)
+      const inputFormat = collectionConfig?.input_date_format || 'DD-MM-AAAA'
+      const outputFormat = collectionConfig?.output_date_format || 'DD-MM-AAAA'
+      const data = await parseInvoiceFile(file, inputFormat, outputFormat)
       setFileData(data)
 
       if (data.valid) {
@@ -276,6 +298,90 @@ export function CreationWizard() {
 
   const progressPercentage =
     ((currentStep - 1) / (WIZARD_STEPS.length - 1)) * 100
+
+  const isMissingRequirements = !hasCustomers || !hasThresholds || templates.length === 0 || !collectionConfig?.input_date_format
+
+  if (!isDataLoaded) {
+    return (
+      <div className="flex flex-col items-center justify-center w-full min-h-[60vh]">
+        <Loading className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p className="font-medium text-muted-foreground">Cargando...</p>
+      </div>
+    )
+  }
+
+  if (isDataLoaded && isMissingRequirements) {
+    return (
+      <div className="flex flex-col items-center justify-center w-full min-h-[65vh] lg:max-w-5xl mx-auto">
+        <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed rounded-none bg-card w-full">
+          <AlertTriangle className="h-12 w-12 text-muted-foreground mb-4" />
+          <h2 className="text-2xl font-bold tracking-tight mb-2">Configuración Incompleta</h2>
+          <p className="text-muted-foreground max-w-lg mb-6">
+            Para crear una campaña de cobro, debes completar la configuración básica del módulo.
+            Asegúrate de tener formatos de fecha, umbrales de notificación y plantillas configuradas.
+          </p>
+          <div className="grid gap-4 w-full max-w-2xl text-left mb-8">
+            <div className="flex items-start gap-3 p-4 border rounded-none">
+              <div className={cn("h-3 w-3 mt-1.5 shrink-0", hasCustomers ? "bg-primary" : "bg-muted-foreground")} />
+              <div className="flex-1 space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-base">Clientes Registrados</span>
+                  <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", hasCustomers ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>{hasCustomers ? 'Listo' : 'Pendiente'}</span>
+                </div>
+                <p className="text-sm text-muted-foreground">Debes tener al menos un cliente registrado. Los clientes son usados para cruzar la información de tus facturas al importarlas.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-4 border rounded-none">
+              <div className={cn("h-3 w-3 mt-1.5 shrink-0", collectionConfig?.input_date_format ? "bg-primary" : "bg-muted-foreground")} />
+              <div className="flex-1 space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-base">Formatos de Fecha</span>
+                  <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", collectionConfig?.input_date_format ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>{collectionConfig?.input_date_format ? 'Configurado' : 'Pendiente'}</span>
+                </div>
+                <p className="text-sm text-muted-foreground">Necesarios para que el sistema sepa cómo leer las fechas en tu archivo de importación y homogeneizarlas.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-4 border rounded-none">
+              <div className={cn("h-3 w-3 mt-1.5 shrink-0", templates.length > 0 ? "bg-primary" : "bg-muted-foreground")} />
+              <div className="flex-1 space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-base">Plantillas de Correo</span>
+                  <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", templates.length > 0 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>{templates.length > 0 ? `${templates.length} activas` : 'Pendiente'}</span>
+                </div>
+                <p className="text-sm text-muted-foreground">Requeridas para predefinir el asunto y el mensaje que recibirán tus clientes cuando se envíe una notificación.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-4 border rounded-none">
+              <div className={cn("h-3 w-3 mt-1.5 shrink-0", hasThresholds ? "bg-primary" : "bg-muted-foreground")} />
+              <div className="flex-1 space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-base">Umbrales de Notificación</span>
+                  <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", hasThresholds ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>{hasThresholds ? 'Configurado' : 'Pendiente'}</span>
+                </div>
+                <p className="text-sm text-muted-foreground">Son los días de mora que se asocian a reglas automáticas que permiten seleccionar la plantilla de correo a enviar en la campaña correspondiente a cada cliente.</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            {!hasCustomers && (
+              <Link href="/admin/customers">
+                <Button size="lg" variant="outline" className="gap-2 rounded-none w-full sm:w-auto">
+                  <Users className="w-4 h-4" />
+                  Ir a Clientes
+                </Button>
+              </Link>
+            )}
+            <Link href="/admin/settings/collection">
+              <Button size="lg" className="gap-2 rounded-none w-full sm:w-auto">
+                <Settings className="w-4 h-4" />
+                Ir a Configuración
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 lg:max-w-5xl mx-auto">
@@ -391,11 +497,11 @@ function StepIndicator({
                 className={cn(
                   'w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors',
                   isActive &&
-                    'border-primary bg-primary text-primary-foreground',
+                  'border-primary bg-primary text-primary-foreground',
                   isCompleted && 'border-green-500 bg-green-500 text-white',
                   !isActive &&
-                    !isCompleted &&
-                    'border-gray-300 bg-white text-gray-400'
+                  !isCompleted &&
+                  'border-gray-300 bg-white text-gray-400'
                 )}
               >
                 {isCompleted ? (

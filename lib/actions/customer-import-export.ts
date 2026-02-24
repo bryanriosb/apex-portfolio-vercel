@@ -5,6 +5,7 @@ import { getSupabaseAdminClient } from '@/lib/actions/supabase'
 import {
   createBusinessCustomerAction,
   updateBusinessCustomerAction,
+  bulkUpsertFullCustomersAction,
 } from '@/lib/actions/business-customer'
 import {
   DEFAULT_CUSTOMER_TEMPLATES,
@@ -39,9 +40,9 @@ interface ImportResult {
  * Validar enum para customer status
  */
 function validateCustomerStatus(value: string, field: string): CustomerStatus {
-  const upperValue = value.toUpperCase()
-  if (CUSTOMER_STATUSES.includes(upperValue as CustomerStatus)) {
-    return upperValue as CustomerStatus
+  const lowerValue = value.toLowerCase()
+  if (CUSTOMER_STATUSES.includes(lowerValue as CustomerStatus)) {
+    return lowerValue as CustomerStatus
   }
   throw new Error(`${field} debe ser uno de: ${CUSTOMER_STATUSES.join(', ')}`)
 }
@@ -90,7 +91,7 @@ export async function exportCustomersToExcelAction(
       company_name: customer.company_name || undefined,
       nit: customer.nit,
       full_name: customer.full_name,
-      email: customer.email,
+      emails: Array.isArray(customer.emails) ? customer.emails.join(', ') : '',
       phone: customer.phone || undefined,
       status: customer.status,
       category: customer.customer_categories?.name || customer.category || undefined,
@@ -160,110 +161,7 @@ export async function createDefaultCustomersTemplateAction(): Promise<{
 }
 
 /**
- * Procesar un cliente individual
- */
-async function processCustomer(
-  row: CustomerRow,
-  businessId: string,
-  index: number
-): Promise<CustomerRow> {
-  if (!row.nit || !row.full_name || !row.email) {
-    throw new Error(
-      `Fila ${index + 1}: nit, full_name y email son obligatorios`
-    )
-  }
-
-  const cleanedNit = cleanExcelValue(row.nit)
-  const cleanedFullName = cleanExcelValue(row.full_name)
-  const cleanedEmail = cleanExcelValue(row.email)
-  const cleanedPhone = cleanExcelValue(row.phone)
-  const cleanedCategory = cleanExcelValue(row.category)
-  const cleanedNotes = cleanExcelValue(row.notes)
-  const cleanedPreferences = cleanExcelValue(row.preferences)
-  const cleanedTags = cleanExcelValue(row.tags)
-  const cleanedCompanyName = cleanExcelValue(row.company_name)
-
-  if (!cleanedNit || !cleanedFullName || !cleanedEmail) {
-    throw new Error(
-      `Fila ${index + 1}: nit, full_name y email no pueden estar vacíos`
-    )
-  }
-
-  if (!validateEmail(cleanedEmail)) {
-    throw new Error(`Fila ${index + 1}: Email '${cleanedEmail}' no es válido`)
-  }
-
-  let status: CustomerStatus = 'active'
-  if (row.status) {
-    try {
-      status = validateCustomerStatus(row.status, 'status')
-    } catch (error: any) {
-      throw new Error(`Fila ${index + 1}: ${error.message}`)
-    }
-  }
-
-  const supabase = await getSupabaseAdminClient()
-  const { data: existingCustomer } = await supabase
-    .from('business_customers')
-    .select('id')
-    .eq('business_id', businessId)
-    .eq('nit', cleanedNit)
-    .maybeSingle()
-
-  const tagsArray = cleanedTags
-    ? cleanedTags
-        .split(',')
-        .map((tag: string) => tag.trim())
-        .filter(Boolean)
-    : []
-
-  if (existingCustomer) {
-    const updateResult = await updateBusinessCustomerAction(
-      existingCustomer.id,
-      {
-        company_name: cleanedCompanyName || null,
-        nit: cleanedNit,
-        full_name: cleanedFullName,
-        email: cleanedEmail,
-        phone: cleanedPhone || null,
-        status,
-        category: cleanedCategory || null,
-        notes: cleanedNotes || null,
-        preferences: cleanedPreferences || null,
-        tags: tagsArray,
-      }
-    )
-
-    if (!updateResult.success) {
-      throw new Error(updateResult.error || 'Error actualizando cliente')
-    }
-  } else {
-    const customerInput: CreateCustomerInput = {
-      business_id: businessId,
-      company_name: cleanedCompanyName || null,
-      nit: cleanedNit,
-      full_name: cleanedFullName,
-      email: cleanedEmail,
-      phone: cleanedPhone || null,
-      status,
-      category: cleanedCategory || null,
-      notes: cleanedNotes || null,
-      preferences: cleanedPreferences || null,
-      tags: tagsArray,
-    }
-
-    const createResult = await createBusinessCustomerAction(customerInput)
-
-    if (!createResult.success) {
-      throw new Error(createResult.error || 'Error creando cliente')
-    }
-  }
-
-  return row
-}
-
-/**
- * Importar clientes desde Excel con progreso
+ * Importar clientes desde Excel con progreso (Bulk Ops)
  */
 export async function importCustomersWithProgress(
   formData: FormData
@@ -298,28 +196,222 @@ export async function importCustomersWithProgress(
       throw new Error('La hoja "Customers" está vacía o no tiene datos válidos')
     }
 
-    importService
-      .importWithProgress(
-        customersData,
-        async (customerRow, index) => {
-          return await processCustomer(customerRow, businessId, index)
-        },
-        {
-          batchSize: 3,
-          continueOnError: false,
-        },
-        sessionId
-      )
-      .then((result) => {
-        if (result.success) {
-          console.log(`Import ${sessionId} completed successfully:`, result)
-        } else {
-          console.log(`Import ${sessionId} completed with errors:`, result)
+    // Proceso en Background
+    ; (async () => {
+      importService.createInitialProgress(sessionId, customersData.length)
+      importService.updateProgress(sessionId, { status: 'processing', message: 'Validando datos...' })
+
+      const errors: string[] = []
+      const validCustomers: CreateCustomerInput[] = []
+
+      // Obtener el business_account_id para las categorías
+      const supabase = await getSupabaseAdminClient()
+      const { data: businessData, error: businessError } = await supabase
+        .from('businesses')
+        .select('business_account_id')
+        .eq('id', businessId)
+        .single()
+
+      if (businessError || !businessData) {
+        throw new Error('No se pudo obtener la cuenta del negocio para resolver categorías')
+      }
+
+      const businessAccountId = businessData.business_account_id
+
+      // Pre-cargar todas las categorías existentes para este negocio
+      const { data: categoriesData } = await supabase
+        .from('customer_categories')
+        .select('id, name')
+        .eq('business_account_id', businessAccountId)
+
+      // Map para búsqueda rápida de id por nombre ignorando mayúsculas
+      const categoryMap = new Map<string, string>()
+      categoriesData?.forEach(cat => {
+        categoryMap.set(cat.name.toLowerCase(), cat.id)
+      })
+
+      // Para llevar registro de categorías nuevas a crear sobre la marcha
+      const newCategoriesToCreate = new Set<string>()
+
+      for (let i = 0; i < customersData.length; i++) {
+        const row = customersData[i]
+        try {
+          if (!row.nit || !row.full_name || !row.emails) {
+            throw new Error(`Fila ${i + 1}: nit, full_name y emails son obligatorios`)
+          }
+
+          const cleanedNit = cleanExcelValue(row.nit)
+          const cleanedFullName = cleanExcelValue(row.full_name)
+          const cleanedRawEmails = cleanExcelValue(row.emails)
+          const cleanedPhone = cleanExcelValue(row.phone)
+          const cleanedCategory = cleanExcelValue(row.category)
+          const cleanedNotes = cleanExcelValue(row.notes)
+          const cleanedPreferences = cleanExcelValue(row.preferences)
+          const cleanedTags = cleanExcelValue(row.tags)
+          const cleanedCompanyName = cleanExcelValue(row.company_name)
+
+          if (!cleanedNit || !cleanedFullName || !cleanedRawEmails) {
+            throw new Error(`Fila ${i + 1}: nit, full_name y emails no pueden estar vacíos`)
+          }
+
+          const parsedEmails = cleanedRawEmails
+            .split(',')
+            .map((e: string) => e.trim())
+            .filter(Boolean)
+
+          if (parsedEmails.length === 0) {
+            throw new Error(`Fila ${i + 1}: emails no contiene direcciones válidas`)
+          }
+
+          for (const emailItem of parsedEmails) {
+            if (!validateEmail(emailItem)) {
+              throw new Error(`Fila ${i + 1}: Email '${emailItem}' no es válido`)
+            }
+          }
+
+          let status: CustomerStatus = 'active'
+          if (row.status) {
+            try {
+              status = validateCustomerStatus(row.status, 'status')
+            } catch (error: any) {
+              throw new Error(`Fila ${i + 1}: ${error.message}`)
+            }
+          }
+
+          const tagsArray = cleanedTags
+            ? cleanedTags
+              .split(',')
+              .map((tag: string) => tag.trim())
+              .filter(Boolean)
+            : []
+
+          let categoryId = null
+
+          if (cleanedCategory) {
+            const lowerCategoryName = cleanedCategory.toLowerCase()
+            if (categoryMap.has(lowerCategoryName)) {
+              categoryId = categoryMap.get(lowerCategoryName)
+            } else {
+              // Si no existe, preparamos para crearla
+              newCategoriesToCreate.add(cleanedCategory)
+            }
+          }
+
+          validCustomers.push({
+            business_id: businessId,
+            company_name: cleanedCompanyName || null,
+            nit: cleanedNit,
+            full_name: cleanedFullName,
+            emails: parsedEmails,
+            phone: cleanedPhone || null,
+            status,
+            category: categoryId,
+            notes: cleanedNotes || null,
+            preferences: cleanedPreferences || null,
+            tags: tagsArray,
+            _tempCategoryName: categoryId ? null : cleanedCategory
+          } as CreateCustomerInput & { _tempCategoryName?: string })
+        } catch (error: any) {
+          errors.push(error.message)
         }
+
+        // Reportar progreso en lotes para que la UI no se bloquee ni salte directo
+        if (i > 0 && i % 500 === 0) {
+          importService.updateProgress(sessionId, { current: i, message: `Validando fila ${i}...` })
+        }
+      }
+
+      importService.updateProgress(sessionId, {
+        current: customersData.length,
+        message: 'Validación completada. Guardando en base de datos...'
       })
-      .catch((error) => {
-        console.error(`Import ${sessionId} error:`, error)
+
+      // Crear categorías nuevas si hay alguna
+      if (newCategoriesToCreate.size > 0) {
+        importService.updateProgress(sessionId, {
+          message: `Creando ${newCategoriesToCreate.size} nuevas categorías...`
+        })
+
+        const categoriesToInsert = Array.from(newCategoriesToCreate).map(name => ({
+          business_account_id: businessAccountId,
+          name,
+          description: 'Categoría importada automáticamente'
+        }))
+
+        const { data: newCategories } = await supabase
+          .from('customer_categories')
+          .insert(categoriesToInsert)
+          .select('id, name')
+
+        // Actualizar el map con los nuevos IDs
+        newCategories?.forEach(cat => {
+          categoryMap.set(cat.name.toLowerCase(), cat.id)
+        })
+
+        // Completar los validCustomers que tenían _tempCategoryName
+        for (const customer of validCustomers as any[]) {
+          if (customer._tempCategoryName) {
+            const lowerName = customer._tempCategoryName.toLowerCase()
+            if (categoryMap.has(lowerName)) {
+              customer.category = categoryMap.get(lowerName)
+            } else {
+              customer.category = null
+            }
+            delete customer._tempCategoryName
+          }
+        }
+      } else {
+        // También limpiar _tempCategoryName si no se crearon categorías nuevas
+        for (const customer of validCustomers as any[]) {
+          if (customer._tempCategoryName) {
+            const lowerName = customer._tempCategoryName.toLowerCase()
+            if (categoryMap.has(lowerName)) {
+              customer.category = categoryMap.get(lowerName)
+            } else {
+              customer.category = null
+            }
+            delete customer._tempCategoryName
+          }
+        }
+      }
+
+      // Limpiar cualquier residuo de _tempCategoryName antes de hacer upsert
+      const finalCustomersToInsert = validCustomers.map(c => {
+        const { _tempCategoryName, ...rest } = c as any
+        return rest as CreateCustomerInput
       })
+
+      // Dividimos finalCustomersToInsert en batches de 500 para evitar payload demasiado grande a Supabase
+      const BATCH_SIZE = 500
+      let processedCount = 0
+
+      for (let i = 0; i < finalCustomersToInsert.length; i += BATCH_SIZE) {
+        const batch = finalCustomersToInsert.slice(i, i + BATCH_SIZE)
+        try {
+          const result = await bulkUpsertFullCustomersAction(batch)
+          if (!result.success) {
+            errors.push(`Error en lote ${i / BATCH_SIZE + 1}: ${result.error}`)
+          } else {
+            processedCount += batch.length
+            importService.updateProgress(sessionId, {
+              message: `Guardados ${processedCount} de ${validCustomers.length} en la base de datos...`
+            })
+          }
+        } catch (error: any) {
+          errors.push(`Excepción en lote ${i / BATCH_SIZE + 1}: ${error.message}`)
+        }
+      }
+
+      const finalStatus = errors.length > 0 && processedCount === 0 ? 'error' : 'completed'
+      importService.updateProgress(sessionId, {
+        status: finalStatus,
+        current: processedCount,
+        message: `Importación completada: ${processedCount} guardados, ${errors.length} errores.`,
+        errors: errors,
+        endTime: Date.now()
+      })
+
+    })()
 
     return { sessionId, status: 'started' }
   } catch (error: any) {

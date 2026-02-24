@@ -19,8 +19,11 @@ export default function AdminPage() {
   }, [isLoading, role, router])
 
   return (
-    <div className="flex items-center justify-center min-h-[200px]">
-      <Loading className="h-8 w-8" />
+    <div className="flex items-center justify-center h-full">
+      <div className="flex flex-col items-center gap-4">
+        <Loading className="h-8 w-8 text-primary" />
+        <span className="text-sm text-muted-foreground">Cargando...</span>
+      </div>
     </div>
   )
 }

@@ -410,7 +410,7 @@ export function BusinessAccountModal({
                     <FormLabel>Teléfono de Contacto</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="+57 300 123 4567"
+                        placeholder="3001234567"
                         disabled={isSubmitting}
                         {...field}
                       />

@@ -1,4 +1,4 @@
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://beluvio.com'
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://APEX.com'
 
 interface JsonLdProps {
   type: 'organization' | 'software' | 'faq' | 'webpage' | 'all'
@@ -7,9 +7,9 @@ interface JsonLdProps {
 const organizationSchema = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
-  name: 'Beluvio',
+  name: 'APEX',
   url: siteUrl,
-  logo: `${siteUrl}/beluvio.svg`,
+  logo: `${siteUrl}/APEX.svg`,
   description:
     'Plataforma de gestión todo-en-uno para negocios de belleza, estéticas, spas y centros de bienestar.',
   foundingDate: '2024',
@@ -21,9 +21,9 @@ const organizationSchema = {
     areaServed: ['CO', 'MX', 'ES', 'AR', 'CL', 'PE', 'EC'],
   },
   sameAs: [
-    'https://www.instagram.com/beluvio',
-    'https://www.facebook.com/beluvio',
-    'https://twitter.com/beluvio',
+    'https://www.instagram.com/APEX',
+    'https://www.facebook.com/APEX',
+    'https://twitter.com/APEX',
   ],
   address: {
     '@type': 'PostalAddress',
@@ -34,7 +34,7 @@ const organizationSchema = {
 const softwareSchema = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
-  name: 'Beluvio',
+  name: 'APEX',
   applicationCategory: 'BusinessApplication',
   operatingSystem: 'Web Browser',
   url: siteUrl,
@@ -98,10 +98,10 @@ const faqSchema = {
   mainEntity: [
     {
       '@type': 'Question',
-      name: '¿Cuánto tiempo toma configurar Beluvio?',
+      name: '¿Cuánto tiempo toma configurar APEX?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'La configuración inicial toma menos de 15 minutos. Nuestro asistente de configuración te guía paso a paso para agregar tus servicios, profesionales y horarios. Además, ofrecemos onboarding personalizado para planes Business.',
+        text: 'La configuración inicial toma menos de 10 minutos. Nuestro asistente de configuración te guía paso a paso para agregar tus servicios, profesionales y horarios. Además, ofrecemos onboarding personalizado para planes Business.',
       },
     },
     {
@@ -122,10 +122,10 @@ const faqSchema = {
     },
     {
       '@type': 'Question',
-      name: '¿Puedo usar Beluvio en múltiples dispositivos?',
+      name: '¿Puedo usar APEX en múltiples dispositivos?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Sí, Beluvio funciona en cualquier dispositivo con navegador web: computadora, tablet o celular. Tu equipo puede acceder simultáneamente desde diferentes ubicaciones.',
+        text: 'Sí, APEX funciona en cualquier dispositivo con navegador web: computadora, tablet o celular. Tu equipo puede acceder simultáneamente desde diferentes ubicaciones.',
       },
     },
     {
@@ -150,13 +150,13 @@ const faqSchema = {
 const webPageSchema = {
   '@context': 'https://schema.org',
   '@type': 'WebPage',
-  name: 'Beluvio - Software de Gestión para Negocios de Belleza',
+  name: 'APEX - Software de Gestión para Negocios de Belleza',
   description:
     'Plataforma todo-en-uno para gestionar tu estética, spa, barbería o centro de belleza.',
   url: siteUrl,
   isPartOf: {
     '@type': 'WebSite',
-    name: 'Beluvio',
+    name: 'APEX',
     url: siteUrl,
   },
   about: {

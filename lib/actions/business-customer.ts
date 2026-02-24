@@ -54,7 +54,7 @@ export async function fetchBusinessCustomersAction(params?: {
     if (params.search) {
       const searchTerm = `%${params.search}%`
       query = query.or(
-        `full_name.ilike.${searchTerm},company_name.ilike.${searchTerm},email.ilike.${searchTerm},phone.ilike.${searchTerm},nit.ilike.${searchTerm}`
+        `full_name.ilike.${searchTerm},company_name.ilike.${searchTerm},phone.ilike.${searchTerm},nit.ilike.${searchTerm}`
       )
     }
 
@@ -137,6 +137,56 @@ export async function createBusinessCustomerAction(
   }
 }
 
+export async function bulkUpsertFullCustomersAction(
+  inputs: CreateCustomerInput[]
+): Promise<{
+  success: boolean
+  data?: any[]
+  error?: string
+  count?: number
+}> {
+  try {
+    const supabase = await getSupabaseAdminClient()
+
+    if (!inputs.length) {
+      return { success: true, count: 0 }
+    }
+
+    const { data, error } = await supabase
+      .from('business_customers')
+      .upsert(
+        inputs.map((input) => ({
+          business_id: input.business_id,
+          company_name: input.company_name || null,
+          nit: input.nit,
+          full_name: input.full_name,
+          emails: input.emails ?? [],
+          phone: input.phone || null,
+          status: input.status || 'active',
+          category: input.category || null,
+          notes: input.notes || null,
+          preferences: input.preferences || null,
+          tags: input.tags || null,
+        })),
+        {
+          onConflict: 'business_id,nit',
+          ignoreDuplicates: false,
+        }
+      )
+      .select('id')
+
+    if (error) throw error
+
+    return {
+      success: true,
+      count: data?.length || 0,
+    }
+  } catch (error: any) {
+    console.error('Error in bulkUpsertFullCustomersAction:', error)
+    return { success: false, error: error.message || 'Error desconocido' }
+  }
+}
+
 export async function createFullCustomerAction(
   input: CreateCustomerInput
 ): Promise<{
@@ -170,7 +220,7 @@ export async function createFullCustomerAction(
         company_name: input.company_name || null,
         nit: input.nit,
         full_name: input.full_name,
-        email: input.email,
+        emails: input.emails ?? [],
         phone: input.phone || null,
         status: input.status || 'active',
         category: input.category || null,
@@ -242,7 +292,7 @@ export async function searchBusinessCustomersAction(
       .select('*')
       .eq('business_id', businessId)
       .or(
-        `full_name.ilike.${searchTerm},company_name.ilike.${searchTerm},email.ilike.${searchTerm},phone.ilike.${searchTerm},nit.ilike.${searchTerm}`
+        `full_name.ilike.${searchTerm},company_name.ilike.${searchTerm},phone.ilike.${searchTerm},nit.ilike.${searchTerm}`
       )
       .order('full_name', { ascending: true })
       .limit(limit)
@@ -318,5 +368,19 @@ export async function deleteBusinessCustomersAction(
   } catch (error: any) {
     console.error('Error batch deleting business customers:', error)
     return { success: false, deletedCount: 0, error: error.message }
+  }
+}
+
+export async function getCustomerCountAction(businessId: string): Promise<number> {
+  try {
+    const supabase = await getSupabaseAdminClient()
+    const { count } = await supabase
+      .from('business_customers')
+      .select('id', { count: 'exact', head: true })
+      .eq('business_id', businessId)
+    return count ?? 0
+  } catch (error) {
+    console.error('Error counting business customers:', error)
+    return 0
   }
 }

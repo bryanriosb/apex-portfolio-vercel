@@ -60,11 +60,22 @@ export const CUSTOMERS_COLUMNS: ColumnDef<BusinessCustomer>[] = [
     },
   },
   {
-    accessorKey: 'email',
-    header: 'Email',
+    accessorKey: 'emails',
+    header: 'Emails',
     cell: ({ row }) => {
-      const email = row.original.email
-      return <div className="text-muted-foreground">{email}</div>
+      const emails: string[] = row.original.emails ?? []
+      if (emails.length === 0)
+        return <div className="text-muted-foreground">-</div>
+      return (
+        <div className="flex flex-col gap-0.5">
+          <span className="text-muted-foreground text-sm">{emails[0]}</span>
+          {emails.length > 1 && (
+            <Badge variant="outline" className="text-xs w-fit">
+              +{emails.length - 1} más
+            </Badge>
+          )}
+        </div>
+      )
     },
   },
   {

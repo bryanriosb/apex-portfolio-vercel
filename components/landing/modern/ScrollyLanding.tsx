@@ -478,7 +478,7 @@ function SolutionSlide() {
     {
       icon: Zap,
       title: 'Wizard de 3 pasos',
-      desc: 'Tu primera campaña en 15 minutos.',
+      desc: 'Tu primera campaña en 10 minutos.',
       gradient: 'bg-blue-600',
     },
     {
