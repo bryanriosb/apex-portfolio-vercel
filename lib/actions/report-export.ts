@@ -1,33 +1,31 @@
 'use server'
 
 import {
-  fetchRevenueTrendAction,
-  fetchTopServicesAction,
-  fetchSpecialistStatsAction,
-  fetchCustomerStatsAction,
-  fetchHourlyDistributionAction,
-  fetchDailyDistributionAction,
-  fetchRevenueStatsAction,
+  fetchCollectionExecutionMetricsAction,
+  fetchExecutionTrendAction,
+  fetchClientMetricsAction,
+  fetchBlacklistMetricsAction,
+  fetchBatchMetricsAction,
+  fetchCustomerMetricsAction,
   type DateRangeParams,
 } from './reports'
 import { getSupabaseAdminClient } from './supabase'
 import * as XLSX from 'xlsx'
 
 export type ExportFormat = 'csv' | 'excel'
-export type ReportType = 'revenue' | 'appointments' | 'services' | 'specialists' | 'customers'
+export type ReportType =
+  | 'executions'
+  | 'emails'
+  | 'blacklist'
+  | 'clients'
+  | 'batches'
+  | 'customers'
 
 interface ExportResult {
   success: boolean
   data?: any
   filename?: string
   error?: string
-}
-
-function formatCurrency(cents: number): string {
-  return (cents / 100).toLocaleString('es-CO', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  })
 }
 
 function escapeCSV(value: string | number | null | undefined): string {
@@ -42,210 +40,398 @@ function escapeCSV(value: string | number | null | undefined): string {
 function arrayToCSV(headers: string[], rows: (string | number)[][]): string {
   const BOM = '\uFEFF'
   const headerLine = headers.map(escapeCSV).join(',')
-  const dataLines = rows.map(row => row.map(escapeCSV).join(','))
+  const dataLines = rows.map((row) => row.map(escapeCSV).join(','))
   return BOM + [headerLine, ...dataLines].join('\n')
 }
 
-function arrayToExcel(headers: string[], rows: (string | number)[][]): any {
+function arrayToExcel(
+  headers: string[],
+  rows: (string | number)[][]
+): ArrayBuffer {
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Reporte')
-  
+
   return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
 }
 
-export async function exportRevenueReportAction(
+// ============================================================================
+// REPORTE DE EJECUCIONES DE COBRANZA
+// ============================================================================
+
+export async function exportExecutionsReportAction(
   params: DateRangeParams,
   format: ExportFormat
 ): Promise<ExportResult> {
   try {
-    const [stats, trend] = await Promise.all([
-      fetchRevenueStatsAction(params),
-      fetchRevenueTrendAction(params),
+    const [metrics, trend] = await Promise.all([
+      fetchCollectionExecutionMetricsAction(params),
+      fetchExecutionTrendAction(params),
     ])
 
-    const headers = ['Fecha', 'Ingresos (COP)', 'Citas Completadas']
-    const rows = trend.map(t => [
+    const headers = ['Fecha', 'Ejecuciones', 'Emails Enviados', 'Entregados', 'Abiertos']
+    const rows = trend.map((t) => [
       t.date,
-      formatCurrency(t.revenue),
-      t.appointments,
+      t.executions,
+      t.emails_sent,
+      t.emails_delivered,
+      t.emails_opened,
     ])
 
-    rows.unshift(['--- RESUMEN ---', '', ''])
-    rows.unshift(['Ingresos Totales', formatCurrency(stats.total_revenue), ''])
-    rows.unshift(['Ticket Promedio', formatCurrency(stats.average_ticket), ''])
-    rows.unshift(['Total Citas', stats.total_appointments, ''])
-    rows.unshift(['Completadas', stats.completed_appointments, ''])
-    rows.unshift(['Canceladas', stats.cancelled_appointments, ''])
-    rows.unshift(['No Show', stats.no_show_appointments, ''])
-    rows.unshift(['', '', ''])
-    rows.unshift(['--- TENDENCIA DIARIA ---', '', ''])
+    // Agregar resumen al inicio
+    rows.unshift(['', '', '', '', ''])
+    rows.unshift(['--- TENDENCIA DIARIA ---', '', '', '', ''])
+    rows.unshift(['', '', '', '', ''])
+    rows.unshift([
+      'Tasa de Apertura Promedio',
+      `${metrics.avg_open_rate.toFixed(2)}%`,
+      '',
+      '',
+      '',
+    ])
+    rows.unshift([
+      'Tasa de Entrega Promedio',
+      `${metrics.avg_delivery_rate.toFixed(2)}%`,
+      '',
+      '',
+      '',
+    ])
+    rows.unshift([
+      'Tasa de Rebote Promedio',
+      `${metrics.avg_bounce_rate.toFixed(2)}%`,
+      '',
+      '',
+      '',
+    ])
+    rows.unshift(['', '', '', '', ''])
+    rows.unshift(['Emails Rebotados', metrics.total_emails_bounced, '', '', ''])
+    rows.unshift(['Emails Abiertos', metrics.total_emails_opened, '', '', ''])
+    rows.unshift(['Emails Entregados', metrics.total_emails_delivered, '', '', ''])
+    rows.unshift(['Emails Enviados', metrics.total_emails_sent, '', '', ''])
+    rows.unshift(['Total Clientes', metrics.total_clients, '', '', ''])
+    rows.unshift(['Ejecuciones Fallidas', metrics.failed, '', '', ''])
+    rows.unshift(['Ejecuciones Completadas', metrics.completed, '', '', ''])
+    rows.unshift(['Ejecuciones en Proceso', metrics.processing, '', '', ''])
+    rows.unshift(['Ejecuciones Pendientes', metrics.pending, '', '', ''])
+    rows.unshift(['Total Ejecuciones', metrics.total_executions, '', '', ''])
+    rows.unshift(['--- RESUMEN ---', '', '', '', ''])
 
-    const data = format === 'csv'
-      ? arrayToCSV(headers, rows)
-      : arrayToExcel(headers, rows)
+    const data =
+      format === 'csv'
+        ? arrayToCSV(headers, rows)
+        : arrayToExcel(headers, rows)
 
     return {
       success: true,
       data,
-      filename: `reporte-ingresos-${params.start_date.split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`,
+      filename: `reporte-ejecuciones-${params.startDate.split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`,
     }
   } catch (error) {
-    console.error('Error exporting revenue report:', error)
-    return { success: false, error: 'Error al exportar el reporte' }
+    console.error('Error exporting executions report:', error)
+    return { success: false, error: 'Error al exportar el reporte de ejecuciones' }
   }
 }
 
-export async function exportAppointmentsReportAction(
+// ============================================================================
+// REPORTE DE MÉTRICAS DE EMAIL
+// ============================================================================
+
+export async function exportEmailMetricsReportAction(
   params: DateRangeParams,
+  format: ExportFormat
+): Promise<ExportResult> {
+  try {
+    const metrics = await fetchCollectionExecutionMetricsAction(params)
+
+    const headers = ['Métrica', 'Valor', 'Porcentaje']
+    const rows: (string | number)[][] = []
+
+    const total = metrics.total_emails_sent || 1 // Evitar división por cero
+
+    rows.push(['Emails Enviados', metrics.total_emails_sent, '100%'])
+    rows.push([
+      'Emails Entregados',
+      metrics.total_emails_delivered,
+      `${((metrics.total_emails_delivered / total) * 100).toFixed(2)}%`,
+    ])
+    rows.push([
+      'Emails Abiertos',
+      metrics.total_emails_opened,
+      `${((metrics.total_emails_opened / total) * 100).toFixed(2)}%`,
+    ])
+    rows.push([
+      'Emails Rebotados',
+      metrics.total_emails_bounced,
+      `${((metrics.total_emails_bounced / total) * 100).toFixed(2)}%`,
+    ])
+    rows.push(['', '', ''])
+    rows.push(['--- TASAS PROMEDIO ---', '', ''])
+    rows.push(['Tasa de Entrega Promedio', `${metrics.avg_delivery_rate.toFixed(2)}%`, ''])
+    rows.push(['Tasa de Apertura Promedio', `${metrics.avg_open_rate.toFixed(2)}%`, ''])
+    rows.push(['Tasa de Rebote Promedio', `${metrics.avg_bounce_rate.toFixed(2)}%`, ''])
+
+    const data =
+      format === 'csv'
+        ? arrayToCSV(headers, rows)
+        : arrayToExcel(headers, rows)
+
+    return {
+      success: true,
+      data,
+      filename: `reporte-metricas-email-${params.startDate.split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`,
+    }
+  } catch (error) {
+    console.error('Error exporting email metrics report:', error)
+    return { success: false, error: 'Error al exportar el reporte de métricas de email' }
+  }
+}
+
+// ============================================================================
+// REPORTE DE BLACKLIST
+// ============================================================================
+
+export async function exportBlacklistReportAction(
+  businessId: string,
   format: ExportFormat
 ): Promise<ExportResult> {
   try {
     const supabase = await getSupabaseAdminClient()
 
-    const { data: appointments } = await supabase
-      .from('appointments')
-      .select(`
-        id,
-        start_time,
-        end_time,
-        status,
-        total_price_cents,
-        specialist:specialists(first_name, last_name),
-        appointment_services(
-          service:services(name)
+    const { data: blacklist, error } = await supabase
+      .from('email_blacklist')
+      .select('email, bounce_type, bounce_reason, bounced_at')
+      .eq('business_id', businessId)
+      .order('bounced_at', { ascending: false })
+
+    if (error) throw error
+
+    const metrics = await fetchBlacklistMetricsAction(businessId)
+
+    const headers = ['Email', 'Tipo de Rebote', 'Razón', 'Fecha']
+    const rows = (blacklist || []).map((item) => [
+      item.email,
+      item.bounce_type || 'N/A',
+      item.bounce_reason || 'N/A',
+      item.bounced_at ? item.bounced_at.split('T')[0] : 'N/A',
+    ])
+
+    // Agregar resumen
+    rows.unshift(['', '', '', ''])
+    rows.unshift(['--- LISTADO DE EMAILS ---', '', '', ''])
+    rows.unshift(['', '', '', ''])
+    rows.unshift(['Rebotes Recientes (30 días)', metrics.recent_bounces, '', ''])
+    rows.unshift(['Quejas', metrics.complaints, '', ''])
+    rows.unshift(['Rebotes Suaves', metrics.soft_bounces, '', ''])
+    rows.unshift(['Rebotes Duros', metrics.hard_bounces, '', ''])
+    rows.unshift(['Total en Blacklist', metrics.total_blacklisted, '', ''])
+    rows.unshift(['--- RESUMEN ---', '', '', ''])
+
+    const data =
+      format === 'csv'
+        ? arrayToCSV(headers, rows)
+        : arrayToExcel(headers, rows)
+
+    return {
+      success: true,
+      data,
+      filename: `reporte-blacklist-${new Date().toISOString().split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`,
+    }
+  } catch (error) {
+    console.error('Error exporting blacklist report:', error)
+    return { success: false, error: 'Error al exportar el reporte de blacklist' }
+  }
+}
+
+// ============================================================================
+// REPORTE DE CLIENTES EN COBRANZA
+// ============================================================================
+
+export async function exportCollectionClientsReportAction(
+  params: DateRangeParams,
+  format: ExportFormat
+): Promise<ExportResult> {
+  try {
+    const metrics = await fetchClientMetricsAction(params)
+    const supabase = await getSupabaseAdminClient()
+
+    // Obtener execution_ids del período
+    const { data: executions } = await supabase
+      .from('collection_executions')
+      .select('id')
+      .eq('business_id', params.businessId)
+      .gte('created_at', params.startDate)
+      .lte('created_at', params.endDate)
+
+    const executionIds = executions?.map((e) => e.id) || []
+
+    let clients: any[] = []
+    if (executionIds.length > 0) {
+      const { data } = await supabase
+        .from('collection_clients')
+        .select(
+          'status, email_sent_at, email_delivered_at, email_opened_at, fallback_required, fallback_sent_at, business_customers(full_name, email, nit)'
         )
-      `)
-      .eq('business_id', params.business_id)
-      .gte('start_time', params.start_date)
-      .lte('start_time', params.end_date)
-      .order('start_time', { ascending: true })
+        .in('execution_id', executionIds)
 
-    const [hourly, daily] = await Promise.all([
-      fetchHourlyDistributionAction(params),
-      fetchDailyDistributionAction(params),
-    ])
-
-    const statusMap: Record<string, string> = {
-      PENDING: 'Pendiente',
-      CONFIRMED: 'Confirmada',
-      COMPLETED: 'Completada',
-      CANCELLED: 'Cancelada',
-      NO_SHOW: 'No Presentado',
+      clients = data || []
     }
 
-    const headers = ['Fecha', 'Hora Inicio', 'Hora Fin', 'Estado', 'Especialista', 'Servicios', 'Total (COP)']
-    const rows = (appointments || []).map((apt: any) => [
-      apt.start_time.split('T')[0],
-      apt.start_time.split('T')[1]?.substring(0, 5) || '',
-      apt.end_time.split('T')[1]?.substring(0, 5) || '',
-      statusMap[apt.status] || apt.status,
-      `${apt.specialist?.first_name || ''} ${apt.specialist?.last_name || ''}`.trim(),
-      apt.appointment_services?.map((as: any) => as.service?.name).filter(Boolean).join(', ') || '',
-      formatCurrency(apt.total_price_cents || 0),
-    ])
-
-    rows.push(['', '', '', '', '', '', ''])
-    rows.push(['--- DISTRIBUCIÓN POR HORA ---', '', '', '', '', '', ''])
-    hourly.forEach(h => {
-      rows.push([`${h.hour}:00`, h.count.toString(), '', '', '', '', ''])
+    const headers = [
+      'Cliente',
+      'NIT',
+      'Email',
+      'Estado',
+      'Email Enviado',
+      'Email Entregado',
+      'Email Abierto',
+      'Fallback Requerido',
+      'Fallback Enviado',
+    ]
+    const rows = clients.map((c: any) => {
+      const customer = c.business_customers || {}
+      return [
+        customer.full_name || 'N/A',
+        customer.nit || 'N/A',
+        customer.email || 'N/A',
+        c.status,
+        c.email_sent_at ? c.email_sent_at.split('T')[0] : 'N/A',
+        c.email_delivered_at ? c.email_delivered_at.split('T')[0] : 'N/A',
+        c.email_opened_at ? c.email_opened_at.split('T')[0] : 'N/A',
+        c.fallback_required ? 'Sí' : 'No',
+        c.fallback_sent_at ? 'Sí' : 'No',
+      ]
     })
 
-    rows.push(['', '', '', '', '', '', ''])
-    rows.push(['--- DISTRIBUCIÓN POR DÍA ---', '', '', '', '', '', ''])
-    daily.forEach(d => {
-      rows.push([d.day_name, d.count.toString(), '', '', '', '', ''])
-    })
+    // Agregar resumen
+    rows.unshift(['', '', '', '', '', '', '', '', ''])
+    rows.unshift(['--- LISTADO DE CLIENTES ---', '', '', '', '', '', '', '', ''])
+    rows.unshift(['', '', '', '', '', '', '', '', ''])
+    rows.unshift(['Fallidos', metrics.status_distribution.failed, '', '', '', '', '', '', ''])
+    rows.unshift(['Rebotados', metrics.status_distribution.bounced, '', '', '', '', '', '', ''])
+    rows.unshift(['Abiertos', metrics.status_distribution.opened, '', '', '', '', '', '', ''])
+    rows.unshift(['Entregados', metrics.status_distribution.delivered, '', '', '', '', '', '', ''])
+    rows.unshift(['Enviados', metrics.status_distribution.sent, '', '', '', '', '', '', ''])
+    rows.unshift(['En Cola', metrics.status_distribution.queued, '', '', '', '', '', '', ''])
+    rows.unshift(['Pendientes', metrics.status_distribution.pending, '', '', '', '', '', '', ''])
+    rows.unshift(['Con Fallback Enviado', metrics.fallback_sent, '', '', '', '', '', '', ''])
+    rows.unshift(['Con Fallback Requerido', metrics.with_fallback, '', '', '', '', '', '', ''])
+    rows.unshift(['Total Clientes', metrics.total_clients, '', '', '', '', '', '', ''])
+    rows.unshift(['--- RESUMEN ---', '', '', '', '', '', '', '', ''])
 
-    const data = format === 'csv'
-      ? arrayToCSV(headers, rows)
-      : arrayToExcel(headers, rows)
+    const data =
+      format === 'csv'
+        ? arrayToCSV(headers, rows)
+        : arrayToExcel(headers, rows)
 
     return {
       success: true,
       data,
-      filename: `reporte-citas-${params.start_date.split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`,
+      filename: `reporte-clientes-cobranza-${params.startDate.split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`,
     }
   } catch (error) {
-    console.error('Error exporting appointments report:', error)
-    return { success: false, error: 'Error al exportar el reporte' }
+    console.error('Error exporting collection clients report:', error)
+    return { success: false, error: 'Error al exportar el reporte de clientes' }
   }
 }
 
-export async function exportServicesReportAction(
+// ============================================================================
+// REPORTE DE LOTES DE EJECUCIÓN
+// ============================================================================
+
+export async function exportBatchesReportAction(
   params: DateRangeParams,
   format: ExportFormat
 ): Promise<ExportResult> {
   try {
-    const services = await fetchTopServicesAction(params, 100)
+    const metrics = await fetchBatchMetricsAction(params)
+    const supabase = await getSupabaseAdminClient()
 
-    const headers = ['#', 'Servicio', 'Categoría', 'Veces Realizado', 'Ingresos (COP)']
-    const rows = services.map((s, i) => [
-      i + 1,
-      s.service_name,
-      s.category_name,
-      s.total_bookings,
-      formatCurrency(s.total_revenue),
+    // Obtener execution_ids del período
+    const { data: executions } = await supabase
+      .from('collection_executions')
+      .select('id, name')
+      .eq('business_id', params.businessId)
+      .gte('created_at', params.startDate)
+      .lte('created_at', params.endDate)
+
+    const executionMap = new Map(executions?.map((e) => [e.id, e.name]) || [])
+    const executionIds = executions?.map((e) => e.id) || []
+
+    let batches: any[] = []
+    if (executionIds.length > 0) {
+      const { data } = await supabase
+        .from('execution_batches')
+        .select(
+          'execution_id, batch_number, batch_name, status, total_clients, emails_sent, emails_delivered, emails_opened, scheduled_for, processed_at, completed_at'
+        )
+        .in('execution_id', executionIds)
+        .order('scheduled_for', { ascending: true })
+
+      batches = data || []
+    }
+
+    const headers = [
+      'Ejecución',
+      'Lote #',
+      'Nombre',
+      'Estado',
+      'Clientes',
+      'Emails Enviados',
+      'Entregados',
+      'Abiertos',
+      'Programado Para',
+      'Procesado',
+      'Completado',
+    ]
+    const rows = batches.map((b) => [
+      executionMap.get(b.execution_id) || 'N/A',
+      b.batch_number,
+      b.batch_name || `Lote ${b.batch_number}`,
+      b.status,
+      b.total_clients,
+      b.emails_sent,
+      b.emails_delivered,
+      b.emails_opened,
+      b.scheduled_for ? b.scheduled_for.split('T')[0] : 'N/A',
+      b.processed_at ? b.processed_at.split('T')[0] : 'N/A',
+      b.completed_at ? b.completed_at.split('T')[0] : 'N/A',
     ])
 
-    const totalBookings = services.reduce((sum, s) => sum + s.total_bookings, 0)
-    const totalRevenue = services.reduce((sum, s) => sum + s.total_revenue, 0)
+    // Agregar resumen
+    rows.unshift(['', '', '', '', '', '', '', '', '', '', ''])
+    rows.unshift(['--- LISTADO DE LOTES ---', '', '', '', '', '', '', '', '', '', ''])
+    rows.unshift(['', '', '', '', '', '', '', '', '', '', ''])
+    rows.unshift(['Fallidos', metrics.failed, '', '', '', '', '', '', '', '', ''])
+    rows.unshift(['Completados', metrics.completed, '', '', '', '', '', '', '', '', ''])
+    rows.unshift(['En Proceso', metrics.processing, '', '', '', '', '', '', '', '', ''])
+    rows.unshift(['En Cola', metrics.queued, '', '', '', '', '', '', '', '', ''])
+    rows.unshift(['Pendientes', metrics.pending, '', '', '', '', '', '', '', '', ''])
+    rows.unshift(['Emails Abiertos', metrics.total_emails_opened, '', '', '', '', '', '', '', '', ''])
+    rows.unshift(['Emails Entregados', metrics.total_emails_delivered, '', '', '', '', '', '', '', '', ''])
+    rows.unshift(['Emails Enviados', metrics.total_emails_sent, '', '', '', '', '', '', '', '', ''])
+    rows.unshift(['Total Clientes', metrics.total_clients, '', '', '', '', '', '', '', '', ''])
+    rows.unshift(['Total Lotes', metrics.total_batches, '', '', '', '', '', '', '', '', ''])
+    rows.unshift(['--- RESUMEN ---', '', '', '', '', '', '', '', '', '', ''])
 
-    rows.push(['', '', '', '', ''])
-    rows.push(['', 'TOTAL', '', totalBookings, formatCurrency(totalRevenue)])
-
-    const data = format === 'csv'
-      ? arrayToCSV(headers, rows)
-      : arrayToExcel(headers, rows)
+    const data =
+      format === 'csv'
+        ? arrayToCSV(headers, rows)
+        : arrayToExcel(headers, rows)
 
     return {
       success: true,
       data,
-      filename: `reporte-servicios-${params.start_date.split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`,
+      filename: `reporte-lotes-${params.startDate.split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`,
     }
   } catch (error) {
-    console.error('Error exporting services report:', error)
-    return { success: false, error: 'Error al exportar el reporte' }
+    console.error('Error exporting batches report:', error)
+    return { success: false, error: 'Error al exportar el reporte de lotes' }
   }
 }
 
-export async function exportSpecialistsReportAction(
-  params: DateRangeParams,
-  format: ExportFormat
-): Promise<ExportResult> {
-  try {
-    const specialists = await fetchSpecialistStatsAction(params)
-
-    const headers = ['Especialista', 'Total Citas', 'Completadas', 'Tasa Cancelación (%)', 'Ingresos (COP)']
-    const rows = specialists.map(s => [
-      `${s.first_name} ${s.last_name || ''}`.trim(),
-      s.total_appointments,
-      s.completed_appointments,
-      s.cancellation_rate.toFixed(1),
-      formatCurrency(s.total_revenue),
-    ])
-
-    const totalAppointments = specialists.reduce((sum, s) => sum + s.total_appointments, 0)
-    const totalCompleted = specialists.reduce((sum, s) => sum + s.completed_appointments, 0)
-    const totalRevenue = specialists.reduce((sum, s) => sum + s.total_revenue, 0)
-
-    rows.push(['', '', '', '', ''])
-    rows.push(['TOTAL', totalAppointments, totalCompleted, '', formatCurrency(totalRevenue)])
-
-    const data = format === 'csv'
-      ? arrayToCSV(headers, rows)
-      : arrayToExcel(headers, rows)
-
-    return {
-      success: true,
-      data,
-      filename: `reporte-especialistas-${params.start_date.split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`,
-    }
-  } catch (error) {
-    console.error('Error exporting specialists report:', error)
-    return { success: false, error: 'Error al exportar el reporte' }
-  }
-}
+// ============================================================================
+// REPORTE DE CLIENTES DEL NEGOCIO
+// ============================================================================
 
 export async function exportCustomersReportAction(
   params: DateRangeParams,
@@ -254,13 +440,17 @@ export async function exportCustomersReportAction(
   try {
     const supabase = await getSupabaseAdminClient()
 
-    const { data: customers } = await supabase
+    const { data: customers, error } = await supabase
       .from('business_customers')
-      .select('id, first_name, last_name, email, phone, total_visits, total_spent_cents, created_at, status')
-      .eq('business_id', params.business_id)
-      .order('total_spent_cents', { ascending: false })
+      .select(
+        'id, full_name, nit, emails, phone, status, notes, created_at, updated_at'
+      )
+      .eq('business_id', params.businessId)
+      .order('created_at', { ascending: false })
 
-    const stats = await fetchCustomerStatsAction(params)
+    if (error) throw error
+
+    const metrics = await fetchCustomerMetricsAction(params)
 
     const statusMap: Record<string, string> = {
       active: 'Activo',
@@ -269,35 +459,49 @@ export async function exportCustomersReportAction(
       blocked: 'Bloqueado',
     }
 
-    const headers = ['Nombre', 'Email', 'Teléfono', 'Estado', 'Visitas', 'Total Gastado (COP)', 'Fecha Registro']
+    const headers = [
+      'Nombre',
+      'NIT',
+      'Email',
+      'Teléfono',
+      'Estado',
+      'Notas',
+      'Fecha Registro',
+    ]
     const rows = (customers || []).map((c: any) => [
-      `${c.first_name} ${c.last_name || ''}`.trim(),
-      c.email || '',
-      c.phone || '',
+      c.full_name || 'N/A',
+      c.nit || 'N/A',
+      c.emails?.[0] || 'N/A',
+      c.phone || 'N/A',
       statusMap[c.status] || c.status,
-      c.total_visits,
-      formatCurrency(c.total_spent_cents),
-      c.created_at.split('T')[0],
+      c.notes || '',
+      c.created_at ? c.created_at.split('T')[0] : 'N/A',
     ])
 
-    rows.unshift(['--- RESUMEN ---', '', '', '', '', '', ''])
-    rows.unshift(['Total Clientes', stats.total_customers, '', '', '', '', ''])
-    rows.unshift(['Nuevos (período)', stats.new_customers, '', '', '', '', ''])
-    rows.unshift(['Recurrentes', stats.returning_customers, '', '', '', '', ''])
+    // Agregar resumen
     rows.unshift(['', '', '', '', '', '', ''])
-    rows.unshift(['--- DETALLE DE CLIENTES ---', '', '', '', '', '', ''])
+    rows.unshift(['--- LISTADO DE CLIENTES ---', '', '', '', '', '', ''])
+    rows.unshift(['', '', '', '', '', '', ''])
+    rows.unshift(['Bloqueados', metrics.blocked, '', '', '', '', ''])
+    rows.unshift(['VIP', metrics.vip, '', '', '', '', ''])
+    rows.unshift(['Inactivos', metrics.inactive, '', '', '', '', ''])
+    rows.unshift(['Activos', metrics.active, '', '', '', '', ''])
+    rows.unshift(['Nuevos (período)', metrics.new_this_period, '', '', '', '', ''])
+    rows.unshift(['Total Clientes', metrics.total_customers, '', '', '', '', ''])
+    rows.unshift(['--- RESUMEN ---', '', '', '', '', '', ''])
 
-    const data = format === 'csv'
-      ? arrayToCSV(headers, rows)
-      : arrayToExcel(headers, rows)
+    const data =
+      format === 'csv'
+        ? arrayToCSV(headers, rows)
+        : arrayToExcel(headers, rows)
 
     return {
       success: true,
       data,
-      filename: `reporte-clientes-${params.start_date.split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`,
+      filename: `reporte-clientes-${params.startDate.split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`,
     }
   } catch (error) {
     console.error('Error exporting customers report:', error)
-    return { success: false, error: 'Error al exportar el reporte' }
+    return { success: false, error: 'Error al exportar el reporte de clientes' }
   }
 }

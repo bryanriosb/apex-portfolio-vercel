@@ -137,7 +137,7 @@ export function CreateCustomerDialog({
         company_name: data.company_name?.trim() || null,
         nit: data.nit.trim(),
         full_name: data.full_name.trim(),
-        email: data.email.trim(),
+        emails: [data.email.trim()],
         phone: data.phone?.trim() || null,
         status: data.status,
         notes: data.notes?.trim() || null,

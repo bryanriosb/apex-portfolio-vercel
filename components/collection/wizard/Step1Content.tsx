@@ -268,7 +268,7 @@ export function Step1Content({
                                 {client.customer.full_name}
                               </span>
                               <span className="text-xs text-muted-foreground">
-                                {client.customer.email}
+                                {client.customer.emails[0] || ''}
                               </span>
                             </div>
                           ) : (

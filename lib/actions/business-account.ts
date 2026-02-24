@@ -445,34 +445,6 @@ export async function findUserProfileByEmailAction(
   }
 }
 
-export async function updateTutorialStartedAction(
-  businessAccountId: string,
-  tutorialStarted: boolean = true
-): Promise<{ success: boolean; error: string | null }> {
-  try {
-    const currentUser = await getCurrentUser()
-    if (!currentUser) {
-      return { success: false, error: 'Usuario no autenticado' }
-    }
-
-    const client = await getSupabaseClient()
-
-    const { data: account, error } = await client
-      .from('business_accounts')
-      .update({ tutorial_started: tutorialStarted })
-      .eq('id', businessAccountId)
-      .select('id, tutorial_started')
-      .single()
-
-    if (error) throw error
-
-    return { success: true, error: null }
-  } catch (error: any) {
-    console.error('Error updating tutorial_started:', error)
-    return { success: false, error: error.message }
-  }
-}
-
 export async function createMemberWithAccountAction(data: {
   name: string
   email: string

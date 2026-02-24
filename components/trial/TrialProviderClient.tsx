@@ -8,7 +8,6 @@ interface TrialContextType {
   isOnTrial: boolean
   daysRemaining: number | null
   trialEndsAt: string | null
-  tutorialStarted: boolean
   isLoading: boolean
 }
 
@@ -20,7 +19,6 @@ interface TrialProviderProps {
     isOnTrial?: boolean
     daysRemaining?: number | null
     trialEndsAt?: string | null
-    tutorialStarted?: boolean
   }
   children: ReactNode
 }
@@ -30,8 +28,7 @@ export function TrialProviderClient({ businessAccountId, initialData, children }
     isOnTrial: initialData?.isOnTrial || false,
     daysRemaining: initialData?.daysRemaining || null,
     trialEndsAt: initialData?.trialEndsAt || null,
-    tutorialStarted: initialData?.tutorialStarted || false,
-    isLoading: !!initialData, // Loading if we have initial data
+    isLoading: !!initialData,
   })
 
   useEffect(() => {
@@ -39,17 +36,12 @@ export function TrialProviderClient({ businessAccountId, initialData, children }
 
     const loadTrialData = async () => {
       try {
-        // Load trial info
         const trialInfo = await getTrialInfoAction(businessAccountId)
-        
-        // Load business account for tutorial info
-        const businessAccountResult = await getBusinessAccountByIdAction(businessAccountId)
 
         const newData = {
           isOnTrial: trialInfo.isOnTrial,
           daysRemaining: trialInfo.daysRemaining,
           trialEndsAt: trialInfo.trialEndsAt,
-          tutorialStarted: businessAccountResult.data?.tutorial_started || false,
           isLoading: false,
         }
 

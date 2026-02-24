@@ -2,6 +2,7 @@
 
 import { getSupabaseAdminClient } from './supabase'
 import { verifyTurnstileToken } from '@/lib/services/turnstile/turnstile-service'
+import { isLocalhost } from '@/lib/utils/is-localhost'
 import type { BusinessType } from '@/lib/types/enums'
 
 export interface RegisterBusinessData {
@@ -26,20 +27,24 @@ export interface RegisterBusinessResult {
 export async function registerBusinessAction(
   data: RegisterBusinessData
 ): Promise<RegisterBusinessResult> {
-  // Validate Turnstile token first
-  if (!data.turnstileToken) {
-    return {
-      success: false,
-      error: 'Verificación de seguridad requerida. Por favor, completa el captcha.',
+  // Validate Turnstile token solo en producción
+  if (!isLocalhost()) {
+    if (!data.turnstileToken) {
+      return {
+        success: false,
+        error: 'Verificación de seguridad requerida. Por favor, completa el captcha.',
+      }
     }
-  }
 
-  const turnstileResult = await verifyTurnstileToken(data.turnstileToken)
-  if (!turnstileResult.success) {
-    return {
-      success: false,
-      error: turnstileResult.error || 'Verificación de seguridad fallida. Por favor, intenta de nuevo.',
+    const turnstileResult = await verifyTurnstileToken(data.turnstileToken)
+    if (!turnstileResult.success) {
+      return {
+        success: false,
+        error: turnstileResult.error || 'Verificación de seguridad fallida. Por favor, intenta de nuevo.',
+      }
     }
+  } else {
+    console.log('[DEV] Bypassing Turnstile validation for localhost registration')
   }
 
   const client = await getSupabaseAdminClient()

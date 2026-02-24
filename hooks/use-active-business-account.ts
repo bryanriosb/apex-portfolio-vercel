@@ -8,7 +8,6 @@ export function useActiveBusinessAccount() {
   const { activeBusiness } = useActiveBusinessStore()
   const { 
     account, 
-    tutorialStarted, 
     isLoading: businessAccountLoading,
     error 
   } = useBusinessAccount()
@@ -30,11 +29,8 @@ export function useActiveBusinessAccount() {
   return {
     activeBusiness,
     businessAccount: account,
-    tutorialStarted: Boolean(account?.tutorial_started), // Asegurar boolean
     isLoading,
     isMatch,
     error,
-    // Helper para saber si podemos confiar en el tutorialStarted
-    canUseTutorialStatus: !isLoading && isMatch && activeBusiness !== null
   }
 }

@@ -1,5 +1,7 @@
 'use server'
 
+import { isLocalhost } from '@/lib/utils/is-localhost'
+
 const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
 
 export interface TurnstileVerificationResult {
@@ -10,6 +12,12 @@ export interface TurnstileVerificationResult {
 export async function verifyTurnstileToken(
   token: string
 ): Promise<TurnstileVerificationResult> {
+  // Bypass para desarrollo local
+  if (isLocalhost()) {
+    console.log('[DEV] Bypassing Turnstile verification for localhost')
+    return { success: true }
+  }
+
   try {
     const secretKey = process.env.TURNSTILE_SECRET_KEY
 

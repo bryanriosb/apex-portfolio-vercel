@@ -2,6 +2,7 @@
 
 import { authenticateWithSupabase } from './supabase-auth'
 import { verifyTurnstileToken } from '@/lib/services/turnstile/turnstile-service'
+import { isLocalhost } from '@/lib/utils/is-localhost'
 
 export async function authenticate(
   credentials: Record<'username' | 'password' | 'turnstileToken', string> | undefined
@@ -11,16 +12,20 @@ export async function authenticate(
 
     const { username, password, turnstileToken } = credentials
 
-    // Validate Turnstile token
-    if (!turnstileToken) {
-      console.error('Turnstile token is missing')
-      return null
-    }
+    // Validate Turnstile token solo en producción
+    if (!isLocalhost()) {
+      if (!turnstileToken) {
+        console.error('Turnstile token is missing')
+        return null
+      }
 
-    const turnstileResult = await verifyTurnstileToken(turnstileToken)
-    if (!turnstileResult.success) {
-      console.error('Turnstile verification failed:', turnstileResult.error)
-      return null
+      const turnstileResult = await verifyTurnstileToken(turnstileToken)
+      if (!turnstileResult.success) {
+        console.error('Turnstile verification failed:', turnstileResult.error)
+        return null
+      }
+    } else {
+      console.log('[DEV] Bypassing Turnstile validation for localhost sign-in')
     }
 
     // Authenticate with Supabase

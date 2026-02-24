@@ -10,6 +10,7 @@ import {
   BusinessUpdate,
   BusinessWithAccount,
 } from '@/lib/models/business/business'
+import { BusinessType } from '@/lib/types/enums'
 import {
   Dialog,
   DialogContent,
@@ -42,7 +43,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Upload, X, Image as ImageIcon, Clock } from 'lucide-react'
 import BusinessStorageService from '@/lib/services/business/business-storage-service'
 import { useCurrentUser } from '@/hooks/use-current-user'
-import { BusinessGalleryImage } from '@/lib/models/business/business-gallery-image'
 import BusinessAccountService from '@/lib/services/business-account/business-account-service'
 import { BusinessAccount } from '@/lib/models/business-account/business-account'
 import { BUSINESS_TYPES_OPTIONS } from '@/lib/services/business/const/business-type-labels'
@@ -57,21 +57,7 @@ const formSchema = z.object({
   city: z.string().min(1, 'La ciudad es requerida'),
   state: z.string().min(1, 'El departamento es requerido'),
   phone_number: z.string().optional().or(z.literal('')),
-  type: z.enum([
-    'AESTHETICS_CENTER',
-    'BARBERSHOP',
-    'HAIR_SALON',
-    'MAKEUP_CENTER',
-    'INDEPENDENT',
-    'EYEBROWS_EYELASHES_SALON',
-    'SPA',
-    'MANICURE_PEDICURE_SALON',
-    'BEAUTY_SALON',
-    'PLASTIC_SURGERY_CENTER',
-    'SALON',
-    'BEAUTY_STUDIO',
-    'CONSULTORY',
-  ] as const),
+  type: z.custom<BusinessType>(), 
 })
 
 type BusinessFormValues = z.infer<typeof formSchema>
@@ -104,9 +90,6 @@ export function BusinessModal({
   const [galleryImages, setGalleryImages] = useState<
     { file: File; preview: string }[]
   >([])
-  const [existingGalleryImages, setExistingGalleryImages] = useState<
-    BusinessGalleryImage[]
-  >([])
   const [isUploadingGallery, setIsUploadingGallery] = useState(false)
 
   // Business accounts state
@@ -137,7 +120,7 @@ export function BusinessModal({
       city: '',
       state: '',
       phone_number: '',
-      type: 'SALON',
+      type: 'BEAUTY',
     },
   })
 
@@ -182,7 +165,6 @@ export function BusinessModal({
           city: business.city,
           state: business.state,
           phone_number: business.phone_number || '',
-          type: business.type,
         })
         setLogoPreview(business.logo_url)
         setGalleryCoverPreview(business.gallery_cover_image_url)
@@ -198,11 +180,9 @@ export function BusinessModal({
           city: '',
           state: '',
           phone_number: '',
-          type: 'SALON',
+      type: 'BEAUTY',
         })
         setLogoPreview(null)
-        setGalleryCoverPreview(null)
-        setExistingGalleryImages([])
       }
       setLogoFile(null)
       setGalleryCoverFile(null)
@@ -261,52 +241,6 @@ export function BusinessModal({
     setUploadError(null)
   }
 
-  const handleGalleryImagesSelect = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const files = Array.from(e.target.files || [])
-    if (!files.length) return
-
-    setUploadError(null)
-
-    const totalImages =
-      existingGalleryImages.length + galleryImages.length + files.length
-    if (totalImages > MAX_GALLERY_IMAGES) {
-      setUploadError(`Puedes subir máximo ${MAX_GALLERY_IMAGES} imágenes`)
-      return
-    }
-
-    const validFiles: { file: File; preview: string }[] = []
-
-    files.forEach((file) => {
-      if (!file.type.startsWith('image/')) {
-        setUploadError('Todos los archivos deben ser imágenes')
-        return
-      }
-
-      const maxSize = 5 * 1024 * 1024
-      if (file.size > maxSize) {
-        setUploadError('Las imágenes no deben superar los 5MB')
-        return
-      }
-
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        validFiles.push({ file, preview: reader.result as string })
-        if (validFiles.length === files.length) {
-          setGalleryImages((prev) => [...prev, ...validFiles])
-        }
-      }
-      reader.readAsDataURL(file)
-    })
-
-    if (galleryInputRef.current) galleryInputRef.current.value = ''
-  }
-
-  const handleRemoveGalleryImage = (index: number) => {
-    setGalleryImages((prev) => prev.filter((_, i) => i !== index))
-  }
-
   const onSubmit = async (data: BusinessFormValues) => {
     setIsSubmitting(true)
     setUploadError(null)
@@ -340,26 +274,6 @@ export function BusinessModal({
           }
           finalGalleryCoverUrl = uploadResult.url || null
         }
-
-        // Subir imágenes de galería
-        if (galleryImages.length > 0) {
-          setIsUploadingGallery(true)
-          let sortOrder = existingGalleryImages.length
-
-          for (const { file } of galleryImages) {
-            const uploadResult =
-              await storageService.current.uploadGalleryImage(file, business.id)
-            if (!uploadResult.success) {
-              setUploadError(
-                uploadResult.error || 'Error al subir imagen de galería'
-              )
-              setIsUploadingGallery(false)
-              return
-            }
-          }
-          setIsUploadingGallery(false)
-          setGalleryImages([]) // Limpiar después de subir
-        }
       }
 
       const saveData: BusinessInsert | BusinessUpdate = {
@@ -367,7 +281,6 @@ export function BusinessModal({
         description: data.description || null,
         phone_number: data.phone_number || null,
         logo_url: finalLogoUrl,
-        gallery_cover_image_url: finalGalleryCoverUrl,
       }
 
       await onSave(saveData)

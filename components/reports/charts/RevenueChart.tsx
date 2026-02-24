@@ -3,22 +3,21 @@
 import ReactECharts from 'echarts-for-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatCurrency } from '@/lib/utils/currency'
-import type { RevenueTrendItem } from '@/lib/actions/reports'
+import type { ExecutionTrendItem } from '@/lib/actions/reports'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
-interface RevenueChartProps {
-  data: RevenueTrendItem[]
+interface ExecutionChartProps {
+  data: ExecutionTrendItem[]
   loading?: boolean
   title?: string
 }
 
-export function RevenueChart({
+export function ExecutionTrendChart({
   data,
   loading,
-  title = 'Tendencia de Ingresos',
-}: RevenueChartProps) {
+  title = 'Tendencia de Ejecuciones',
+}: ExecutionChartProps) {
   if (loading) {
     return (
       <Card className="border">
@@ -39,20 +38,16 @@ export function RevenueChart({
         const date = params[0]?.name || ''
         let html = `<div class="font-medium">${date}</div>`
         params.forEach((param: any) => {
-          const value =
-            param.seriesName === 'Ingresos'
-              ? formatCurrency(param.value / 100)
-              : param.value
           html += `<div class="flex items-center gap-2">
             <span style="background:${param.color}" class="w-2 h-2 rounded-full inline-block"></span>
-            <span>${param.seriesName}: ${value}</span>
+            <span>${param.seriesName}: ${param.value}</span>
           </div>`
         })
         return html
       },
     },
     legend: {
-      data: ['Ingresos', 'Citas'],
+      data: ['Ejecuciones', 'Emails Enviados', 'Entregados', 'Abiertos'],
       bottom: 0,
     },
     grid: {
@@ -72,33 +67,23 @@ export function RevenueChart({
     yAxis: [
       {
         type: 'value',
-        name: 'Ingresos',
+        name: 'Cantidad',
         position: 'left',
         axisLine: { show: false },
         axisTick: { show: false },
         axisLabel: {
           color: '#6b7280',
           fontSize: 11,
-          formatter: (value: number) => formatCurrency(value / 100),
         },
         splitLine: { lineStyle: { color: '#f3f4f6' } },
-      },
-      {
-        type: 'value',
-        name: 'Citas',
-        position: 'right',
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: { color: '#6b7280', fontSize: 11 },
-        splitLine: { show: false },
       },
     ],
     series: [
       {
-        name: 'Ingresos',
+        name: 'Ejecuciones',
         type: 'line',
         smooth: true,
-        data: data.map((d) => d.revenue),
+        data: data.map((d) => d.executions),
         itemStyle: { color: '#8b5cf6' },
         areaStyle: {
           color: {
@@ -115,12 +100,25 @@ export function RevenueChart({
         },
       },
       {
-        name: 'Citas',
+        name: 'Emails Enviados',
         type: 'bar',
-        yAxisIndex: 1,
-        data: data.map((d) => d.appointments),
-        itemStyle: { color: '#e5e7eb', borderRadius: [4, 4, 0, 0] },
-        barMaxWidth: 20,
+        data: data.map((d) => d.emails_sent),
+        itemStyle: { color: '#3b82f6', borderRadius: [4, 4, 0, 0] },
+        barMaxWidth: 15,
+      },
+      {
+        name: 'Entregados',
+        type: 'bar',
+        data: data.map((d) => d.emails_delivered),
+        itemStyle: { color: '#10b981', borderRadius: [4, 4, 0, 0] },
+        barMaxWidth: 15,
+      },
+      {
+        name: 'Abiertos',
+        type: 'bar',
+        data: data.map((d) => d.emails_opened),
+        itemStyle: { color: '#f59e0b', borderRadius: [4, 4, 0, 0] },
+        barMaxWidth: 15,
       },
     ],
   }

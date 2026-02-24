@@ -35,7 +35,6 @@ export interface NavSubItem {
   title: string
   url: string
   allowedRoles?: UserRole[]
-  targetTutorialStep?: string
 }
 
 export interface NavItem {
@@ -45,7 +44,6 @@ export interface NavItem {
   isActive?: boolean
   badge?: React.ReactNode
   items?: NavSubItem[]
-  targetTutorialStep?: string
 }
 
 function CollapsedMenuItem({
@@ -86,7 +84,6 @@ function CollapsedMenuItem({
               'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
             )}
             data-active={hasActiveSubItem}
-            data-tutorial={item.targetTutorialStep}
           >
             {item.icon && <item.icon />}
             <span>{item.title}</span>
@@ -128,7 +125,6 @@ function CollapsedMenuItem({
                   'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
                 )}
                 data-active={hasActiveSubItem}
-                data-tutorial={item.targetTutorialStep}
               >
                 {item.icon && <item.icon />}
                 <span className="group-data-[collapsible=icon]:hidden">
@@ -216,7 +212,6 @@ export function NavMain({
                   asChild
                   tooltip={item.title}
                   isActive={isActive}
-                  data-tutorial={item.targetTutorialStep}
                 >
                   <Link href={item.url}>
                     {item.icon && <item.icon />}
@@ -259,7 +254,6 @@ export function NavMain({
                 <CollapsibleTrigger asChild>
                   <SidebarMenuButton
                     tooltip={item.title}
-                    data-tutorial={item.targetTutorialStep}
                     isActive={isActive}
                     className="text-muted-foreground data-[active=true]:text-sidebar-accent-foreground"
                   >
@@ -280,7 +274,6 @@ export function NavMain({
                           <SidebarMenuSubButton
                             asChild
                             isActive={isSubItemActive}
-                            data-tutorial={subItem.targetTutorialStep}
                           >
                             <Link href={subItem.url}>
                               <span>{subItem.title}</span>

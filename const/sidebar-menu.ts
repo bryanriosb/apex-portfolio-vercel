@@ -22,7 +22,6 @@ export type ModuleCode =
   | 'collection'
   | 'customers'
   | 'reports'
-  | 'invoices'
   | 'ai_assistant'
   | 'whatsapp'
   | 'settings'
@@ -124,17 +123,6 @@ export const SIDE_APP_MENU_ITEMS: MenuItem[] = [
     icon: BarChart3,
     moduleCode: 'reports',
     allowedRoles: [USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN],
-  },
-  {
-    title: 'Facturas',
-    url: '/admin/invoices',
-    icon: FileStack,
-    moduleCode: 'invoices',
-    allowedRoles: [
-      USER_ROLES.COMPANY_ADMIN,
-      USER_ROLES.BUSINESS_ADMIN,
-      USER_ROLES.PROFESSIONAL,
-    ],
   },
 ]
 

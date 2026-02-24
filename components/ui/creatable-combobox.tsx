@@ -133,7 +133,6 @@ export function CreatableCombobox({
             !value && 'text-muted-foreground',
             className
           )}
-          data-tutorial="service-category-select"
           disabled={disabled}
         >
           {selectedOption ? selectedOption.label : placeholder}

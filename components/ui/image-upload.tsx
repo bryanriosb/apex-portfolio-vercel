@@ -123,7 +123,6 @@ export function ImageUpload({
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
-          data-tutorial="specialist-photo-upload"
           className={`
             flex flex-col items-center justify-center w-full h-32
             border-2 border-dashed rounded-lg cursor-pointer

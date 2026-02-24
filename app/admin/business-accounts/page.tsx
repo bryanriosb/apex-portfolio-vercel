@@ -167,10 +167,8 @@ export default function BusinessAccountsPage() {
           ...(data as BusinessAccountInsert),
           created_by: user.id,
         }
-        const result = await businessAccountService.createAccountWithOwner(
-          accountData,
-          user.id || undefined
-        )
+        const result =
+          await businessAccountService.createAccountWithOwner(accountData)
 
         if (result.success) {
           toast.success('Cuenta creada correctamente')
@@ -200,8 +198,6 @@ export default function BusinessAccountsPage() {
             const canEdit = canEditFull || canEditContact
             const canDelete =
               role && hasPermission(role, 'canDeleteBusinessAccount')
-            const canManageMembers =
-              role && hasPermission(role, 'canAddAccountMembers')
 
             return (
               <DropdownMenu>
@@ -224,14 +220,6 @@ export default function BusinessAccountsPage() {
                     >
                       <Pencil className="mr-2 h-4 w-4" />
                       Editar
-                    </DropdownMenuItem>
-                  )}
-                  {canManageMembers && (
-                    <DropdownMenuItem
-                      onClick={() => handleManageMembers(account)}
-                    >
-                      <Users className="mr-2 h-4 w-4" />
-                      Miembros Administrativos
                     </DropdownMenuItem>
                   )}
                   {canEditFull && (

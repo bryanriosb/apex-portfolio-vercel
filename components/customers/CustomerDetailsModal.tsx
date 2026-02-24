@@ -147,10 +147,10 @@ export default function CustomerDetailsModal({
               <span className="text-sm">NIT: {customer.nit}</span>
             </div>
 
-            {customer.email && (
+            {customer.emails && customer.emails.length > 0 && (
               <div className="flex items-center gap-3">
                 <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">{customer.email}</span>
+                <span className="text-sm">{customer.emails[0]}</span>
               </div>
             )}
 

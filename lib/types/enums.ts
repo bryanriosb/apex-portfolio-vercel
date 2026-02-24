@@ -30,18 +30,6 @@ export type PaymentStatus = 'UNPAID' | 'PARTIAL' | 'PAID' | 'REFUNDED'
 
 export type PaymentMethod = 'AT_VENUE' | 'CREDIT_CARD' | 'PAYPAL' | 'NEQUI'
 
-export type AppointmentStatus =
-  | 'PENDING'
-  | 'CONFIRMED'
-  | 'COMPLETED'
-  | 'CANCELLED'
-  | 'NO_SHOW'
-
-export type PromotionType =
-  | 'PERCENTAGE_OFF'
-  | 'FIXED_AMOUNT_OFF'
-  | 'SPECIAL_COMBO'
-
 export type MessageSenderType = 'USER' | 'BUSINESS'
 
 export type NotificationType =
@@ -65,15 +53,3 @@ export type userRoles =
   | 'customer'
 
 export type InvoiceStatus = 'DRAFT' | 'ISSUED' | 'PAID' | 'CANCELLED'
-
-export type ProductType = 'SUPPLY' | 'RETAIL'
-
-export type InventoryMovementType =
-  | 'ENTRY'
-  | 'CONSUMPTION'
-  | 'SALE'
-  | 'ADJUSTMENT'
-  | 'TRANSFER'
-  | 'WASTE'
-
-export type ServiceType = 'REGULAR' | 'ASSESSMENT'

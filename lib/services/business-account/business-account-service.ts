@@ -6,10 +6,6 @@ import {
   deleteBusinessAccountsAction,
   getBusinessAccountByIdAction,
   getUserBusinessAccountsAction,
-  addAccountMemberAction,
-  updateAccountMemberAction,
-  removeAccountMemberAction,
-  getAccountMembersAction,
   isAccountAdminAction,
   canCreateBusinessInAccountAction,
 } from '@/lib/actions/business-account'
@@ -18,11 +14,6 @@ import type {
   BusinessAccountInsert,
   BusinessAccountUpdate,
 } from '@/lib/models/business-account/business-account'
-import type {
-  BusinessAccountMember,
-  BusinessAccountMemberInsert,
-  BusinessAccountMemberUpdate,
-} from '@/lib/models/business-account/business-account-member'
 import type { BusinessAccountListResponse } from '@/lib/actions/business-account'
 
 export default class BusinessAccountService {
@@ -73,7 +64,9 @@ export default class BusinessAccountService {
     }
   }
 
-  async deleteAccount(id: string): Promise<{ success: boolean; error?: string }> {
+  async deleteAccount(
+    id: string
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       const result = await deleteBusinessAccountAction(id)
       if (result.error) {
@@ -121,60 +114,6 @@ export default class BusinessAccountService {
     }
   }
 
-  async addMember(
-    data: BusinessAccountMemberInsert
-  ): Promise<{ success: boolean; data?: BusinessAccountMember; error?: string }> {
-    try {
-      const result = await addAccountMemberAction(data)
-      if (result.error) {
-        return { success: false, error: result.error }
-      }
-      return { success: true, data: result.data! }
-    } catch (error: any) {
-      console.error('Error adding account member:', error)
-      return { success: false, error: error.message }
-    }
-  }
-
-  async updateMember(
-    id: string,
-    data: BusinessAccountMemberUpdate
-  ): Promise<{ success: boolean; data?: BusinessAccountMember; error?: string }> {
-    try {
-      const result = await updateAccountMemberAction(id, data)
-      if (result.error) {
-        return { success: false, error: result.error }
-      }
-      return { success: true, data: result.data! }
-    } catch (error: any) {
-      console.error('Error updating account member:', error)
-      return { success: false, error: error.message }
-    }
-  }
-
-  async removeMember(id: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const result = await removeAccountMemberAction(id)
-      if (result.error) {
-        return { success: false, error: result.error }
-      }
-      return { success: true }
-    } catch (error: any) {
-      console.error('Error removing account member:', error)
-      return { success: false, error: error.message }
-    }
-  }
-
-  async getAccountMembers(accountId: string): Promise<BusinessAccountMember[]> {
-    try {
-      const result = await getAccountMembersAction(accountId)
-      return result.data || []
-    } catch (error) {
-      console.error('Error fetching account members:', error)
-      return []
-    }
-  }
-
   async isAccountAdmin(userId: string, accountId: string): Promise<boolean> {
     try {
       const result = await isAccountAdminAction(userId, accountId)
@@ -196,31 +135,12 @@ export default class BusinessAccountService {
   }
 
   async createAccountWithOwner(
-    accountData: BusinessAccountInsert,
-    userProfileId?: string
+    accountData: BusinessAccountInsert
   ): Promise<{ success: boolean; data?: BusinessAccount; error?: string }> {
     try {
       const accountResult = await this.createAccount(accountData)
       if (!accountResult.success || !accountResult.data) {
         return accountResult
-      }
-
-      // Si se proporcionó userProfileId, crear el miembro owner
-      if (userProfileId) {
-        const memberData: BusinessAccountMemberInsert = {
-          business_account_id: accountResult.data.id,
-          user_profile_id: userProfileId,
-          role: 'owner',
-          status: 'active',
-        }
-
-        const memberResult = await this.addMember(memberData)
-        if (!memberResult.success) {
-          return {
-            success: false,
-            error: `Cuenta creada pero error al agregar owner: ${memberResult.error}`,
-          }
-        }
       }
 
       return { success: true, data: accountResult.data }

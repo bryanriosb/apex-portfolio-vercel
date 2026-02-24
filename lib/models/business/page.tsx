@@ -21,7 +21,11 @@ import { useCurrentUser } from '@/hooks/use-current-user'
 import { useCanCreate, formatLimitUsage } from '@/hooks/use-plan-limits'
 import { useUnifiedPermissionsStore } from '@/lib/store/unified-permissions-store'
 import { toast } from 'sonner'
-import type { BusinessWithAccount, BusinessInsert, BusinessUpdate } from '@/lib/models/business/business'
+import type {
+  BusinessWithAccount,
+  BusinessInsert,
+  BusinessUpdate,
+} from '@/lib/models/business/business'
 import {
   Card,
   CardContent,
@@ -44,8 +48,10 @@ export default function BusinessesPage() {
   const [detailModalOpen, setDetailModalOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false)
-  const [selectedBusiness, setSelectedBusiness] = useState<BusinessWithAccount | null>(null)
-  const [selectedBusinessForDetail, setSelectedBusinessForDetail] = useState<BusinessWithAccount | null>(null)
+  const [selectedBusiness, setSelectedBusiness] =
+    useState<BusinessWithAccount | null>(null)
+  const [selectedBusinessForDetail, setSelectedBusinessForDetail] =
+    useState<BusinessWithAccount | null>(null)
   const [businessToDelete, setBusinessToDelete] = useState<string | null>(null)
   const [businessesToDelete, setBusinessesToDelete] = useState<string[]>([])
 
@@ -121,10 +127,10 @@ export default function BusinessesPage() {
     try {
       await businessService.destroyItem(businessToDelete)
       toast.success('Sucursal eliminada correctamente')
-      
+
       // Recargar datos para actualizar el contador
       dataTableRef.current?.refreshData()
-      
+
       // Recargar permisos para actualizar el contador de límites si es business_admin
       if (isBusinessAdmin && user?.business_account_id) {
         try {
@@ -153,11 +159,11 @@ export default function BusinessesPage() {
       const result = await businessService.destroyMany(businessesToDelete)
       if (result.success) {
         toast.success(`${result.deletedCount} sucursal(es) eliminada(s)`)
-        
+
         // Recargar datos para actualizar el contador
         dataTableRef.current?.refreshData()
         dataTableRef.current?.clearSelection()
-        
+
         // Recargar permisos para actualizar el contador de límites si es business_admin
         if (isBusinessAdmin && user?.business_account_id) {
           try {
@@ -182,7 +188,7 @@ export default function BusinessesPage() {
       if (selectedBusiness) {
         await businessService.updateItem({
           id: selectedBusiness.id,
-          ...(data as BusinessUpdate)
+          ...(data as BusinessUpdate),
         })
         toast.success('Sucursal actualizada correctamente')
       } else {
@@ -190,14 +196,14 @@ export default function BusinessesPage() {
         if (!isCompanyAdmin && !canCreate) {
           throw new Error('Has alcanzado el límite de sucursales para tu plan')
         }
-        
+
         await businessService.createItem(data as BusinessInsert)
         toast.success('Sucursal creada correctamente')
       }
-      
+
       // Recargar datos para actualizar el contador
       dataTableRef.current?.refreshData()
-      
+
       // Recargar permisos para actualizar el contador de límites si es business_admin
       if (isBusinessAdmin && user?.business_account_id) {
         try {
@@ -250,8 +256,8 @@ export default function BusinessesPage() {
                   {formatLimitUsage(limitInfo)}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {limitInfo.isAtLimit 
-                    ? 'Has alcanzado el límite de tu plan' 
+                  {limitInfo.isAtLimit
+                    ? 'Has alcanzado el límite de tu plan'
                     : `Puedes crear ${limitInfo.remaining || 'ilimitadas'} sucursales más`}
                 </div>
               </div>
@@ -259,13 +265,14 @@ export default function BusinessesPage() {
                 {limitInfo.isAtLimit ? 'Límite Alcanzado' : 'Disponible'}
               </Badge>
             </div>
-            
+
             {limitInfo.isAtLimit && (
               <Alert className="mt-4">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  Has alcanzado el límite de sucursales para tu plan actual. 
-                  Contacta al administrador para actualizar tu plan si necesitas más sucursales.
+                  Has alcanzado el límite de sucursales para tu plan actual.
+                  Contacta al administrador para actualizar tu plan si necesitas
+                  más sucursales.
                 </AlertDescription>
               </Alert>
             )}
@@ -274,7 +281,13 @@ export default function BusinessesPage() {
       )}
 
       <DataTable
-        key={isReady ? (shouldFilterByAccount ? user?.business_account_id : 'company-admin') : 'loading'}
+        key={
+          isReady
+            ? shouldFilterByAccount
+              ? user?.business_account_id
+              : 'company-admin'
+            : 'loading'
+        }
         ref={dataTableRef}
         columns={BUSINESSES_COLUMNS.map((col) => {
           if (col.id === 'actions') {

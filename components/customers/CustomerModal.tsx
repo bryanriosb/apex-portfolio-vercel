@@ -115,7 +115,7 @@ function CustomerModal({
           company_name: customer.company_name || '',
           nit: customer.nit,
           full_name: customer.full_name,
-          email: customer.email,
+          email: customer.emails?.[0] || '',
           phone: normalizedPhone,
           status: customer.status,
           category: customer.category || 'none',
@@ -147,7 +147,7 @@ function CustomerModal({
           company_name: data.company_name?.trim() || null,
           nit: data.nit.trim(),
           full_name: data.full_name.trim(),
-          email: data.email.trim(),
+          emails: [data.email.trim()],
           phone: data.phone?.trim() || null,
           status: data.status,
           category:
@@ -163,7 +163,7 @@ function CustomerModal({
           company_name: data.company_name?.trim() || null,
           nit: data.nit.trim(),
           full_name: data.full_name.trim(),
-          email: data.email.trim(),
+          emails: [data.email.trim()],
           phone: data.phone?.trim() || null,
           status: data.status,
           category:
