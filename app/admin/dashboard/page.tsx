@@ -243,12 +243,6 @@ export default function DashboardPage() {
         statsLoading={statsLoading}
         onManualRefresh={manualRefresh}
       />
-
-      <ActiveExecutions
-        executions={activeExecutions}
-        getStatusColor={getStatusColor}
-      />
-
       <StatsCards
         stats={stats}
         statsLoading={statsLoading}
@@ -256,6 +250,11 @@ export default function DashboardPage() {
         reputationCount={reputationProfiles.length}
         warmedCount={reputationProfiles.filter((p) => p.is_warmed_up).length}
         formatDate={formatDate}
+      />
+
+      <ActiveExecutions
+        executions={activeExecutions}
+        getStatusColor={getStatusColor}
       />
 
       {/* Sección de Campañas Recientes - Ancho completo */}

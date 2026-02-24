@@ -181,9 +181,18 @@ export function CreationWizard() {
 
       if (executionMode === 'scheduled' && scheduledDate) {
         const [hours, minutes] = scheduledTime.split(':').map(Number)
-        const scheduledDateTime = new Date(scheduledDate)
-        scheduledDateTime.setHours(hours, minutes, 0, 0)
-        finalScheduledAt = scheduledDateTime.toISOString()
+        // Create date in America/Bogota timezone (UTC-5)
+        // We construct an ISO string with the Bogota offset (-05:00)
+        const year = scheduledDate.getFullYear()
+        const month = String(scheduledDate.getMonth() + 1).padStart(2, '0')
+        const day = String(scheduledDate.getDate()).padStart(2, '0')
+        const hoursStr = String(hours).padStart(2, '0')
+        const minutesStr = String(minutes).padStart(2, '0')
+        
+        // Format: YYYY-MM-DDTHH:mm:ss-05:00 (Bogota timezone)
+        finalScheduledAt = `${year}-${month}-${day}T${hoursStr}:${minutesStr}:00-05:00`
+        
+        console.log(`[CreationWizard] Scheduled for America/Bogota: ${finalScheduledAt}`)
       }
 
       const executionData = {

@@ -10,6 +10,7 @@ import { getCurrentUser } from '@/lib/services/auth/supabase-auth'
 import { ClientProcessor } from '@/lib/services/collection/client-processor'
 import { fetchThresholdsAction } from '@/lib/actions/collection/notification-threshold'
 import { getBusinessByIdAction } from '@/lib/actions/business'
+import { CollectionService } from '@/lib/services/collection/collection-service'
 
 interface CreateExecutionWorkflowParams {
   executionData: CollectionExecutionInsert
@@ -212,19 +213,50 @@ export async function createExecutionWithClientsAction({
         .eq('id', execution.id)
 
     } else if (executionData.execution_mode === 'scheduled' && executionData.scheduled_at) {
-      // Para ejecuciones programadas, los batches ya tienen scheduled_for configurado
-      // Se encolarán automáticamente cuando llegue el momento (via Lambda scheduler)
+      // Para ejecuciones programadas:
+      // 1. Crear regla en EventBridge para disparar el worker a la hora programada
+      // 2. Guardar el nombre de la regla para poder cancelarla si es necesario
+      
+      try {
+        // Parse the scheduled_at which includes timezone offset (e.g., "2026-02-24T21:58:00-05:00")
+        const scheduledDate = new Date(executionData.scheduled_at!)
+        
+        console.log(`[ExecutionWorkflow] Scheduling execution ${execution.id}`)
+        console.log(`[ExecutionWorkflow] Scheduled at (input): ${executionData.scheduled_at}`)
+        console.log(`[ExecutionWorkflow] Parsed date: ${scheduledDate.toISOString()}`)
+        
+        // Schedule in EventBridge (timezone America/Bogota by default)
+        const { ruleName } = await CollectionService.scheduleExecution(
+          execution.id,
+          scheduledDate,
+          'America/Bogota'
+        )
+        
+        console.log(`[ExecutionWorkflow] Successfully created EventBridge rule: ${ruleName}`)
 
-      // Actualizar ejecución con información de programación
-      await supabase
-        .from('collection_executions')
-        .update({
-          status: 'pending', // Se mantendrá pending hasta que se encole el primer batch
-          scheduled_at: executionData.scheduled_at,
-        })
-        .eq('id', execution.id)
+        // Actualizar ejecución con información de programación y el nombre de la regla
+        await supabase
+          .from('collection_executions')
+          .update({
+            status: 'pending',
+            scheduled_at: executionData.scheduled_at,
+            eventbridge_rule_name: ruleName,
+          })
+          .eq('id', execution.id)
 
-      console.log(`Scheduled execution with ${batches.length} batches starting at ${executionData.scheduled_at}`)
+        console.log(`[ExecutionWorkflow] Updated execution ${execution.id} with EventBridge rule ${ruleName}`)
+      } catch (scheduleError: any) {
+        console.error('[ExecutionWorkflow] Failed to schedule execution:', scheduleError)
+        
+        // Rollback: Delete the execution since we couldn't schedule it
+        console.log(`[ExecutionWorkflow] Rolling back execution ${execution.id}`)
+        await supabase
+          .from('collection_executions')
+          .delete()
+          .eq('id', execution.id)
+        
+        throw new Error(`Failed to schedule execution in EventBridge: ${scheduleError.message}`)
+      }
     }
 
     // 7. Calcular tiempo estimado de finalización
@@ -232,13 +264,20 @@ export async function createExecutionWithClientsAction({
     const estimatedCompletionTime = lastBatch?.scheduled_for
 
     // 8. Retornar resultado
+    let message: string
+    if (executionData.execution_mode === 'scheduled' && executionData.scheduled_at) {
+      message = `Successfully created scheduled execution with ${batches.length} batches using ${strategyType} strategy. EventBridge rule created for ${executionData.scheduled_at}.`
+    } else {
+      message = `Successfully created execution with ${batches.length} batches using ${strategyType} strategy. ${queueResult ? `${queueResult.queuedCount} batches queued to SQS.` : 'Processing started.'}`
+    }
+
     const result: WorkflowResult = {
       success: true,
       executionId: execution.id,
       batchesCreated: batches.length,
       totalClients: clients.length,
       estimatedCompletionTime: estimatedCompletionTime,
-      message: `Successfully created execution with ${batches.length} batches using ${strategyType} strategy. ${queueResult ? `${queueResult.queuedCount} batches queued to SQS.` : 'Scheduled for later processing.'}`,
+      message: message,
     }
 
     return result
