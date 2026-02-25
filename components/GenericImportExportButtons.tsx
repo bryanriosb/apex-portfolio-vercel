@@ -19,16 +19,22 @@ import {
   CheckCircle,
   Loader2,
   Trash2,
+  X,
+  AlertCircle,
+  Info,
 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
 import ImportProgressComponent from '@/components/ui/import-progress'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface EntityConfig {
   entityType: 'customers' | 'services' | 'specialists' | 'products' | 'plans'
   displayName: string
   templateDownloadUrl: string
   importAction: (formData: FormData) => Promise<{ sessionId: string; status: string }>
+  requiredFields?: string[]
+  optionalFields?: string[]
 }
 
 interface GenericImportExportButtonsProps {
@@ -226,8 +232,30 @@ export function GenericImportExportButtons({
   }
 
   const handleCloseDialog = () => {
+    // Si hay una importación en progreso, cancelarla
+    if (currentSessionId && importProgress?.status === 'processing') {
+      handleCancelImport()
+    }
     setImportDialogOpen(false)
     clearFileInput()
+  }
+
+  const handleCancelImport = () => {
+    setIsPolling(false)
+    isPollingRef.current = false
+    
+    // Limpiar el progreso de la sesión en el servidor
+    if (currentSessionId) {
+      // Llamar al endpoint para limpiar la sesión
+      fetch(`/api/import/progress/${currentSessionId}`, { method: 'DELETE' })
+        .catch(() => {
+          // Ignorar errores de cleanup
+        })
+    }
+    
+    setCurrentSessionId(null)
+    setImportProgress(null)
+    toast.info('Importación cancelada')
   }
 
   return (
@@ -274,6 +302,26 @@ export function GenericImportExportButtons({
           </DialogHeader>
 
           <div className="space-y-4 p-1">
+            {/* Información de campos requeridos */}
+            {config.requiredFields && config.requiredFields.length > 0 && (
+              <Alert className="border-blue-200 bg-blue-50">
+                <Info className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-800">
+                  <div className="font-medium mb-1">Columnas obligatorias:</div>
+                  <div className="text-sm">
+                    {config.requiredFields.join(', ')}
+                  </div>
+                  {config.optionalFields && config.optionalFields.length > 0 && (
+                    <>
+                      <div className="font-medium mt-2 mb-1">Columnas opcionales:</div>
+                      <div className="text-sm text-blue-700">
+                        {config.optionalFields.join(', ')}
+                      </div>
+                    </>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
             <div>
               <Label
                 htmlFor="template-file"
@@ -322,17 +370,23 @@ export function GenericImportExportButtons({
 
             {importProgress && (
               <div className="space-y-2 pt-4">
-                <h3 className="font-medium">Progreso de Importación</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium">Progreso de Importación</h3>
+                  {importProgress.status === 'processing' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancelImport}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Cancelar importación
+                    </Button>
+                  )}
+                </div>
                 <ImportProgressComponent
                   progress={importProgress}
-                  showCancelButton={true}
-                  onCancel={() => {
-                    setIsPolling(false)
-                    isPollingRef.current = false
-                    setCurrentSessionId(null)
-                    setImportProgress(null)
-                    toast.info('Importación cancelada por el usuario.')
-                  }}
+                  showCancelButton={false}
                 />
               </div>
             )}

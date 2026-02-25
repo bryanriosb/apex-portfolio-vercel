@@ -29,7 +29,9 @@ export function NavigationLoader({ children }: { children: React.ReactNode }) {
         const href = link.getAttribute('href')
 
         if (href && href.startsWith('/') && !href.startsWith('//')) {
-          const currentFullPath = pathname + (searchParams.toString() ? '?' + searchParams.toString() : '')
+          const currentFullPath =
+            pathname +
+            (searchParams.toString() ? '?' + searchParams.toString() : '')
 
           if (href !== pathname && href !== currentFullPath) {
             setIsNavigating(true)

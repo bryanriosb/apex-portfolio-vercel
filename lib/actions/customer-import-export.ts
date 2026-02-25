@@ -202,7 +202,9 @@ export async function importCustomersWithProgress(
       importService.updateProgress(sessionId, { status: 'processing', message: 'Validando datos...' })
 
       const errors: string[] = []
+      const warnings: string[] = []
       const validCustomers: CreateCustomerInput[] = []
+      const duplicateNitsInFile = new Map<string, number[]>()
 
       // Obtener el business_account_id para las categorías
       const supabase = await getSupabaseAdminClient()
@@ -233,11 +235,31 @@ export async function importCustomersWithProgress(
       // Para llevar registro de categorías nuevas a crear sobre la marcha
       const newCategoriesToCreate = new Set<string>()
 
+      // Verificar campos obligatorios en el encabezado
+      const firstRow = customersData[0]
+      const missingRequiredColumns = []
+      if (!firstRow || !('nit' in firstRow)) missingRequiredColumns.push('nit')
+      if (!firstRow || !('emails' in firstRow)) missingRequiredColumns.push('emails')
+      
+      if (missingRequiredColumns.length > 0) {
+        importService.updateProgress(sessionId, {
+          status: 'error',
+          message: `Columnas obligatorias faltantes: ${missingRequiredColumns.join(', ')}`,
+          errors: [`El archivo no contiene las columnas obligatorias: ${missingRequiredColumns.join(', ')}. Por favor descargue la plantilla y verifique el formato.`],
+          endTime: Date.now()
+        })
+        return
+      }
+
       for (let i = 0; i < customersData.length; i++) {
         const row = customersData[i]
         try {
-          if (!row.nit || !row.full_name || !row.emails) {
-            throw new Error(`Fila ${i + 1}: nit, full_name y emails son obligatorios`)
+          // Validar campos obligatorios: nit y emails
+          if (!row.nit) {
+            throw new Error(`Fila ${i + 1}: El campo 'nit' es obligatorio`)
+          }
+          if (!row.emails) {
+            throw new Error(`Fila ${i + 1}: El campo 'emails' es obligatorio`)
           }
 
           const cleanedNit = cleanExcelValue(row.nit)
@@ -250,8 +272,11 @@ export async function importCustomersWithProgress(
           const cleanedTags = cleanExcelValue(row.tags)
           const cleanedCompanyName = cleanExcelValue(row.company_name)
 
-          if (!cleanedNit || !cleanedFullName || !cleanedRawEmails) {
-            throw new Error(`Fila ${i + 1}: nit, full_name y emails no pueden estar vacíos`)
+          if (!cleanedNit) {
+            throw new Error(`Fila ${i + 1}: El campo 'nit' no puede estar vacío`)
+          }
+          if (!cleanedRawEmails) {
+            throw new Error(`Fila ${i + 1}: El campo 'emails' no puede estar vacío`)
           }
 
           const parsedEmails = cleanedRawEmails
@@ -294,6 +319,18 @@ export async function importCustomersWithProgress(
             } else {
               // Si no existe, preparamos para crearla
               newCategoriesToCreate.add(cleanedCategory)
+            }
+          }
+
+          // Detectar duplicados por NIT dentro del archivo
+          const nitKey = cleanedNit
+          if (duplicateNitsInFile.has(nitKey)) {
+            duplicateNitsInFile.get(nitKey)!.push(i + 1)
+          } else {
+            // Verificar si ya existe en validCustomers (duplicado previo)
+            const existingIndex = validCustomers.findIndex(c => c.nit === cleanedNit)
+            if (existingIndex >= 0) {
+              duplicateNitsInFile.set(nitKey, [existingIndex + 1, i + 1])
             }
           }
 
@@ -375,39 +412,89 @@ export async function importCustomersWithProgress(
         }
       }
 
+      // Reportar duplicados encontrados en el archivo
+      if (duplicateNitsInFile.size > 0) {
+        const dupWarnings: string[] = []
+        duplicateNitsInFile.forEach((rows, nit) => {
+          dupWarnings.push(`NIT ${nit} duplicado en filas: ${rows.join(', ')}`)
+        })
+        warnings.push(`Se encontraron ${duplicateNitsInFile.size} NITs duplicados en el archivo. Solo se importará la primera ocurrencia de cada uno.`)
+        warnings.push(...dupWarnings.slice(0, 10)) // Mostrar solo los primeros 10
+        if (dupWarnings.length > 10) {
+          warnings.push(`... y ${dupWarnings.length - 10} duplicados más`)
+        }
+      }
+
       // Limpiar cualquier residuo de _tempCategoryName antes de hacer upsert
       const finalCustomersToInsert = validCustomers.map(c => {
         const { _tempCategoryName, ...rest } = c as any
         return rest as CreateCustomerInput
       })
 
+      // Actualizar progreso para fase de guardado - empezar desde 0
+      importService.updateProgress(sessionId, {
+        current: 0,
+        total: finalCustomersToInsert.length,
+        status: 'processing',
+        message: `Guardando ${finalCustomersToInsert.length} clientes en la base de datos...`,
+        errors: [...errors, ...warnings]
+      })
+
       // Dividimos finalCustomersToInsert en batches de 500 para evitar payload demasiado grande a Supabase
       const BATCH_SIZE = 500
       let processedCount = 0
+      let totalDuplicatesRemoved = 0
 
       for (let i = 0; i < finalCustomersToInsert.length; i += BATCH_SIZE) {
         const batch = finalCustomersToInsert.slice(i, i + BATCH_SIZE)
+        const batchNumber = Math.floor(i / BATCH_SIZE) + 1
+        const totalBatches = Math.ceil(finalCustomersToInsert.length / BATCH_SIZE)
+        
         try {
+          importService.updateProgress(sessionId, {
+            current: processedCount,
+            total: finalCustomersToInsert.length,
+            status: 'processing',
+            message: `Procesando lote ${batchNumber} de ${totalBatches} (${batch.length} registros)...`
+          })
+
           const result = await bulkUpsertFullCustomersAction(batch)
+          
           if (!result.success) {
-            errors.push(`Error en lote ${i / BATCH_SIZE + 1}: ${result.error}`)
+            errors.push(`Error en lote ${batchNumber}: ${result.error}`)
           } else {
-            processedCount += batch.length
+            processedCount += result.count || batch.length
+            totalDuplicatesRemoved += result.duplicatesRemoved || 0
+            
             importService.updateProgress(sessionId, {
-              message: `Guardados ${processedCount} de ${validCustomers.length} en la base de datos...`
+              current: processedCount,
+              total: finalCustomersToInsert.length,
+              status: 'processing',
+              message: `Guardados ${processedCount} de ${finalCustomersToInsert.length} clientes...`,
+              errors: [...errors, ...warnings]
             })
           }
         } catch (error: any) {
-          errors.push(`Excepción en lote ${i / BATCH_SIZE + 1}: ${error.message}`)
+          errors.push(`Excepción en lote ${batchNumber}: ${error.message}`)
         }
       }
 
+      // Reportar duplicados removidos de los batches
+      if (totalDuplicatesRemoved > 0) {
+        warnings.push(`Se omitieron ${totalDuplicatesRemoved} registros duplicados dentro de los lotes de procesamiento.`)
+      }
+
       const finalStatus = errors.length > 0 && processedCount === 0 ? 'error' : 'completed'
+      const finalMessage = totalDuplicatesRemoved > 0 
+        ? `Importación completada: ${processedCount} guardados, ${totalDuplicatesRemoved} duplicados omitidos, ${errors.length} errores.`
+        : `Importación completada: ${processedCount} guardados, ${errors.length} errores.`
+      
       importService.updateProgress(sessionId, {
         status: finalStatus,
         current: processedCount,
-        message: `Importación completada: ${processedCount} guardados, ${errors.length} errores.`,
-        errors: errors,
+        total: finalCustomersToInsert.length,
+        message: finalMessage,
+        errors: [...errors, ...warnings],
         endTime: Date.now()
       })
 

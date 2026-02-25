@@ -54,7 +54,6 @@ export default async function AdminLayout({
               </Suspense>
             </div>
           </section>
-          {/* <TutorialProvider /> */}
         </TrialProviderClient>
       )}
       {!businessAccountId && (

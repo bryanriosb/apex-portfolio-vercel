@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: { sessionId: string } }
 ) {
   try {
-    const { sessionId } = params
+    const { sessionId } = await params
 
     if (!sessionId) {
       return Response.json({ error: 'Session ID requerido' }, { status: 400 })
@@ -24,6 +24,31 @@ export async function GET(
     return Response.json(sanitizedProgress)
   } catch (error) {
     console.error('Error in progress GET route:', error)
+    return Response.json({ error: 'Error interno del servidor' }, { status: 500 })
+  }
+}
+
+// Endpoint DELETE para cancelar una importación
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { sessionId: string } }
+) {
+  try {
+    const { sessionId } = await params
+
+    if (!sessionId) {
+      return Response.json({ error: 'Session ID requerido' }, { status: 400 })
+    }
+
+    // Cancelar la importación marcándola como error
+    importService.updateProgress(sessionId, {
+      status: 'error',
+      message: 'Importación cancelada por el usuario',
+    })
+
+    return Response.json({ success: true, message: 'Importación cancelada' })
+  } catch (error) {
+    console.error('Error in progress DELETE route:', error)
     return Response.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }

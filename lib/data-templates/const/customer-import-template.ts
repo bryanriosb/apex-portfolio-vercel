@@ -3,7 +3,7 @@ import type { CustomerStatus } from '@/lib/models/customer/business-customer'
 export interface CustomerRow {
   company_name?: string
   nit: string
-  full_name: string
+  full_name?: string
   emails: string
   phone?: string
   status?: CustomerStatus

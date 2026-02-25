@@ -144,18 +144,39 @@ export async function bulkUpsertFullCustomersAction(
   data?: any[]
   error?: string
   count?: number
+  duplicatesRemoved?: number
 }> {
   try {
     const supabase = await getSupabaseAdminClient()
 
     if (!inputs.length) {
-      return { success: true, count: 0 }
+      return { success: true, count: 0, duplicatesRemoved: 0 }
+    }
+
+    // Eliminar duplicados dentro del mismo batch basándose en (business_id, nit)
+    const seen = new Map<string, CreateCustomerInput>()
+    const duplicates: string[] = []
+    
+    for (const input of inputs) {
+      const key = `${input.business_id}:${input.nit}`
+      if (seen.has(key)) {
+        duplicates.push(input.nit)
+      } else {
+        seen.set(key, input)
+      }
+    }
+
+    const uniqueInputs = Array.from(seen.values())
+    const duplicatesRemoved = inputs.length - uniqueInputs.length
+
+    if (duplicatesRemoved > 0) {
+      console.warn(`[bulkUpsert] Removed ${duplicatesRemoved} duplicates from batch: ${duplicates.join(', ')}`)
     }
 
     const { data, error } = await supabase
       .from('business_customers')
       .upsert(
-        inputs.map((input) => ({
+        uniqueInputs.map((input) => ({
           business_id: input.business_id,
           company_name: input.company_name || null,
           nit: input.nit,
@@ -180,6 +201,7 @@ export async function bulkUpsertFullCustomersAction(
     return {
       success: true,
       count: data?.length || 0,
+      duplicatesRemoved,
     }
   } catch (error: any) {
     console.error('Error in bulkUpsertFullCustomersAction:', error)

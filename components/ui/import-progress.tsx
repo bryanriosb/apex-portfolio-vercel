@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle, XCircle, Loader2, AlertTriangle } from 'lucide-react'
 import { ImportProgress } from '@/lib/services/data-templates/generic-import-service'
 import Loading from './loading'
+import { ImportErrorsPanel } from './import-errors-panel'
 
 interface ImportProgressProps {
   progress: ImportProgress | null
@@ -114,26 +115,12 @@ export function ImportProgressComponent({
         </div>
       </div>
 
-      {/* Errores */}
+      {/* Panel de errores y advertencias */}
       {progress.errors.length > 0 && (
-        <Alert className="border-red-200 bg-red-50">
-          <AlertTriangle className="h-4 w-4 text-red-500" />
-          <AlertDescription className="text-red-700">
-            <div className="font-medium mb-1">Errores encontrados:</div>
-            <ul className="list-disc list-inside space-y-1">
-              {progress.errors.slice(0, 5).map((error, index) => (
-                <li key={index} className="text-sm">
-                  {error}
-                </li>
-              ))}
-              {progress.errors.length > 5 && (
-                <li className="text-sm">
-                  ... y {progress.errors.length - 5} errores más
-                </li>
-              )}
-            </ul>
-          </AlertDescription>
-        </Alert>
+        <ImportErrorsPanel 
+          errors={progress.errors} 
+          maxHeight="240px"
+        />
       )}
 
       {/* Mensaje de éxito */}
