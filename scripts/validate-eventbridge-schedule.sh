@@ -1,36 +1,39 @@
 #!/bin/bash
 
-# Script para validar la creación de reglas EventBridge con AWS CLI
-# Uso: ./validate-eventbridge-schedule.sh <rule-name>
+# Script para validar la creación de schedules EventBridge Scheduler con AWS CLI
+# Uso: ./validate-eventbridge-schedule.sh <schedule-name>
 
 set -e
 
-RULE_NAME=${1:-"collection-exec-test"}
+SCHEDULE_NAME=${1:-"collection-exec-test"}
 REGION=${AWS_REGION:-"us-east-1"}
 
-echo "🔍 Validando regla EventBridge: $RULE_NAME"
+echo "🔍 Validando schedule EventBridge Scheduler: $SCHEDULE_NAME"
 echo "🌍 Región: $REGION"
 echo ""
 
-# Verificar si la regla existe
-echo "📋 Describiendo regla..."
-aws events describe-rule \
-  --name "$RULE_NAME" \
+# Verificar si el schedule existe usando el API de Scheduler (no Events)
+echo "📋 Describiendo schedule..."
+aws scheduler get-schedule \
+  --name "$SCHEDULE_NAME" \
   --region "$REGION" \
   --output table
 
 echo ""
-echo "✅ Regla encontrada!"
+echo "✅ Schedule encontrado!"
 echo ""
 
-# Extraer la expresión cron
-SCHEDULE=$(aws events describe-rule \
-  --name "$RULE_NAME" \
-  --region "$REGION" \
-  --query 'ScheduleExpression' \
-  --output text)
+# Extraer la información del schedule
+SCHEDULE_INFO=$(aws scheduler get-schedule \
+  --name "$SCHEDULE_NAME" \
+  --region "$REGION")
+
+# Extraer la expresión cron y timezone
+SCHEDULE=$(echo "$SCHEDULE_INFO" | jq -r '.ScheduleExpression')
+TIMEZONE=$(echo "$SCHEDULE_INFO" | jq -r '.ScheduleExpressionTimezone // "UTC"')
 
 echo "⏰ Expresión Cron: $SCHEDULE"
+echo "🌍 Timezone: $TIMEZONE"
 echo ""
 
 # Parsear la expresión cron
@@ -44,32 +47,29 @@ if [[ $SCHEDULE =~ cron\(([0-9]+)\ ([0-9]+)\ ([0-9]+)\ ([0-9]+)\ \?\ ([0-9]+)\) 
     
     echo "📅 Detalles del schedule:"
     echo "   - Minutos: $MINUTES"
-    echo "   - Horas (UTC): $HOURS"
+    echo "   - Horas (LOCAL): $HOURS"
     echo "   - Día: $DAY"
     echo "   - Mes: $MONTH"
     echo "   - Año: $YEAR"
     echo ""
     
-    # Calcular hora local (America/Bogota = UTC-5)
-    HOURS_BOGOTA=$((HOURS - 5))
-    if [ $HOURS_BOGOTA -lt 0 ]; then
-        HOURS_BOGOTA=$((HOURS_BOGOTA + 24))
-        DAY_BOGOTA=$((DAY - 1))
-    else
-        DAY_BOGOTA=$DAY
-    fi
+    printf "✅ Hora local (%s): %02d:%02d\n" "$TIMEZONE" $HOURS $MINUTES
     
-    printf "🇨🇴 Hora local (America/Bogota): %02d:%02d\n" $HOURS_BOGOTA $MINUTES
-    printf "🌍 Hora UTC: %02d:%02d\n" $HOURS $MINUTES
+    # Calcular hora UTC si es America/Bogota (UTC-5)
+    if [ "$TIMEZONE" == "America/Bogota" ]; then
+        HOURS_UTC=$((HOURS + 5))
+        if [ $HOURS_UTC -ge 24 ]; then
+            HOURS_UTC=$((HOURS_UTC - 24))
+        fi
+        printf "🌍 Hora UTC equivalente: %02d:%02d\n" $HOURS_UTC $MINUTES
+    fi
     echo ""
     
-    # Validación específica para 10:07 AM
-    if [ "$HOURS_BOGOTA" -eq 10 ] && [ "$MINUTES" -eq 7 ]; then
-        echo "✅ VALIDACIÓN EXITOSA: La regla está programada para 10:07 AM (Bogota)"
+    # Validación específica para 10:07 AM en timezone local
+    if [ "$HOURS" -eq 10 ] && [ "$MINUTES" -eq 7 ]; then
+        echo "✅ VALIDACIÓN EXITOSA: El schedule está programado para 10:07 AM en timezone $TIMEZONE"
     else
-        echo "⚠️  La regla NO está programada para 10:07 AM"
-        echo "   Esperado: 10:07 (Bogota) / 15:07 (UTC)"
-        printf "   Encontrado: %02d:%02d (Bogota) / %02d:%02d (UTC)\n" $HOURS_BOGOTA $MINUTES $HOURS $MINUTES
+        echo "ℹ️  Horario programado: $HOURS:$MINUTES en timezone $TIMEZONE"
     fi
 else
     echo "❌ No se pudo parsear la expresión cron: $SCHEDULE"
@@ -77,16 +77,17 @@ else
 fi
 
 echo ""
-echo "🎯 Targets asociados:"
-aws events list-targets-by-rule \
-  --rule "$RULE_NAME" \
-  --region "$REGION" \
-  --output table
+echo "🎯 Target asociado:"
+echo "$SCHEDULE_INFO" | jq -r '.Target'
 
 echo ""
-echo "📊 Próximas ejecuciones (próximas 10):"
-aws events describe-rule \
-  --name "$RULE_NAME" \
-  --region "$REGION" \
-  --query 'ScheduleExpression' \
-  --output text
+echo "📋 Información completa del schedule:"
+echo "$SCHEDULE_INFO" | jq '.'
+
+echo ""
+echo "📊 Para listar todos los schedules:"
+echo "aws scheduler list-schedules --region $REGION"
+
+echo ""
+echo "🗑️  Para eliminar este schedule:"
+echo "aws scheduler delete-schedule --name $SCHEDULE_NAME --region $REGION"

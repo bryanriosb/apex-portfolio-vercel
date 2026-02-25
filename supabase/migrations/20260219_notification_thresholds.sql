@@ -40,7 +40,7 @@ ON notification_thresholds(business_account_id, is_active, days_from, days_to);
 
 -- 2. Tabla de Reglas de Adjuntos Deterministas
 -- Define qué adjuntos aplican según reglas específicas
-CREATE TABLE attachment_rules (
+CREATE TABLE IF NOT EXISTS attachment_rules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     attachment_id UUID NOT NULL REFERENCES collection_attachments(id) ON DELETE CASCADE,
     business_account_id UUID NOT NULL REFERENCES business_accounts(id) ON DELETE CASCADE,
