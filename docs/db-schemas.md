@@ -5,6 +5,7 @@
 **Database:** PostgreSQL (Supabase)  
 **Project:** Apex Portfolio - Collection System  
 **Generated:** February 2026  
+**Last Validated:** February 26, 2026  
 
 ## Table of Contents
 
@@ -20,6 +21,7 @@
 10. [Views](#10-views)
 11. [RLS Policies](#11-rls-policies)
 12. [Relationships Diagram](#12-relationships-diagram)
+13. [Discrepancias Encontradas](#13-discrepancias-encontradas-feb-2026)
 
 ---
 
@@ -384,6 +386,7 @@
 | last_issue_date | TIMESTAMPTZ | YES | NULL | Last issue timestamp |
 | required_open_rate | NUMERIC(5,2) | NO | 20.00 | Required open rate % |
 | required_delivery_rate | NUMERIC(5,2) | NO | 95.00 | Required delivery rate % |
+| provider | VARCHAR(50) | YES | NULL | Email provider: 'brevo', 'ses', etc |
 | created_at | TIMESTAMPTZ | NO | NOW() | - |
 | updated_at | TIMESTAMPTZ | NO | NOW() | - |
 
@@ -1083,11 +1086,15 @@ CREATE TYPE notification_source AS ENUM (
 ### Function Categories
 
 - [Scheduler Lock Functions](#scheduler-lock-functions)
-- [Collection Metric Functions](#collection-metric-functions)
+- [Collection & Email Functions](#collection--email-functions)
 - [Threshold Functions](#threshold-functions)
 - [Reconciliation Functions](#reconciliation-functions)
-- [Timestamp Functions](#timestamp-functions)
+- [Blacklist Management Functions](#blacklist-management-functions)
 - [Delivery Strategy Functions](#delivery-strategy-functions)
+- [Subscription & Billing Functions](#subscription--billing-functions)
+- [User Management Functions](#user-management-functions)
+- [Plan & Module Functions](#plan--module-functions)
+- [Timestamp Functions](#timestamp-functions)
 
 ### Scheduler Lock Functions
 
@@ -1111,25 +1118,33 @@ SELECT release_scheduler_lock('worker-123');
 
 ---
 
-### Collection Metric Functions
+### Collection & Email Functions
 
-#### increment_execution_counter(execution_id UUID, column_name TEXT)
+#### increment_execution_counters(execution_id UUID, column_name TEXT, increment_by INTEGER DEFAULT 1)
 
 **Returns:** VOID
-**Purpose:** Atomically increment execution counter
+**Purpose:** Atomically increment execution counter (emails_sent, emails_delivered, etc)
 
 ```sql
-SELECT increment_execution_counter('uuid-here', 'emails_sent');
+SELECT increment_execution_counters('uuid-here', 'emails_sent', 1);
 ```
 
-#### increment_client_stats(client_id UUID, event_type TEXT)
+#### accumulate_email_metrics(client_id UUID, event_type TEXT, metadata JSONB DEFAULT '{}')
 
 **Returns:** VOID
-**Purpose:** Update client status based on event
-**Event types:** 'delivered', 'opened', 'bounced'
+**Purpose:** Accumulate email metrics from webhook events (delivered, opened, bounced, complaint)
 
 ```sql
-SELECT increment_client_stats('uuid-here', 'delivered');
+SELECT accumulate_email_metrics('client-uuid', 'delivered', '{"ses_message_id": "xxx"}');
+```
+
+#### calculate_execution_metrics(execution_id UUID)
+
+**Returns:** TABLE (metric_name TEXT, value INTEGER)
+**Purpose:** Calculate aggregated metrics for an execution
+
+```sql
+SELECT * FROM calculate_execution_metrics('execution-uuid');
 ```
 
 ---
@@ -1168,6 +1183,15 @@ SELECT * FROM resolve_attachments_by_rules(
 );
 ```
 
+#### resolve_attachments_bulk(execution_id UUID)
+
+**Returns:** TABLE with resolved attachments per client
+**Purpose:** Bulk resolve attachments for all clients in an execution
+
+```sql
+SELECT * FROM resolve_attachments_bulk('execution-uuid');
+```
+
 ---
 
 ### Reconciliation Functions
@@ -1183,13 +1207,34 @@ SELECT * FROM reconcile_execution_metrics('execution-uuid');
 
 ---
 
-### Timestamp Functions
+### Blacklist Management Functions
 
-#### update_updated_at_column()
+#### add_to_blacklist(p_business_id UUID, p_email TEXT, p_bounce_type TEXT, p_bounce_reason TEXT, p_source_customer_id UUID, p_source_execution_id UUID, p_source_client_id UUID, p_provider TEXT)
 
-**Returns:** TRIGGER
-**Purpose:** Auto-update updated_at timestamp
-**Used in:** Multiple tables via triggers
+**Returns:** VOID
+**Purpose:** Add email to blacklist (idempotent)
+
+```sql
+SELECT add_to_blacklist('business-uuid', 'email@test.com', 'hard', 'Mailbox not found', null, null, null, 'brevo');
+```
+
+#### is_email_blacklisted(p_business_id UUID, p_email TEXT)
+
+**Returns:** BOOLEAN
+**Purpose:** Check if email is blacklisted
+
+```sql
+SELECT is_email_blacklisted('business-uuid', 'email@test.com');
+```
+
+#### filter_blacklisted_emails(p_business_id UUID, p_emails TEXT[])
+
+**Returns:** TEXT[]
+**Purpose:** Filter out blacklisted emails from array
+
+```sql
+SELECT filter_blacklisted_emails('business-uuid', ARRAY['a@test.com', 'b@test.com']);
+```
 
 ---
 
@@ -1210,6 +1255,155 @@ SELECT create_default_delivery_strategies('business-uuid');
 ```
 
 **Note:** IDs are auto-generated using `gen_random_uuid()` to ensure uniqueness per business
+
+---
+
+### Subscription & Billing Functions
+
+#### calculate_trial_end_date(business_account_id UUID, custom_trial_days INTEGER)
+
+**Returns:** TIMESTAMPTZ
+**Purpose:** Calculate trial end date based on custom_trial_days or system default
+
+```sql
+SELECT calculate_trial_end_date('account-uuid', 14);
+```
+
+#### start_trial_for_account(business_account_id UUID, plan_code TEXT)
+
+**Returns:** BOOLEAN
+**Purpose:** Start trial period for a business account
+
+```sql
+SELECT start_trial_for_account('account-uuid', 'pro');
+```
+
+#### can_create_business_in_account(business_account_id UUID)
+
+**Returns:** BOOLEAN
+**Purpose:** Check if account can create more businesses (plan limit)
+
+```sql
+SELECT can_create_business_in_account('account-uuid');
+```
+
+#### count_account_businesses(business_account_id UUID)
+
+**Returns:** INTEGER
+**Purpose:** Count businesses in an account
+
+```sql
+SELECT count_account_businesses('account-uuid');
+```
+
+#### check_and_update_expired_trial()
+
+**Returns:** INTEGER
+**Purpose:** Check all trial accounts and update expired ones (called by cron)
+
+```sql
+SELECT check_and_update_expired_trial();
+```
+
+#### process_subscription_payment(payment_data JSONB)
+
+**Returns:** JSONB
+**Purpose:** Process subscription payment from MercadoPago
+
+```sql
+SELECT process_subscription_payment('{"mp_payment_id": "xxx", "amount": 9900}');
+```
+
+---
+
+### User Management Functions
+
+#### create_user_with_metadata(email TEXT, password TEXT, user_metadata JSONB, app_metadata JSONB)
+
+**Returns:** UUID (user_id)
+**Purpose:** Create auth user with custom metadata
+
+```sql
+SELECT create_user_with_metadata('user@test.com', 'password123', 
+  '{"name": "John"}', '{"business_id": "xxx"}');
+```
+
+#### delete_auth_instance(user_id UUID)
+
+**Returns:** BOOLEAN
+**Purpose:** Delete auth user and related data
+
+```sql
+SELECT delete_auth_instance('user-uuid');
+```
+
+#### create_auth_instance(email TEXT, password TEXT, user_data JSONB)
+
+**Returns:** JSONB
+**Purpose:** Create complete auth instance with profile
+
+```sql
+SELECT create_auth_instance('user@test.com', 'password123', '{"role": "admin"}');
+```
+
+---
+
+### Plan & Module Functions
+
+#### get_plan_feature_limit(plan_code TEXT, feature_key TEXT)
+
+**Returns:** INTEGER
+**Purpose:** Get feature limit for a plan
+
+```sql
+SELECT get_plan_feature_limit('pro', 'max_businesses');
+```
+
+#### check_module_access(plan_code TEXT, module_code TEXT, permission_type TEXT)
+
+**Returns:** BOOLEAN
+**Purpose:** Check if plan has access to module/permission
+
+```sql
+SELECT check_module_access('pro', 'collections', 'write');
+```
+
+#### check_subscription_access(business_account_id UUID, feature_key TEXT)
+
+**Returns:** BOOLEAN
+**Purpose:** Check if subscription allows feature
+
+```sql
+SELECT check_subscription_access('account-uuid', 'advanced_analytics');
+```
+
+#### assign_modules_to_plan(plan_id UUID, module_ids UUID[])
+
+**Returns:** VOID
+**Purpose:** Assign modules to a plan
+
+```sql
+SELECT assign_modules_to_plan('plan-uuid', ARRAY['module1-uuid', 'module2-uuid']);
+```
+
+#### ensure_single_default_card(business_account_id UUID, card_id UUID)
+
+**Returns:** VOID
+**Purpose:** Ensure only one default card per account
+
+```sql
+SELECT ensure_single_default_card('account-uuid', 'card-uuid');
+```
+
+---
+
+### Timestamp Functions
+
+#### update_updated_at_column()
+
+**Returns:** TRIGGER
+**Purpose:** Auto-update updated_at timestamp
+**Used in:** Multiple tables via triggers
 
 ---
 
@@ -1627,5 +1821,82 @@ Enabled for Supabase Realtime:
 
 ---
 
+## 13. Discrepancias Encontradas (Feb 2026)
+
+### Tablas que NO existen
+
+| Tabla | Estado | Notas |
+|-------|--------|-------|
+| users_profile | NO EXISTE | La tabla no existe en la base de datos |
+
+### Vistas que NO existen
+
+| Vista | Estado | Notas |
+|-------|--------|-------|
+| execution_summary | NO EXISTE | La vista no existe en la base de datos |
+
+### Funciones RPC - Estado Actual
+
+Todas las funciones RPC documentadas en sección 8 SÍ existen EXCEPTO:
+
+| Función | Estado | Notas |
+|---------|--------|-------|
+| increment_execution_counter | RENOMBRADA | Ahora se llama `increment_execution_counters` |
+| increment_client_stats | NO EXISTE | Función no implementada |
+| update_updated_at_column | NO VERIFICABLE | Es un trigger, no una función RPC callable |
+
+### Funciones RPC adicionales no documentadas
+
+Las siguientes funciones existen en la DB pero no están documentadas en sección 8:
+
+| Función | Categoría |
+|---------|-----------|
+| accumulate_email_metrics | Collection & Email |
+| add_to_blacklist | Blacklist |
+| assign_modules_to_plan | Plan & Module |
+| calculate_execution_metrics | Collection & Email |
+| calculate_trial_end_date | Subscription |
+| can_create_business_in_account | Subscription |
+| check_and_update_expired_trial | Subscription |
+| check_module_access | Plan & Module |
+| check_subscription_access | Plan & Module |
+| count_account_businesses | Subscription |
+| create_auth_instance | User Management |
+| create_user_with_metadata | User Management |
+| delete_auth_instance | User Management |
+| ensure_single_default_card | Plan & Module |
+| filter_blacklisted_emails | Blacklist |
+| get_account_businesses | Subscription |
+| get_plan_feature_limit | Plan & Module |
+| is_email_blacklisted | Blacklist |
+| process_subscription_payment | Subscription |
+| resolve_attachments_bulk | Threshold |
+| start_trial_for_account | Subscription |
+| trigger_create_default_delivery_strategies | Trigger |
+| update_business_accounts_updated_at | Timestamp |
+| update_business_customers_updated_at | Timestamp |
+| update_email_blacklist_updated_at | Timestamp |
+| update_payment_history_updated_at | Timestamp |
+| update_plans_updated_at | Timestamp |
+| update_saved_cards_updated_at | Timestamp |
+| update_system_settings_updated_at | Timestamp |
+
+### Columnas adicionales encontradas
+
+| Tabla | Columna | Tipo | Notas |
+|-------|---------|------|-------|
+| email_reputation_profiles | provider | VARCHAR(50) | Proveedor de email (brevo/ses/etc) - AÑADIDA a documentación |
+
+### Enum Types
+
+Los siguientes tipos enum están documentados pero NO fueron verificados via API REST (son tipos de datos PostgreSQL, no tablas):
+
+- business_type
+- execution_event_type
+- notification_type
+- notification_source
+
+---
+
 *Document generated for Apex Portfolio Collection System*
-*Last updated: February 2026*
+*Last updated: February 26, 2026*

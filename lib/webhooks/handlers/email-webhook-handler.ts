@@ -13,12 +13,41 @@ export async function processEmailEvent(
     const supabase = await getSupabaseAdminClient()
 
     try {
-        // Buscar el cliente por message_id en custom_data
-        const { data: clients, error: searchError } = await supabase
+        let clients = null;
+        let searchError = null;
+
+        // Try exact match first
+        const { data: exactClients, error: exactSearchError } = await supabase
             .from('collection_clients')
             .select('id, status, custom_data, execution_id')
             .contains('custom_data', { message_id: event.messageId })
             .limit(1)
+
+        clients = exactClients;
+        searchError = exactSearchError;
+
+        // If not found, try alternative formats of message_id (Brevo sometimes sends with <>, sometimes without)
+        if (!exactSearchError && (!exactClients || exactClients.length === 0)) {
+            let altMessageId = event.messageId;
+            if (altMessageId.startsWith('<') && altMessageId.endsWith('>')) {
+                // Try without brackets
+                altMessageId = altMessageId.substring(1, altMessageId.length - 1);
+            } else {
+                // Try with brackets
+                altMessageId = `<${altMessageId}>`;
+            }
+
+            console.log(`Original message_id "${event.messageId}" not found, trying "${altMessageId}"...`);
+
+            const { data: altClients, error: altSearchError } = await supabase
+                .from('collection_clients')
+                .select('id, status, custom_data, execution_id')
+                .contains('custom_data', { message_id: altMessageId })
+                .limit(1)
+
+            clients = altClients;
+            searchError = altSearchError;
+        }
 
         if (searchError) {
             console.error('Error searching for client:', searchError)
@@ -26,8 +55,9 @@ export async function processEmailEvent(
         }
 
         if (!clients || clients.length === 0) {
-            console.warn(`No client found for message_id: ${event.messageId}`)
-            // Aún registramos el evento aunque no encontremos el cliente
+            console.warn(`No client found for message_id: ${event.messageId} or its variations. Aborting to prevent null execution_id constraint violation.`)
+            // Early return to prevent 500 error and webhook retries from the provider.
+            return;
         }
 
         const client = clients?.[0]
@@ -386,13 +416,13 @@ async function addToBlacklistFromEvent(
         const customerId = client.customer_id || null
 
         // Determinar tipo de bounce
-        const bounceType = event.eventType === 'bounced' 
+        const bounceType = event.eventType === 'bounced'
             ? (event.metadata?.bounceType as 'hard' | 'soft' | 'complaint') || 'hard'
             : 'complaint'
 
         // Obtener razón del bounce
-        const bounceReason = event.metadata?.bounceReason || 
-            event.metadata?.reason || 
+        const bounceReason = event.metadata?.bounceReason ||
+            event.metadata?.reason ||
             (event.eventType === 'complained' ? 'User complaint' : 'Unknown bounce reason')
 
         // Agregar a blacklist usando el servicio
