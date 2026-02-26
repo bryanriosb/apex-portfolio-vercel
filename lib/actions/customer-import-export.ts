@@ -2,6 +2,22 @@
 
 import * as XLSX from 'xlsx'
 import { getSupabaseAdminClient } from '@/lib/actions/supabase'
+
+/**
+ * Normaliza un nombre de columna para facilitar el mapeo
+ * - Elimina espacios al inicio y final (trim)
+ * - Convierte a minúsculas
+ * - Elimina tildes y caracteres especiales
+ * - Normaliza espacios múltiples
+ */
+function normalizeColumnName(header: string): string {
+  return String(header)
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Elimina tildes
+    .replace(/\s+/g, ' ') // Normaliza espacios múltiples a uno solo
+}
 import {
   createBusinessCustomerAction,
   updateBusinessCustomerAction,
@@ -9,6 +25,8 @@ import {
 } from '@/lib/actions/business-customer'
 import {
   DEFAULT_CUSTOMER_TEMPLATES,
+  CUSTOMER_COLUMN_MAPPING,
+  CUSTOMER_COLUMN_LABELS,
   type CustomerRow,
 } from '@/lib/data-templates/const/customer-import-template'
 import importService from '@/lib/services/data-templates/generic-import-service'
@@ -87,17 +105,17 @@ export async function exportCustomersToExcelAction(
 
     const wb = XLSX.utils.book_new()
 
-    const customersData: CustomerRow[] = customers.map((customer) => ({
-      company_name: customer.company_name || undefined,
+    const customersData = customers.map((customer) => ({
+      nombre_empresa: customer.company_name || undefined,
       nit: customer.nit,
-      full_name: customer.full_name,
+      nombre_completo: customer.full_name,
       emails: Array.isArray(customer.emails) ? customer.emails.join(', ') : '',
-      phone: customer.phone || undefined,
-      status: customer.status,
-      category: customer.customer_categories?.name || customer.category || undefined,
-      notes: customer.notes || undefined,
-      preferences: customer.preferences || undefined,
-      tags: customer.tags ? customer.tags.join(', ') : undefined,
+      telefono: customer.phone || undefined,
+      estado: customer.status,
+      categoria: customer.customer_categories?.name || customer.category || undefined,
+      notas: customer.notes || undefined,
+      preferencias: customer.preferences || undefined,
+      etiquetas: customer.tags ? customer.tags.join(', ') : undefined,
     }))
 
     const wsCustomers = XLSX.utils.json_to_sheet(customersData)
@@ -188,13 +206,50 @@ export async function importCustomersWithProgress(
       )
     }
 
-    const customersData = XLSX.utils.sheet_to_json<CustomerRow>(
-      wb.Sheets['Customers']
-    )
-
-    if (customersData.length === 0) {
+    // Leer datos raw para poder mapear columnas correctamente
+    const worksheet = wb.Sheets['Customers']
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+    
+    if (jsonData.length === 0) {
       throw new Error('La hoja "Customers" está vacía o no tiene datos válidos')
     }
+    
+    // Procesar headers y crear mapeo
+    const rawHeaders = (jsonData[0] as any[])
+    const normalizedHeaders = rawHeaders.map((h) => normalizeColumnName(h))
+    const rows = jsonData.slice(1).filter((row: any) => row.length > 0)
+    
+    // Función helper para obtener valor de columna
+    const getCustomerColumnValue = (row: any[], colName: string): any => {
+      // Buscar por nombre normalizado
+      const colIndex = normalizedHeaders.findIndex(h => h === colName)
+      if (colIndex !== -1 && row[colIndex] !== undefined) {
+        return row[colIndex]
+      }
+      // Buscar por mapeo a inglés
+      const englishCol = CUSTOMER_COLUMN_MAPPING[colName]
+      if (englishCol && englishCol !== colName) {
+        const mappedIndex = normalizedHeaders.findIndex(h => CUSTOMER_COLUMN_MAPPING[h] === englishCol)
+        if (mappedIndex !== -1 && row[mappedIndex] !== undefined) {
+          return row[mappedIndex]
+        }
+      }
+      return undefined
+    }
+    
+    // Convertir rows a objetos para procesamiento
+    const customersData = rows.map((row: any) => ({
+      nit: getCustomerColumnValue(row, 'nit'),
+      emails: getCustomerColumnValue(row, 'emails'),
+      nombre_empresa: getCustomerColumnValue(row, 'nombre de empresa'),
+      nombre_completo: getCustomerColumnValue(row, 'nombre completo'),
+      telefono: getCustomerColumnValue(row, 'telefono'),
+      estado: getCustomerColumnValue(row, 'estado'),
+      categoria: getCustomerColumnValue(row, 'categoria'),
+      notas: getCustomerColumnValue(row, 'notas'),
+      preferencias: getCustomerColumnValue(row, 'preferencias'),
+      etiquetas: getCustomerColumnValue(row, 'etiquetas'),
+    }))
 
     // Proceso en Background
     ; (async () => {
@@ -237,9 +292,14 @@ export async function importCustomersWithProgress(
 
       // Verificar campos obligatorios en el encabezado
       const firstRow = customersData[0]
-      const missingRequiredColumns = []
-      if (!firstRow || !('nit' in firstRow)) missingRequiredColumns.push('nit')
-      if (!firstRow || !('emails' in firstRow)) missingRequiredColumns.push('emails')
+      const missingRequiredColumns: string[] = []
+      
+      if (!firstRow || firstRow.nit === undefined) {
+        missingRequiredColumns.push(CUSTOMER_COLUMN_LABELS['nit'])
+      }
+      if (!firstRow || firstRow.emails === undefined) {
+        missingRequiredColumns.push(CUSTOMER_COLUMN_LABELS['emails'])
+      }
       
       if (missingRequiredColumns.length > 0) {
         importService.updateProgress(sessionId, {
@@ -256,21 +316,21 @@ export async function importCustomersWithProgress(
         try {
           // Validar campos obligatorios: nit y emails
           if (!row.nit) {
-            throw new Error(`Fila ${i + 1}: El campo 'nit' es obligatorio`)
+            throw new Error(`Fila ${i + 1}: El campo '${CUSTOMER_COLUMN_LABELS['nit']}' es obligatorio`)
           }
           if (!row.emails) {
-            throw new Error(`Fila ${i + 1}: El campo 'emails' es obligatorio`)
+            throw new Error(`Fila ${i + 1}: El campo '${CUSTOMER_COLUMN_LABELS['emails']}' es obligatorio`)
           }
 
           const cleanedNit = cleanExcelValue(row.nit)
-          const cleanedFullName = cleanExcelValue(row.full_name)
+          const cleanedFullName = cleanExcelValue(row.nombre_completo)
           const cleanedRawEmails = cleanExcelValue(row.emails)
-          const cleanedPhone = cleanExcelValue(row.phone)
-          const cleanedCategory = cleanExcelValue(row.category)
-          const cleanedNotes = cleanExcelValue(row.notes)
-          const cleanedPreferences = cleanExcelValue(row.preferences)
-          const cleanedTags = cleanExcelValue(row.tags)
-          const cleanedCompanyName = cleanExcelValue(row.company_name)
+          const cleanedPhone = cleanExcelValue(row.telefono)
+          const cleanedCategory = cleanExcelValue(row.categoria)
+          const cleanedNotes = cleanExcelValue(row.notas)
+          const cleanedPreferences = cleanExcelValue(row.preferencias)
+          const cleanedTags = cleanExcelValue(row.etiquetas)
+          const cleanedCompanyName = cleanExcelValue(row.nombre_empresa)
 
           if (!cleanedNit) {
             throw new Error(`Fila ${i + 1}: El campo 'nit' no puede estar vacío`)
@@ -295,9 +355,9 @@ export async function importCustomersWithProgress(
           }
 
           let status: CustomerStatus = 'active'
-          if (row.status) {
+          if (row.estado) {
             try {
-              status = validateCustomerStatus(row.status, 'status')
+              status = validateCustomerStatus(row.estado, CUSTOMER_COLUMN_LABELS['status'])
             } catch (error: any) {
               throw new Error(`Fila ${i + 1}: ${error.message}`)
             }

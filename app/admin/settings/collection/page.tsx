@@ -1,5 +1,6 @@
 'use client'
 
+import { useSearchParams } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   GeneralTab,
@@ -8,6 +9,10 @@ import {
 } from '@/components/collection/config'
 
 export default function CollectionSettingsPage() {
+  const searchParams = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const defaultTab = tabParam === 'thresholds' ? 'thresholds' : 'general'
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div>
@@ -20,11 +25,11 @@ export default function CollectionSettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="general" className="w-full">
+      <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3 lg:w-[600px]">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="strategies">Estrategias de Envío</TabsTrigger>
-          <TabsTrigger value="thresholds">Umbrales de Días</TabsTrigger>
+          <TabsTrigger value="thresholds">Umbrales de Días de Mora</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="mt-6">

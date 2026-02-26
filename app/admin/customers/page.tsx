@@ -283,7 +283,16 @@ export default function CustomersPage() {
                 templateDownloadUrl: '/api/customers/download-template',
                 importAction: importCustomersWithProgress,
                 requiredFields: ['nit', 'emails'],
-                optionalFields: ['company_name', 'full_name', 'phone', 'status', 'category', 'notes', 'preferences', 'tags'],
+                optionalFields: [
+                  'company_name',
+                  'full_name',
+                  'phone',
+                  'status',
+                  'category',
+                  'notes',
+                  'preferences',
+                  'tags',
+                ],
               }}
               additionalFormData={{ businessId: activeBusiness.id }}
               onImportComplete={() => dataTableRef.current?.refreshData()}

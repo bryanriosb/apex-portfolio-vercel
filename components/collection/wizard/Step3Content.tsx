@@ -25,7 +25,8 @@ import {
 } from '@/components/ui/select'
 import { FileData, EmailConfig, StrategyType, DatabaseStrategy } from './types'
 import { ThresholdPreview } from './ThresholdPreview'
-import { useThresholdPreview } from '@/hooks/collection/use-threshold-preview'
+import { useWizardThresholdPreview } from '@/hooks/collection/use-wizard-threshold-preview'
+import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import { CollectionTemplate } from '@/lib/models/collection'
 
 interface Step3ContentProps {
@@ -73,28 +74,18 @@ export function Step3Content({
   onCustomBatchSizeChange,
   availableDomains,
 }: Step3ContentProps) {
+  const { activeBusiness } = useActiveBusinessStore()
   if (!fileData) return null
 
-  // Debug: Verificar datos de clientes
-  console.log('[Step3Content] fileData.groupedClients:', {
-    size: fileData.groupedClients.size,
-    clients: Array.from(fileData.groupedClients.values()).map((c) => ({
-      nit: c.nit,
-      status: c.status,
-      daysOverdue: c.total?.total_days_overdue,
-      invoices: c.invoices?.length,
-    })),
-  })
-
-  // Usar el mismo hook que Step2 para consistencia
+  // Usar hook con Zustand store para compartir datos con Step2 (evita recálculos)
   const { previewData, unassignedCount, totalClients, isLoading } =
-    useThresholdPreview(fileData.groupedClients)
+    useWizardThresholdPreview(fileData.groupedClients, activeBusiness?.id || '')
 
-  // Debug: Verificar resultado del hook
-  console.log('[Step3Content] useThresholdPreview result:', {
+  // Debug: Verificar resultado del store
+  console.log('[Step3Content] useWizardThresholdPreview result:', {
     totalClients,
     unassignedCount,
-    previewData: previewData.map((d) => ({
+    previewData: previewData.map((d: any) => ({
       thresholdName: d.threshold?.name,
       count: d.count,
       daysFrom: d.threshold?.days_from,
@@ -106,9 +97,9 @@ export function Step3Content({
   // totalClients ya excluye los no válidos (status !== 'found')
   const validClients = totalClients
   const totalInvoices = previewData.reduce(
-    (acc, curr) =>
+    (acc: number, curr: any) =>
       acc +
-      curr.clients.reduce((sum, client) => sum + client.invoices.length, 0),
+      curr.clients.reduce((sum: number, client: any) => sum + client.invoices.length, 0),
     0
   )
 

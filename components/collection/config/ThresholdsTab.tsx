@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
-import {
-  NotificationThresholdService,
-} from '@/lib/services/collection'
+import { NotificationThresholdService } from '@/lib/services/collection'
 import type { NotificationThreshold } from '@/lib/models/collection/notification-threshold'
 import { Button } from '@/components/ui/button'
 import { Plus, RefreshCw, Pencil, Trash2, MoreHorizontal } from 'lucide-react'
@@ -103,7 +101,7 @@ export function ThresholdsTab() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-medium">Umbrales de Notificación</h3>
+          <h3 className="text-lg font-medium">Umbrales de Días de Mora</h3>
           <p className="text-sm text-muted-foreground">
             Define rangos de días de mora y sus plantillas asociadas
           </p>
@@ -168,7 +166,8 @@ export function ThresholdsTab() {
                   </TableCell>
                   <TableCell>
                     {threshold.days_from} -{' '}
-                    {threshold.days_to !== null && threshold.days_to !== undefined
+                    {threshold.days_to !== null &&
+                    threshold.days_to !== undefined
                       ? threshold.days_to
                       : '∞'}
                   </TableCell>

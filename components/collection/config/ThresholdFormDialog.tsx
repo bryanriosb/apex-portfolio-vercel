@@ -173,11 +173,18 @@ export function ThresholdFormDialog({
           <DialogTitle>
             {threshold ? 'Editar Umbral' : 'Nuevo Umbral'}
           </DialogTitle>
+          <p className="text-sm text-muted-foreground mt-2">
+            Los umbrales definen rangos de días de mora y determinan qué plantilla de correo 
+            se enviará automáticamente a cada cliente según su antigüedad de deuda. 
+            Configure el nombre identificativo, el rango de días y la plantilla asociada.
+          </p>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nombre</Label>
+            <Label htmlFor="name">
+              Nombre <span className="text-red-500">*</span>
+            </Label>
             <Input
               id="name"
               placeholder="Ej: Recordatorio 30-60 días"
@@ -190,7 +197,9 @@ export function ThresholdFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Descripción</Label>
+            <Label htmlFor="description">
+              Descripción <span className="text-muted-foreground text-xs">(Opcional)</span>
+            </Label>
             <Textarea
               id="description"
               placeholder="Descripción opcional del umbral..."

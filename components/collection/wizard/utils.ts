@@ -1,7 +1,23 @@
 // utils.ts - Utilidades para el wizard de campañas
 import * as XLSX from 'xlsx'
 import { parse, format, isValid } from 'date-fns'
-import { FileData, REQUIRED_COLUMNS, Invoice, GroupedClient } from './types'
+import { FileData, REQUIRED_COLUMNS, COLUMN_MAPPING, COLUMN_LABELS, Invoice, GroupedClient } from './types'
+
+/**
+ * Normaliza un nombre de columna para facilitar el mapeo
+ * - Elimina espacios al inicio y final (trim)
+ * - Convierte a minúsculas
+ * - Elimina tildes y caracteres especiales
+ * - Normaliza espacios múltiples
+ */
+function normalizeColumnName(header: string): string {
+  return String(header)
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Elimina tildes
+    .replace(/\s+/g, ' ') // Normaliza espacios múltiples a uno solo
+}
 
 function tryParseDate(dateStr: string, inputFormat: string): Date | null {
   if (!dateStr) return null
@@ -82,22 +98,51 @@ export async function parseInvoiceFile(
           return
         }
 
-        const headers = (jsonData[0] as any[]).map((h) =>
-          String(h).toLowerCase().trim()
-        )
+        // Procesar headers normalizándolos para soportar diferentes formatos
+        const rawHeaders = (jsonData[0] as any[])
+        const normalizedHeaders = rawHeaders.map((h) => normalizeColumnName(h))
         const rows = jsonData.slice(1).filter((row: any) => row.length > 0)
 
-        // Validate required columns
-        const missingColumns = REQUIRED_COLUMNS.filter(
-          (col) => !headers.includes(col)
-        )
+        // Crear mapeo de columnas encontradas a nombres internos
+        const columnMapping = new Map<string, string>()
+        normalizedHeaders.forEach((header) => {
+          if (COLUMN_MAPPING[header]) {
+            columnMapping.set(header, COLUMN_MAPPING[header])
+          }
+        })
+
+        // Validate required columns usando headers normalizados
+        // Verificamos si cada columna requerida existe en los headers normalizados
+        // o si tiene un mapeo válido en COLUMN_MAPPING
+        const missingColumns = REQUIRED_COLUMNS.filter((col) => {
+          // Normalizar el nombre de la columna requerida para la búsqueda
+          const normalizedCol = normalizeColumnName(col)
+          
+          // Verificar si existe directamente en los headers normalizados
+          if (normalizedHeaders.includes(normalizedCol)) {
+            return false
+          }
+          
+          // Verificar si hay un mapeo válido: buscar si algún header normalizado
+          // mapea a la misma columna interna que esta columna requerida
+          const requiredInternalName = COLUMN_MAPPING[normalizedCol]
+          if (requiredInternalName) {
+            const hasMapping = normalizedHeaders.some(
+              header => COLUMN_MAPPING[header] === requiredInternalName
+            )
+            if (hasMapping) return false
+          }
+          
+          return true
+        }).map(col => COLUMN_LABELS[col] || col)
+        
         const valid = missingColumns.length === 0
 
         if (!valid) {
           resolve({
             fileName: file.name,
             rowCount: rows.length,
-            columns: headers,
+            columns: normalizedHeaders,
             valid: false,
             missingColumns,
             groupedClients: new Map(),
@@ -105,23 +150,38 @@ export async function parseInvoiceFile(
           return
         }
 
+        // Función helper para obtener valor de columna con mapeo
+        // Busca en rawHeaders usando el nombre normalizado
+        const getColumnValue = (row: any[], spanishCol: string): any => {
+          // Encontrar el índice de la columna buscando en headers normalizados
+          const colIndex = normalizedHeaders.findIndex(h => h === spanishCol)
+          if (colIndex !== -1 && row[colIndex] !== undefined) {
+            return row[colIndex]
+          }
+          // Si no encuentra por nombre exacto, buscar por mapeo
+          const englishCol = COLUMN_MAPPING[spanishCol]
+          if (englishCol && englishCol !== spanishCol) {
+            const mappedIndex = normalizedHeaders.findIndex(h => COLUMN_MAPPING[h] === englishCol)
+            if (mappedIndex !== -1 && row[mappedIndex] !== undefined) {
+              return row[mappedIndex]
+            }
+          }
+          return undefined
+        }
+
         // Group by NIT
         const grouped = new Map<string, GroupedClient>()
 
         rows.forEach((row: any) => {
-          const rowData: any = {}
-          headers.forEach((header, index) => {
-            rowData[header] = row[index]
-          })
 
-          const nit = String(rowData['nit'] || '').trim()
+          const nit = String(getColumnValue(row, 'nit') || '').trim()
           if (!nit) return
 
-          const amountDue = Number(rowData['amount_due'] || 0)
-          const daysOverdue = Number(rowData['days_overdue'] || 0)
+          const amountDue = Number(getColumnValue(row, 'monto') || 0)
+          const daysOverdue = Number(getColumnValue(row, 'dias_mora') || 0)
 
-          const rawInvoiceDate = rowData['invoice_date']
-          const rawDueDate = rowData['due_date']
+          const rawInvoiceDate = getColumnValue(row, 'fecha_factura')
+          const rawDueDate = getColumnValue(row, 'fecha_vencimiento')
 
           const parsedInvoiceDate = tryParseDate(rawInvoiceDate, inputFormat)
           const parsedDueDate = tryParseDate(rawDueDate, inputFormat)
@@ -130,13 +190,12 @@ export async function parseInvoiceFile(
           const formattedDueDate = parsedDueDate ? formatDateOutput(parsedDueDate, outputFormat, inputFormat) : String(rawDueDate || '')
 
           const invoice: Invoice = {
-            amount_due: rowData['amount_due'],
-            invoice_number: rowData['invoice_number'],
+            amount_due: getColumnValue(row, 'monto'),
+            invoice_number: getColumnValue(row, 'numero_factura'),
             invoice_date: formattedInvoiceDate,
             due_date: formattedDueDate,
-            days_overdue: rowData['days_overdue'],
-            ...rowData,
-            // Ensure we override the raw rowData with our formatted dates
+            days_overdue: getColumnValue(row, 'dias_mora'),
+            // Ensure we include the raw values
             invoice_date_raw: rawInvoiceDate,
             due_date_raw: rawDueDate,
           }
@@ -167,7 +226,7 @@ export async function parseInvoiceFile(
         resolve({
           fileName: file.name,
           rowCount: rows.length,
-          columns: headers,
+          columns: normalizedHeaders,
           valid: true,
           missingColumns: [],
           groupedClients: grouped,

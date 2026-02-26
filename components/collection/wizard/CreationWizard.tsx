@@ -16,9 +16,7 @@ import {
   ChevronRight,
   CheckCircle,
   AlertTriangle,
-  Settings,
   Loader2,
-  Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -403,9 +401,12 @@ export function CreationWizard() {
               />
               <div className="flex-1 space-y-1">
                 <div className="flex justify-between items-center">
-                  <span className="font-semibold text-base">
+                  <Link
+                    href="/admin/customers"
+                    className="font-semibold text-base text-primary hover:underline"
+                  >
                     Clientes Registrados
-                  </span>
+                  </Link>
                   <span
                     className={cn(
                       'text-xs font-medium px-2 py-0.5 rounded-full',
@@ -435,9 +436,12 @@ export function CreationWizard() {
               />
               <div className="flex-1 space-y-1">
                 <div className="flex justify-between items-center">
-                  <span className="font-semibold text-base">
+                  <Link
+                    href="/admin/settings/collection?tab=general"
+                    className="font-semibold text-base text-primary hover:underline"
+                  >
                     Formatos de Fecha
-                  </span>
+                  </Link>
                   <span
                     className={cn(
                       'text-xs font-medium px-2 py-0.5 rounded-full',
@@ -466,9 +470,12 @@ export function CreationWizard() {
               />
               <div className="flex-1 space-y-1">
                 <div className="flex justify-between items-center">
-                  <span className="font-semibold text-base">
+                  <Link
+                    href="/admin/collection/templates"
+                    className="font-semibold text-base text-primary hover:underline"
+                  >
                     Plantillas de Correo
-                  </span>
+                  </Link>
                   <span
                     className={cn(
                       'text-xs font-medium px-2 py-0.5 rounded-full',
@@ -497,9 +504,12 @@ export function CreationWizard() {
               />
               <div className="flex-1 space-y-1">
                 <div className="flex justify-between items-center">
-                  <span className="font-semibold text-base">
+                  <Link
+                    href="/admin/settings/collection?tab=thresholds"
+                    className="font-semibold text-base text-primary hover:underline"
+                  >
                     Umbrales de Notificación
-                  </span>
+                  </Link>
                   <span
                     className={cn(
                       'text-xs font-medium px-2 py-0.5 rounded-full',
@@ -519,26 +529,10 @@ export function CreationWizard() {
               </div>
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            {!hasCustomers && (
-              <Link href="/admin/customers">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="gap-2 rounded-none w-full sm:w-auto"
-                >
-                  <Users className="w-4 h-4" />
-                  Ir a Clientes
-                </Button>
-              </Link>
-            )}
-            <Link href="/admin/settings/collection">
-              <Button size="lg" className="gap-2 rounded-none w-full sm:w-auto">
-                <Settings className="w-4 h-4" />
-                Ir a Configuración
-              </Button>
-            </Link>
-          </div>
+          <p className="text-sm text-muted-foreground text-center">
+            Haz clic en cualquier título resaltado para ir directamente a la
+            configuración correspondiente.
+          </p>
         </div>
       </div>
     )
@@ -648,17 +642,18 @@ function StepIndicator({
   steps: WizardStep[]
 }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-center gap-4">
       {steps.map((step, index) => {
         const isActive = currentStep === step.id
         const isCompleted = currentStep > step.id
+        const isLast = index === steps.length - 1
 
         return (
-          <div key={step.id} className="flex items-center flex-1">
-            <div className="flex flex-col items-center flex-1">
+          <div key={step.id} className="flex items-center">
+            <div className="flex flex-col items-center">
               <div
                 className={cn(
-                  'w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors',
+                  'w-7 h-7 rounded-full flex items-center justify-center border-2 transition-colors text-xs',
                   isActive &&
                     'border-primary bg-primary text-primary-foreground',
                   isCompleted && 'border-green-500 bg-green-500 text-white',
@@ -668,15 +663,15 @@ function StepIndicator({
                 )}
               >
                 {isCompleted ? (
-                  <CheckCircle className="h-5 w-5" />
+                  <CheckCircle className="h-3.5 w-3.5" />
                 ) : (
                   <span className="font-semibold">{step.id}</span>
                 )}
               </div>
-              <div className="text-center mt-2 hidden sm:block">
+              <div className="text-center mt-1.5 hidden sm:block">
                 <p
                   className={cn(
-                    'text-sm font-medium',
+                    'text-xs font-medium whitespace-nowrap',
                     isActive && 'text-primary',
                     isCompleted && 'text-green-600',
                     !isActive && !isCompleted && 'text-gray-500'
@@ -686,10 +681,10 @@ function StepIndicator({
                 </p>
               </div>
             </div>
-            {index < steps.length - 1 && (
+            {!isLast && (
               <div
                 className={cn(
-                  'h-0.5 flex-1 mx-2',
+                  'h-0.5 w-12 mx-3',
                   isCompleted ? 'bg-green-500' : 'bg-gray-300'
                 )}
               />

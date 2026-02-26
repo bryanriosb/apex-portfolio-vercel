@@ -89,6 +89,9 @@ export const NotificationThresholdService = {
 
   /**
    * Batch process clients to assign thresholds and templates
+   * Optimized version: 1 DB call for all thresholds, in-memory matching
+   * 
+   * @deprecated This method is redundant. Use fetchThresholds() + findThresholdForDays() pattern instead
    */
   async processClientsWithThresholds(params: {
     clients: any[]
@@ -99,18 +102,22 @@ export const NotificationThresholdService = {
       threshold: NotificationThreshold | null
     }[]
   > {
-    const results = []
+    // Fetch all thresholds once
+    const thresholdsResponse = await this.fetchThresholds(params.business_id)
+    const thresholds = thresholdsResponse.data.sort((a, b) => a.days_from - b.days_from)
 
-    for (const client of params.clients) {
+    // Process all clients in memory
+    return params.clients.map(client => {
       const daysOverdue = client.custom_data?.total_days_overdue || 0
-      const threshold = await this.getThresholdForDays(
-        params.business_id,
-        daysOverdue
-      )
+      
+      // Find matching threshold in memory
+      const threshold = thresholds.find(t => {
+        const daysFrom = t.days_from
+        const daysTo = t.days_to ?? Infinity
+        return daysOverdue >= daysFrom && daysOverdue <= daysTo
+      }) || null
 
-      results.push({ client, threshold })
-    }
-
-    return results
+      return { client, threshold }
+    })
   },
 }

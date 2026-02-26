@@ -5,6 +5,7 @@ import {
   updateAttachmentRuleAction,
   deleteAttachmentRuleAction,
   resolveAttachmentsForClientAction,
+  resolveAttachmentsBulkAction,
   saveAttachmentRulesAction,
   fetchGlobalAttachmentRulesAction,
   type AttachmentRuleListResponse,
@@ -87,6 +88,8 @@ export const AttachmentRulesService = {
 
   /**
    * Batch resolve attachments for multiple clients
+   * NOTE: This is the old sequential version. Use resolveAttachmentsBulk for better performance.
+   * @deprecated Use resolveAttachmentsBulk instead
    */
   async resolveAttachmentsForClients(
     clients: any[],
@@ -108,5 +111,24 @@ export const AttachmentRulesService = {
     }
 
     return results
+  },
+
+  /**
+   * Resolve attachments for multiple clients using batch RPC
+   * This is much more efficient than calling resolveAttachmentsForClient for each client
+   * Reduces N DB calls to 1 DB call
+   */
+  async resolveAttachmentsBulk(
+    businessId: string,
+    clients: Array<{
+      client_id: string
+      threshold_id?: string
+      customer_category_id?: string
+      customer_id?: string
+      days_overdue?: number
+      invoice_amount?: number
+    }>
+  ): Promise<Map<string, ResolvedAttachment[]>> {
+    return await resolveAttachmentsBulkAction(businessId, clients)
   },
 }

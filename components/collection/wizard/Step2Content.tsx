@@ -13,7 +13,8 @@ import { GroupedClient, EmailConfig, FileData } from './types'
 import { ThresholdPreview } from './ThresholdPreview'
 import { FileText, CheckCircle2 } from 'lucide-react'
 import Loading from '@/components/ui/loading'
-import { useThresholdPreview } from '@/hooks/collection/use-threshold-preview'
+import { useWizardThresholdPreview } from '@/hooks/collection/use-wizard-threshold-preview'
+import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 
 interface Step2ContentProps {
   fileData: FileData | null
@@ -26,8 +27,9 @@ export function Step2Content({
   config,
   onChange,
 }: Step2ContentProps) {
-
-  // Usar el hook compartido para evitar duplicación de código
+  const { activeBusiness } = useActiveBusinessStore()
+  
+  // Usar el hook con Zustand store para evitar recálculos entre pasos
   const {
     previewData,
     unassignedClients,
@@ -35,7 +37,10 @@ export function Step2Content({
     totalClients,
     isLoading,
     hasAllThresholds
-  } = useThresholdPreview(fileData?.groupedClients || new Map())
+  } = useWizardThresholdPreview(
+    fileData?.groupedClients || new Map(),
+    activeBusiness?.id || ''
+  )
 
   const totalValidClients = totalClients
   const totalClientsInCsv = fileData?.groupedClients?.size || 0

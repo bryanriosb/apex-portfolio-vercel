@@ -1,4 +1,4 @@
-# Plan de Implementación - Sistema de Umbrales de Notificación
+# Plan de Implementación - Sistema de Umbrales de Días de Mora
 
 > **Proyecto:** Apex Portfolio - Sistema de Gestión de Cobros Automatizados  
 > **Fecha:** 2026-02-19  
@@ -10,7 +10,7 @@
 
 ## Resumen Ejecutivo
 
-Este documento describe la implementación del **Sistema de Umbrales de Notificación** para el módulo de Cobros. Cada cliente dentro de una ejecución recibe un template diferente según sus días de mora, y los adjuntos se asignan mediante reglas deterministas.
+Este documento describe la implementación del **Sistema de Umbrales de Días de Mora** para el módulo de Cobros. Cada cliente dentro de una ejecución recibe un template diferente según sus días de mora, y los adjuntos se asignan mediante reglas deterministas.
 
 ### Cambios Clave (v4.0) - IMPLEMENTADO
 
@@ -37,7 +37,7 @@ Este documento describe la implementación del **Sistema de Umbrales de Notifica
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    SISTEMA DE UMBRALES DE NOTIFICACIÓN                      │
+│                    SISTEMA DE Umbrales de Días de Mora                      │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 CONFIGURACIÓN (UI Admin)
@@ -45,7 +45,7 @@ CONFIGURACIÓN (UI Admin)
 /admin/settings/collection
 ├── Tab: Estrategias de Envío (existente)
 ├── Tab: Reputación de Dominios (existente)
-└── Tab: Umbrales de Días ✅ IMPLEMENTADO
+└── Tab: Umbrales de Días de Mora ✅ IMPLEMENTADO
     ├── Umbral 1: 0-30 días → Template A (suave)
     ├── Umbral 2: 31-60 días → Template B (medio)
     └── Umbral 3: 61+ días → Template C (agresivo)
@@ -184,7 +184,7 @@ Total: 4 adjuntos en orden 1,2,3,4
 **Archivo:** `supabase/migrations/20260219_notification_thresholds.sql`
 
 ```sql
--- Umbrales de Notificación (rangos de días)
+-- Umbrales de Días de Mora (rangos de días)
 CREATE TABLE notification_thresholds (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     business_account_id UUID NOT NULL REFERENCES business_accounts(id) ON DELETE CASCADE,

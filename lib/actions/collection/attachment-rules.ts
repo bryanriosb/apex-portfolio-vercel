@@ -244,3 +244,62 @@ export async function fetchGlobalAttachmentRulesAction(
     return []
   }
 }
+
+interface BulkAttachmentInput {
+  client_id: string
+  threshold_id?: string
+  customer_category_id?: string
+  customer_id?: string
+  days_overdue?: number
+  invoice_amount?: number
+}
+
+/**
+ * Resolve attachments for multiple clients using batch RPC
+ * This is much more efficient than calling resolveAttachmentsForClientAction for each client
+ */
+export async function resolveAttachmentsBulkAction(
+  businessId: string,
+  clients: BulkAttachmentInput[]
+): Promise<Map<string, ResolvedAttachment[]>> {
+  try {
+    const supabase = await getSupabaseAdminClient()
+
+    // Convert clients array to JSONB for the RPC function
+    const clientsJson = JSON.stringify(clients)
+
+    const { data, error } = await supabase.rpc('resolve_attachments_bulk', {
+      p_business_id: businessId,
+      p_clients: clientsJson,
+    })
+
+    if (error) throw error
+
+    // Group results by client_id
+    const results = new Map<string, ResolvedAttachment[]>()
+    
+    for (const row of data || []) {
+      const clientId = row.client_id
+      const attachment: ResolvedAttachment = {
+        attachment_id: row.attachment_id,
+        attachment_name: row.attachment_name,
+        storage_path: row.storage_path,
+        storage_bucket: row.storage_bucket,
+        document_type: row.document_type,
+        is_required: row.is_required,
+        rule_type: row.rule_type,
+        display_order: row.display_order,
+      }
+
+      if (!results.has(clientId)) {
+        results.set(clientId, [])
+      }
+      results.get(clientId)!.push(attachment)
+    }
+
+    return results
+  } catch (error) {
+    console.error('Error resolving attachments in bulk:', error)
+    return new Map()
+  }
+}

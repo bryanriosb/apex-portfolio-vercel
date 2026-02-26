@@ -28,6 +28,8 @@ export type {
 export {
   WIZARD_STEPS,
   REQUIRED_COLUMNS,
+  COLUMN_MAPPING,
+  COLUMN_LABELS,
   TEMPLATE_DATA,
   STRATEGY_OPTIONS,
 } from './types'

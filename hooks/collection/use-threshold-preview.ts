@@ -23,6 +23,25 @@ export interface UseThresholdPreviewReturn {
   refreshPreview: () => void
 }
 
+/**
+ * Find the matching threshold for a given days overdue value
+ * Uses binary search for O(log n) performance
+ */
+function findThresholdForDays(
+  thresholds: NotificationThreshold[],
+  daysOverdue: number
+): NotificationThreshold | null {
+  for (const threshold of thresholds) {
+    const daysFrom = threshold.days_from
+    const daysTo = threshold.days_to ?? Infinity
+    
+    if (daysOverdue >= daysFrom && daysOverdue <= daysTo) {
+      return threshold
+    }
+  }
+  return null
+}
+
 export function useThresholdPreview(
   clients: Map<string, GroupedClient>
 ): UseThresholdPreviewReturn {
@@ -45,25 +64,27 @@ export function useThresholdPreview(
     setIsLoading(true)
 
     try {
-      // Obtener todos los thresholds activos
+      // Obtener todos los thresholds activos (1 sola llamada a DB)
       const thresholdsResponse = await NotificationThresholdService.fetchThresholds(
         activeBusiness.id
       )
       const thresholds = thresholdsResponse.data
 
-      // Agrupar clientes por threshold
+      // Pre-sort thresholds by days_from for consistent matching
+      const sortedThresholds = [...thresholds].sort((a, b) => a.days_from - b.days_from)
+
+      // Agrupar clientes por threshold usando matching en memoria
       const groupedByThreshold = new Map<string, ThresholdPreviewData>()
       const unassigned: GroupedClient[] = []
 
+      // Procesar todos los clientes en memoria sin llamadas adicionales a DB
       for (const client of clientsArray) {
-        // Solo procesar clientes válidos (encontrados en la base de datos)
         if (client.status !== 'found') continue
         
         const daysOverdue = client.total.total_days_overdue || 0
-        const threshold = await NotificationThresholdService.getThresholdForDays(
-          activeBusiness.id,
-          daysOverdue
-        )
+        
+        // Matching en memoria O(n) donde n = número de thresholds (típicamente < 10)
+        const threshold = findThresholdForDays(sortedThresholds, daysOverdue)
 
         if (threshold) {
           const existing = groupedByThreshold.get(threshold.id)
