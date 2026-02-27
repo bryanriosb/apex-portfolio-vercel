@@ -143,6 +143,22 @@ export async function processEmailEvent(
                     custom_data: updatedCustomData,
                 }
 
+                // Mapear eventos a columnas específicas para la UI
+                if (event.eventType === 'delivered') {
+                    updatePayload.email_delivered_at = event.timestamp
+                } else if (event.eventType === 'opened' || event.eventType === 'clicked') {
+                    updatePayload.email_opened_at = event.timestamp
+                } else if (event.eventType === 'bounced') {
+                    // Determinar tipo de rebote
+                    const isHard = event.metadata?.originalEvent?.includes('hard') ||
+                        event.metadata?.originalEvent === 'invalid_email' ||
+                        event.metadata?.originalEvent === 'blocked'
+                    updatePayload.email_bounce_type = isHard ? 'hard' : 'soft'
+                    updatePayload.email_bounce_reason = event.metadata?.reason || 'Unknown bounce'
+                } else if (event.eventType === 'failed') {
+                    updatePayload.error_message = event.metadata?.reason || 'Delivery failed'
+                }
+
                 // Si email_sent_at es NULL, la base de datos lanza un error en el trigger
                 // de métricas predictivas (EXTRACT(DOW FROM NULL) is NULL).
                 // Lo inicializamos con el timestamp del evento si no existe.
