@@ -38,10 +38,8 @@ import {
 import { BLACKLIST_COLUMNS } from '@/lib/models/blacklist/const/data-table/blacklist-columns'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import { toast } from 'sonner'
-import type {
-  EmailBlacklist,
-  BounceType,
-} from '@/lib/models/collection/email-blacklist'
+import type { BounceType } from '@/lib/models/collection/email-blacklist'
+import type { BlacklistWithCustomerInfo } from '@/lib/actions/blacklist'
 import EmailBlacklistService from '@/lib/services/blacklist/email-blacklist-service'
 import { addToBlacklistAction } from '@/lib/actions/blacklist'
 import { Badge } from '@/components/ui/badge'
@@ -146,6 +144,12 @@ export default function BlacklistPage() {
           if (!value) return '-'
           return new Date(value).toLocaleDateString('es-CO')
         },
+        customer_nit: (value: string | null) => {
+          return value || '-'
+        },
+        customer_company: (value: string | null) => {
+          return value || '-'
+        },
       },
     }
   }, [activeBusinessId])
@@ -245,7 +249,7 @@ export default function BlacklistPage() {
       if (col.id === 'actions') {
         return {
           ...col,
-          cell: ({ row }: { row: { original: EmailBlacklist } }) => {
+          cell: ({ row }: { row: { original: BlacklistWithCustomerInfo } }) => {
             const entry = row.original
 
             return (
@@ -361,7 +365,9 @@ export default function BlacklistPage() {
           key={activeBusinessId}
           ref={dataTableRef}
           columns={columnsWithActions}
-          service={blacklistService}
+          service={{
+            fetchItems: blacklistService.fetchItemsWithCustomerInfo.bind(blacklistService),
+          }}
           searchConfig={searchConfig}
           filters={filterConfigs}
           exportConfig={exportConfig || undefined}

@@ -29,7 +29,7 @@ export async function processEmailEvent(
         for (const mid of messageIdsToTry) {
             const { data, error } = await supabase
                 .from('collection_clients')
-                .select('id, status, custom_data, execution_id, email_sent_at')
+                .select('id, customer_id, status, custom_data, execution_id, email_sent_at')
                 .eq('custom_data->>message_id', mid)
                 .limit(1);
 
@@ -55,7 +55,7 @@ export async function processEmailEvent(
             // Webhook confirms as 'sent' when the provider actually sends the email
             const { data: emailClients, error: emailSearchError } = await supabase
                 .from('collection_clients')
-                .select('id, status, custom_data, execution_id, email_sent_at')
+                .select('id, customer_id, status, custom_data, execution_id, email_sent_at')
                 .or(`custom_data->emails.cs.["${event.email}"],custom_data->>email.eq.${event.email}`)
                 .in('status', ['pending', 'accepted', 'sent', 'queued'])
                 .order('created_at', { ascending: false })

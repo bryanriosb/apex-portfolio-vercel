@@ -3,11 +3,19 @@ import {
   removeFromBlacklistAction,
   removeManyFromBlacklistAction,
   getBlacklistStatsAction,
+  getBlacklistWithCustomerInfoAction,
+  type BlacklistWithCustomerInfo,
 } from '@/lib/actions/blacklist'
 import type { EmailBlacklist, BounceType } from '@/lib/models/collection/email-blacklist'
 
 export interface BlacklistListResponse {
   data: EmailBlacklist[]
+  total: number
+  total_pages: number
+}
+
+export interface BlacklistWithCustomerResponse {
+  data: BlacklistWithCustomerInfo[]
   total: number
   total_pages: number
 }
@@ -76,6 +84,31 @@ export default class EmailBlacklistService {
         complaints: 0,
         last_30_days: 0,
       }
+    }
+  }
+
+  async fetchItemsWithCustomerInfo(params?: {
+    page?: number
+    page_size?: number
+    business_id?: string
+    bounce_type?: BounceType
+    search?: string
+  }): Promise<BlacklistWithCustomerResponse> {
+    try {
+      if (!params?.business_id) {
+        return { data: [], total: 0, total_pages: 0 }
+      }
+
+      return await getBlacklistWithCustomerInfoAction({
+        businessId: params.business_id,
+        page: params.page,
+        pageSize: params.page_size,
+        bounceType: params.bounce_type,
+        search: params.search,
+      })
+    } catch (error) {
+      console.error('Error fetching blacklist with customer info:', error)
+      return { data: [], total: 0, total_pages: 0 }
     }
   }
 }

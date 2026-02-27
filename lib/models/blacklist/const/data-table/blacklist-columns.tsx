@@ -1,7 +1,7 @@
 import type {
-  EmailBlacklist,
   BounceType,
 } from '@/lib/models/collection/email-blacklist'
+import type { BlacklistWithCustomerInfo } from '@/lib/actions/blacklist'
 import { ColumnDef } from '@tanstack/react-table'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
@@ -32,13 +32,40 @@ const bounceTypeIcons: Record<BounceType, typeof MailX> = {
   manual: Hand,
 }
 
-export const BLACKLIST_COLUMNS: ColumnDef<EmailBlacklist>[] = [
+export const BLACKLIST_COLUMNS: ColumnDef<BlacklistWithCustomerInfo>[] = [
   {
     accessorKey: 'email',
-    header: 'Email',
+    header: 'Correo',
     cell: ({ row }) => {
       const email = row.original.email
       return <div className="font-medium">{email}</div>
+    },
+  },
+  {
+    accessorKey: 'customer_nit',
+    header: 'NIT',
+    cell: ({ row }) => {
+      const nit = row.original.customer_nit
+      if (!nit) return <div className="text-muted-foreground">-</div>
+      return <div className="font-mono text-sm">{nit}</div>
+    },
+  },
+  {
+    accessorKey: 'customer_company',
+    header: 'Empresa',
+    cell: ({ row }) => {
+      const company = row.original.customer_company
+      if (!company) return <div className="text-muted-foreground">-</div>
+      // Truncar a 30 caracteres con ellipsis
+      const truncated = company.length > 30 ? company.substring(0, 30) + '...' : company
+      return (
+        <div 
+          className="text-sm max-w-[200px] truncate" 
+          title={company}
+        >
+          {truncated}
+        </div>
+      )
     },
   },
   {
