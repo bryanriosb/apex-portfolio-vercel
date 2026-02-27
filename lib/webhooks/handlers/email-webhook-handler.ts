@@ -29,7 +29,7 @@ export async function processEmailEvent(
         for (const mid of messageIdsToTry) {
             const { data, error } = await supabase
                 .from('collection_clients')
-                .select('id, status, custom_data, execution_id')
+                .select('id, status, custom_data, execution_id, email_sent_at')
                 .eq('custom_data->>message_id', mid)
                 .limit(1);
 
@@ -54,7 +54,7 @@ export async function processEmailEvent(
             // We remove the strict 'pending' requirement as the worker might have already marked it as 'sent'
             const { data: emailClients, error: emailSearchError } = await supabase
                 .from('collection_clients')
-                .select('id, status, custom_data, execution_id')
+                .select('id, status, custom_data, execution_id, email_sent_at')
                 .or(`custom_data->emails.cs.["${event.email}"],custom_data->>email.eq.${event.email}`)
                 .in('status', ['pending', 'sent', 'queued'])
                 .order('created_at', { ascending: false })
@@ -138,12 +138,21 @@ export async function processEmailEvent(
                     message_id: client.custom_data?.message_id || event.messageId
                 }
 
+                const updatePayload: any = {
+                    status: newStatus,
+                    custom_data: updatedCustomData,
+                }
+
+                // Si email_sent_at es NULL, la base de datos lanza un error en el trigger
+                // de métricas predictivas (EXTRACT(DOW FROM NULL) is NULL).
+                // Lo inicializamos con el timestamp del evento si no existe.
+                if (!client.email_sent_at) {
+                    updatePayload.email_sent_at = event.timestamp
+                }
+
                 const { error: updateError } = await supabase
                     .from('collection_clients')
-                    .update({
-                        status: newStatus,
-                        custom_data: updatedCustomData,
-                    })
+                    .update(updatePayload)
                     .eq('id', client.id)
 
                 if (updateError) {
@@ -258,7 +267,7 @@ async function updateReputationMetrics(
 
         if (profiles && profiles.length > 0) {
             const profile = profiles[0]
-            const today = new Date().toISOString().split('T')[0]
+            const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
 
             // 4. Actualizar email_reputation_profiles
             if (profileField) {
