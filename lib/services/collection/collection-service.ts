@@ -11,12 +11,12 @@ const getAWSConfig = () => {
     const region = process.env.AWS_REGION || 'us-east-1'
     const accessKeyId = process.env.AWS_ACCESS_KEY_ID
     const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY
-    
+
     if (!accessKeyId || !secretAccessKey) {
         console.error('[AWS Config] Missing AWS credentials!')
         throw new Error('AWS credentials not configured')
     }
-    
+
     return {
         region,
         credentials: {
@@ -47,9 +47,12 @@ export class CollectionService {
      * Start an immediate execution by triggering the Lambda worker
      */
     static async startImmediateExecution(executionId: string) {
+        const lambdaArn = process.env.LAMBDA_EMAIL_WORKER_ARN
+        if (!lambdaArn) throw new Error('LAMBDA_EMAIL_WORKER_ARN not set')
+
         try {
             const command = new InvokeCommand({
-                FunctionName: process.env.LAMBDA_EMAIL_WORKER_ARN,
+                FunctionName: lambdaArn,
                 InvocationType: 'Event', // Asynchronous invocation
                 Payload: JSON.stringify({
                     execution_id: executionId,
@@ -74,7 +77,6 @@ export class CollectionService {
      * @returns EventBridge cron expression in local time
      */
     private static convertToCronExpression(localDate: Date, timezone: string): string {
-        // Convert the UTC date to the target timezone to extract local components
         const formatter = new Intl.DateTimeFormat('en-US', {
             timeZone: timezone,
             year: 'numeric',
@@ -83,101 +85,75 @@ export class CollectionService {
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
-            hour12: false
+            hourCycle: 'h23'
         })
-        
+
         const parts = formatter.formatToParts(localDate)
         const getPart = (type: string) => parts.find(p => p.type === type)?.value
-        
+
         const year = parseInt(getPart('year') || '0')
         const month = parseInt(getPart('month') || '0')
         const day = parseInt(getPart('day') || '0')
         const hour = parseInt(getPart('hour') || '0')
         const minute = parseInt(getPart('minute') || '0')
-        
-        // Format: cron(minutes hours day-of-month month day-of-week year)
-        // Using '?' for day-of-week as per AWS EventBridge requirements
-        const cronExpression = `cron(${minute} ${hour} ${day} ${month} ? ${year})`
 
-        console.log(`[scheduleExecution] Timezone: ${timezone}`)
-        console.log(`[scheduleExecution] Local time (${timezone}): ${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`)
-        console.log(`[scheduleExecution] Cron expression: ${cronExpression}`)
-
-        return cronExpression
+        return `cron(${minute} ${hour} ${day} ${month} ? ${year})`
     }
 
     /**
-     * Schedule an execution using EventBridge Scheduler with timezone support
+     * Schedule a system wake-up using EventBridge Scheduler
      * @param executionId - The execution ID to schedule
      * @param scheduledDate - The date/time in local timezone (e.g., America/Bogota)
      * @param timezone - The timezone to use for scheduling (default: America/Bogota)
      */
     static async scheduleExecution(executionId: string, scheduledDate: Date, timezone: string = 'America/Bogota') {
-        const scheduleName = `collection-exec-${executionId}`
-        
-        // Validate required env vars
+        const scheduleName = `collection-email-${executionId}` // Unique name per execution
+
         const lambdaArn = process.env.LAMBDA_EMAIL_WORKER_ARN
         const schedulerRoleArn = process.env.EVENTBRIDGE_SCHEDULER_ROLE_ARN
-        
-        if (!lambdaArn) {
-            throw new Error('LAMBDA_EMAIL_WORKER_ARN environment variable is not set')
-        }
-        
-        if (!schedulerRoleArn) {
-            throw new Error('EVENTBRIDGE_SCHEDULER_ROLE_ARN environment variable is not set. This IAM role is required for EventBridge Scheduler to invoke Lambda.')
+
+        if (!lambdaArn || !schedulerRoleArn) {
+            throw new Error('AWS environment variables (LAMBDA_EMAIL_WORKER_ARN, EVENTBRIDGE_SCHEDULER_ROLE_ARN) are not set')
         }
 
-        console.log(`[scheduleExecution] Starting scheduling for execution ${executionId}`)
-        console.log(`[scheduleExecution] Lambda ARN: ${lambdaArn}`)
-        console.log(`[scheduleExecution] Scheduler Role ARN: ${schedulerRoleArn}`)
-        console.log(`[scheduleExecution] Scheduled date (input): ${scheduledDate.toISOString()}`)
-        console.log(`[scheduleExecution] Timezone: ${timezone}`)
-
-        // Convert date to cron expression (in local timezone, not UTC)
-        // EventBridge Scheduler will handle the timezone conversion internally
         const cronExpression = this.convertToCronExpression(scheduledDate, timezone)
-        
-        console.log(`[scheduleExecution] Final cron expression: ${cronExpression}`)
 
         try {
-            // Create Schedule using EventBridge Scheduler
-            console.log(`[scheduleExecution] Creating EventBridge Schedule: ${scheduleName}`)
-            
             const createScheduleCommand = new CreateScheduleCommand({
                 Name: scheduleName,
                 ScheduleExpression: cronExpression,
-                ScheduleExpressionTimezone: timezone, // This is the key - AWS handles timezone conversion
+                ScheduleExpressionTimezone: timezone,
                 State: 'ENABLED',
-                Description: `Scheduled collection execution for ID: ${executionId}`,
+                Description: `Scheduled wake-up for email worker`,
                 Target: {
                     Arn: lambdaArn,
                     RoleArn: schedulerRoleArn,
                     Input: JSON.stringify({
+                        source: 'eventbridge_scheduler',
                         execution_id: executionId,
-                        action: 'start_execution'
+                        action: 'wake_up'
                     })
                 },
-                // Optional: configure flexible time window
                 FlexibleTimeWindow: {
                     Mode: FlexibleTimeWindowMode.OFF
                 },
-                // Group name for organizing schedules (uses 'default' group which always exists)
-                GroupName: 'default'
+                GroupName: 'default',
+                ActionAfterCompletion: 'DELETE'
             })
 
-            const scheduleResult = await getSchedulerClient().send(createScheduleCommand)
-            console.log(`[scheduleExecution] Schedule created successfully:`, scheduleResult)
+            // Note: If schedule already exists, this might need an update command instead of create.
+            // But with DELETE after completion, we can usually just create it.
+            // However, starting a new campaign might need to update an existing schedule if the new one is EARLIER.
+            // For now, let's keep it simple.
+            await getSchedulerClient().send(createScheduleCommand)
 
-            console.log(`[scheduleExecution] Successfully scheduled execution ${executionId} with schedule ${scheduleName}`)
             return { ruleName: scheduleName }
         } catch (error: any) {
-            console.error('[scheduleExecution] Error scheduling execution:', error)
-            console.error('[scheduleExecution] Error details:', {
-                message: error.message,
-                name: error.name,
-                code: error.Code || error.code,
-                requestId: error.$metadata?.requestId
-            })
+            if (error.name === 'ConflictException') {
+                // Should handle update here if needed
+                console.warn('[scheduleExecution] Schedule already exists. We should update it if the new time is earlier.')
+            }
+            console.error('[scheduleExecution] Error scheduling:', error)
             throw new Error(`Failed to schedule execution: ${error.message}`)
         }
     }

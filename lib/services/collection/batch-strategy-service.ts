@@ -16,7 +16,7 @@ export class BatchStrategyService {
     strategy: DeliveryStrategyInsert
   ): Promise<DeliveryStrategy> {
     const supabase = await getSupabaseAdminClient()
-    
+
     // Si es default, desmarcar otras estrategias default del mismo negocio
     if (strategy.is_default) {
       await supabase
@@ -47,7 +47,7 @@ export class BatchStrategyService {
     businessId: string
   ): Promise<DeliveryStrategy> {
     const supabase = await getSupabaseAdminClient()
-    
+
     // Buscar estrategia default del negocio
     const { data: existing, error } = await supabase
       .from('delivery_strategies')
@@ -102,7 +102,7 @@ export class BatchStrategyService {
     businessId: string
   ): Promise<DeliveryStrategy[]> {
     const supabase = await getSupabaseAdminClient()
-    
+
     const { data, error } = await supabase
       .from('delivery_strategies')
       .select('*')
@@ -124,7 +124,7 @@ export class BatchStrategyService {
     strategyId: string
   ): Promise<DeliveryStrategy | null> {
     const supabase = await getSupabaseAdminClient()
-    
+
     const { data, error } = await supabase
       .from('delivery_strategies')
       .select('*')
@@ -157,7 +157,7 @@ export class BatchStrategyService {
     }
   ): Promise<ExecutionBatch[]> {
     const supabase = await getSupabaseAdminClient()
-    
+
     // 1. Obtener o crear perfil de reputación
     const reputationProfile =
       await EmailReputationService.getOrCreateReputationProfile(
@@ -167,7 +167,7 @@ export class BatchStrategyService {
 
     // 2. Obtener estrategia
     let strategy: DeliveryStrategy
-    
+
     if (options?.strategyId) {
       // Usar la estrategia específica por ID
       const { data: strategyById } = await supabase
@@ -288,6 +288,7 @@ export class BatchStrategyService {
     let currentDay = new Date(startDate || new Date())
     let batchNumber = 1
     const totalClients = clients.length
+    const intervalMinutes = strategy.batch_interval_minutes || 60
 
     // Calcular límites según el día de warm-up actual
     const warmupDay = reputationProfile.current_warmup_day
@@ -299,18 +300,18 @@ export class BatchStrategyService {
     // Crear batches distribuidos en días
     while (clientIndex < totalClients) {
       // Determinar cuántos emails podemos enviar hoy
-      const remainingToday =
-        dailyLimit -
-        batches
-          .filter((b) => {
-            if (!b.scheduled_for) return false
-            const batchDate = new Date(b.scheduled_for)
-            return batchDate.toDateString() === currentDay.toDateString()
-          })
-          .reduce((sum, b) => sum + b.total_clients, 0)
+      const batchesToday = batches.filter((b) => {
+        if (!b.scheduled_for) return false
+        const batchDate = new Date(b.scheduled_for)
+        return batchDate.toDateString() === currentDay.toDateString()
+      })
+
+      const sentToday = batchesToday.reduce((sum, b) => sum + b.total_clients, 0)
+      const remainingToday = dailyLimit - sentToday
 
       if (remainingToday <= 0) {
         // Pasar al siguiente día
+        currentDay = new Date(currentDay)
         currentDay.setDate(currentDay.getDate() + 1)
         // El siguiente día tendrá un límite diferente según el progreso
         const nextDayWarmup = warmupDay + Math.floor(batches.length / 2) + 1
@@ -330,11 +331,17 @@ export class BatchStrategyService {
       const clientIds = batchClients.map((c) => c.id)
 
       // Calcular hora de envío respetando preferencias
-      const scheduledTime = this.calculateSendTime(
+      const baseScheduledTime = this.calculateSendTime(
         currentDay,
         strategy.preferred_send_hour_start || 9,
         strategy.preferred_send_hour_end || 17,
         strategy.avoid_weekends !== false
+      )
+
+      // Aplicar intervalo si hay más de un batch en el mismo día
+      const intervalOffset = batchesToday.length * intervalMinutes
+      const scheduledTime = new Date(
+        baseScheduledTime.getTime() + intervalOffset * 60000
       )
 
       batches.push({
@@ -353,6 +360,7 @@ export class BatchStrategyService {
 
       // Si llenamos el día, pasar al siguiente
       if (clientIndex < totalClients && batchSize >= remainingToday) {
+        currentDay = new Date(currentDay)
         currentDay.setDate(currentDay.getDate() + 1)
         const nextDayWarmup = warmupDay + Math.floor(batchNumber / 2)
         dailyLimit = this.getRampUpLimitForDay(nextDayWarmup, strategy)
@@ -479,7 +487,7 @@ export class BatchStrategyService {
     limit: number = 50
   ): Promise<ExecutionBatch[]> {
     const supabase = await getSupabaseAdminClient()
-    
+
     const { data, error } = await supabase
       .from('execution_batches')
       .select('*')
@@ -510,7 +518,7 @@ export class BatchStrategyService {
     }
   ): Promise<void> {
     const supabase = await getSupabaseAdminClient()
-    
+
     const updateData: any = { status }
 
     if (metrics) {
@@ -557,7 +565,7 @@ export class BatchStrategyService {
     estimatedCompletionTime?: Date
   }> {
     const supabase = await getSupabaseAdminClient()
-    
+
     const { data: batches, error } = await supabase
       .from('execution_batches')
       .select('*')

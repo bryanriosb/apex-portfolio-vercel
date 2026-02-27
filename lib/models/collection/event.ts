@@ -9,6 +9,7 @@ export type EventType =
     | 'email_sent'
     | 'email_delivered'
     | 'email_opened'
+    | 'email_clicked'
     | 'email_bounced'
     | 'fallback_triggered'
     | 'fallback_sent'

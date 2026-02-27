@@ -42,18 +42,39 @@ export function parseBrevoEvent(body: any): EmailEvent | null {
                 break
             case 'request':
                 // 'request' means Brevo received the request but hasn't delivered yet.
-                // We'll treat it as 'delivered' to track the start.
-                normalizedEventType = 'delivered'
+                // We'll treat it as 'sent' (corresponds to SES 'Send').
+                normalizedEventType = 'sent'
                 break
             default:
                 console.warn('Unknown Brevo event type:', eventType)
                 return null
         }
 
+        // Brevo typically sends Unix timestamps in 'ts' or 'ts_event' (seconds)
+        // These are guaranteed to be UTC.
+        const ts = body.ts || body.ts_event || body.ts_epoch
+        let eventTimestamp = new Date().toISOString()
+
+        if (ts) {
+            // ts_epoch is in milliseconds, others in seconds
+            const multiplier = body.ts_epoch ? 1 : 1000
+            eventTimestamp = new Date(Number(ts) * multiplier).toISOString()
+        } else if (body.date && typeof body.date === 'string') {
+            const rawDate = body.date
+            const hasTimezone = rawDate.includes('Z') || rawDate.includes('+')
+
+            if (!hasTimezone) {
+                // We assume it's Bogota time (-05:00) as fallback
+                eventTimestamp = `${rawDate.replace(' ', 'T')}-05:00`
+            } else {
+                eventTimestamp = rawDate.replace(' ', 'T')
+            }
+        }
+
         return {
             messageId: body['message-id'] || body.messageId,
             eventType: normalizedEventType,
-            timestamp: body.date || new Date().toISOString(),
+            timestamp: eventTimestamp,
             email: body.email,
             metadata: {
                 originalEvent: eventType,

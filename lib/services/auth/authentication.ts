@@ -51,6 +51,7 @@ export async function authenticate(
       tenant_name: user.tenant_name,
       instance_id: user.instance_id,
       businesses: user.businesses,
+      timezone: user.timezone || user.businesses?.[0]?.timezone || 'America/Bogota',
       accessToken: user.accessToken,
     }
 

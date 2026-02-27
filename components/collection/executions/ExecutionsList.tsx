@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from 'react'
 import { DataTable } from '@/components/DataTable'
-import { executionColumns } from './execution-columns'
+import { getExecutionColumns } from './execution-columns'
 import { ExecutionService } from '@/lib/services/collection'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
+import { useCurrentUser } from '@/hooks/use-current-user'
 import type { FilterConfig } from '@/components/DataTable'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,27 +15,35 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Eye, RefreshCw, Trash2 } from 'lucide-react'
+import { MoreHorizontal, Eye, RefreshCw, Trash2, CheckCircle2, Clock, AlertCircle, Pause, PlayCircle } from 'lucide-react'
 import Link from 'next/link'
-import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
-import { CollectionExecution } from '@/lib/models/collection'
+import { CollectionExecution, ExecutionStatus } from '@/lib/models/collection'
+import { updateExecutionStatusAction } from '@/lib/actions/collection'
 import { toast } from 'sonner'
+
+const statusOptions = [
+  { label: 'Pendiente', value: 'pending', icon: PlayCircle, color: 'text-yellow-600' },
+  { label: 'Procesando', value: 'processing', icon: RefreshCw, color: 'text-blue-600' },
+  { label: 'Completado', value: 'completed', icon: CheckCircle2, color: 'text-green-600' },
+  { label: 'Error', value: 'failed', icon: AlertCircle, color: 'text-red-600' },
+  { label: 'Pausado', value: 'paused', icon: Pause, color: 'text-gray-600' },
+]
 
 const statusFilters: FilterConfig = {
   column: 'status',
   title: 'Estado',
-  options: [
-    { label: 'Pendiente', value: 'pending' },
-    { label: 'Procesando', value: 'processing' },
-    { label: 'Completado', value: 'completed' },
-    { label: 'Error', value: 'failed' },
-    { label: 'Pausado', value: 'paused' },
-  ],
+  options: statusOptions.map(({ label, value }) => ({ label, value })),
 }
 
 export function ExecutionsList() {
   const { activeBusiness } = useActiveBusinessStore()
+  const { user } = useCurrentUser()
+  const timezone = user?.timezone || 'America/Bogota'
   const [refreshKey, setRefreshKey] = useState(0)
 
   const serviceParams = useMemo(() => {
@@ -64,6 +73,20 @@ export function ExecutionsList() {
     }
   }
 
+  const handleStatusChange = async (id: string, status: ExecutionStatus) => {
+    try {
+      const result = await updateExecutionStatusAction(id, status)
+      if (result.success) {
+        toast.success(`Estado actualizado a ${status}`)
+        handleRefresh()
+      } else {
+        toast.error(result.error || 'Error al actualizar el estado')
+      }
+    } catch (error) {
+      toast.error('Ocurrió un error inesperado')
+    }
+  }
+
   if (!activeBusiness?.id || !serviceParams) {
     return (
       <div className="rounded-lg border border-dashed p-12 text-center">
@@ -78,7 +101,7 @@ export function ExecutionsList() {
     <div className="space-y-4">
       <DataTable
         key={`${activeBusiness.id}-${refreshKey}`}
-        columns={executionColumns.map((col) => {
+        columns={getExecutionColumns(timezone).map((col) => {
           if (col.id === 'actions') {
             return {
               ...col,
@@ -105,11 +128,31 @@ export function ExecutionsList() {
                         </Link>
                       </DropdownMenuItem>
                       {execution.status === 'failed' && (
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusChange(execution.id, 'pending')}>
                           <RefreshCw className="mr-2 h-4 w-4" />
                           Reintentar
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Cambiar Estado
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            {statusOptions.map((opt) => (
+                              <DropdownMenuItem
+                                key={opt.value}
+                                onClick={() => handleStatusChange(execution.id, opt.value as ExecutionStatus)}
+                                className={execution.status === opt.value ? 'bg-accent' : ''}
+                              >
+                                <opt.icon className={`mr-2 h-4 w-4 ${opt.color}`} />
+                                {opt.label}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-red-600"

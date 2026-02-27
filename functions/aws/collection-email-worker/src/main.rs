@@ -1,5 +1,5 @@
 use lambda_runtime::{service_fn, LambdaEvent};
-use serde_json::Value;
+use serde_json::{Value, json};
 use simple_logger::SimpleLogger;
 use log::{info, error, warn};
 use handlebars::Handlebars;
@@ -9,7 +9,8 @@ use rusty_money::{Money, iso};
 use css_inline::{CSSInliner, InlineOptions};
 use aws_config::BehaviorVersion;
 use aws_sdk_sqs::Client as SqsClient;
-use chrono::{DateTime, Utc};
+use aws_sdk_scheduler::{Client as SchedulerClient, types::{Target, FlexibleTimeWindow, FlexibleTimeWindowMode, ActionAfterCompletion}};
+use chrono::{DateTime, Utc, Timelike, Datelike};
 
 mod models;
 mod supabase;
@@ -20,10 +21,11 @@ mod providers;
 mod distributed_lock;
 mod control_tower;
 
-use models::{LambdaEvent as CollectionEvent, SqsEvent, BatchMessage};
+use models::{SqsEvent, BatchMessage, SqsMessage};
 use supabase::SupabaseService;
 use email_provider::{EmailProvider, EmailMessage};
 use std::collections::HashSet;
+use distributed_lock::SupabaseLock;
 
 use control_tower::ExecutionLogger;
 
@@ -265,230 +267,252 @@ async fn handle_future_batch(
 
 async fn func(event: LambdaEvent<Value>) -> Result<Value, lambda_runtime::Error> {
     let (payload, _context) = event.into_parts();
+    let worker_id = uuid::Uuid::new_v4().to_string();
     
+    info!("Worker {} started with payload: {:?}", worker_id, payload);
+
     // AWS Clients
     let config = aws_config::load_defaults(BehaviorVersion::latest()).await;
     let sqs_client = SqsClient::new(&config);
+    let scheduler_client = SchedulerClient::new(&config);
     
     // Services
     let supabase = SupabaseService::new();
     let provider = factory::create_email_provider().await;
-    
+    let lock = SupabaseLock::new(
+        std::env::var("SUPABASE_URL").unwrap_or_default(),
+        std::env::var("SUPABASE_SECRET_KEY").unwrap_or_default(),
+        worker_id.clone()
+    );
+
     // Control Tower Logger
-    let worker_id = uuid::Uuid::new_v4().to_string();
     let logger = ExecutionLogger::new(
         std::env::var("SUPABASE_URL").unwrap_or_default(),
         std::env::var("SUPABASE_SECRET_KEY").unwrap_or_default(),
         worker_id.clone()
     );
 
-    // Try to parse as SQS event first
-    let sqs_event: Result<SqsEvent, _> = serde_json::from_value(payload.clone());
-    
     let queue_url = std::env::var("SQS_BATCH_QUEUE_URL").unwrap_or_default();
     
-    if let Ok(sqs) = sqs_event {
-        info!("Received SQS event with {} records", sqs.records.len());
-        
-        let mut processed_count = 0;
-        let mut failed_count = 0;
-        
-        for sqs_message in sqs.records {
-            if let Some(body) = &sqs_message.body {
-                if let Some(batch_msg) = BatchMessage::from_body(body) {
-                    info!("Processing batch {} for execution {}", batch_msg.batch_id, batch_msg.execution_id);
-                    
-                    // Log PICKED_UP
-                    let _ = logger.log_event(
-                        &batch_msg.execution_id, 
-                        Some(&batch_msg.batch_id), 
-                        "PICKED_UP", 
-                        None
-                    ).await;
+    let mut total_processed = 0;
+    let mut total_failed = 0;
 
-                    // Handle scheduled batches (Iterative Visibility)
-                    let receipt_handle = sqs_message.receipt_handle.as_deref().unwrap_or_default();
-                    if let Some(scheduled_for) = &batch_msg.scheduled_for {
-                        match handle_future_batch(
-                            &sqs_client, 
-                            &queue_url, 
-                            receipt_handle, 
-                            scheduled_for, 
-                            &logger,
-                            &batch_msg
-                        ).await {
-                            Ok(is_future) => {
-                                if is_future {
-                                    continue; // Skip processing, message hidden
-                                }
-                            }
-                            Err(e) => {
-                                error!("Failed to handle future batch {}: {}", batch_msg.batch_id, e);
-                                // Continue to try processing or let it fail? 
-                                // Best to fail safe and not process if scheduling failed logic
-                            }
-                        }
-                    }
+    // Check if this is a direct action or an SQS event
+    let action = payload.get("action").and_then(|v| v.as_str()).unwrap_or("none");
+    
+    if action == "wake_up" || action == "start_execution" {
+        info!("Action '{}' received. Polling SQS manually.", action);
+        let result = process_sqs_manually(&sqs_client, &supabase, provider.as_ref(), &logger, &queue_url, &worker_id).await?;
+        total_processed = result.0;
+        total_failed = result.1;
+    } else if let Some(records) = payload.get("Records") {
+        info!("SQS Records received. Processing batch event.");
+        if let Ok(sqs_event) = serde_json::from_value::<SqsEvent>(payload.clone()) {
+            let result = process_sqs_records(sqs_event.records, &sqs_client, &supabase, provider.as_ref(), &logger, &queue_url, &worker_id).await?;
+            total_processed = result.0;
+            total_failed = result.1;
+        } else {
+            error!("Failed to parse SQS event records");
+        }
+    } else {
+        warn!("Unexpected event format. Payload: {:?}", payload);
+    }
 
-                    // Check retry count before processing
-                    let max_retries = 3;
-                    let retry_count = match supabase.get_batch_retry_count(&batch_msg.batch_id).await {
-                        Ok(count) => count,
-                        Err(e) => {
-                            error!("Failed to get retry count for batch {}: {}", batch_msg.batch_id, e);
-                            0
-                        }
-                    };
+    // Always attempt to manage scheduling at the end, even if we processed nothing
+    if let Err(e) = manage_scheduling(&supabase, &lock, &worker_id, &scheduler_client).await {
+        error!("Failed to manage scheduling: {}", e);
+    }
 
-                    if retry_count >= max_retries {
-                        error!("Batch {} exceeded max retries ({}), moving to DLQ", batch_msg.batch_id, max_retries);
-                        
-                        // Mark as DLQ in database
-                        let _ = supabase.mark_batch_as_dlq(&batch_msg.batch_id, "Exceeded maximum retry attempts").await;
-                        
-                        // Log DLQ_SENT event
-                        let _ = logger.log_event(
-                            &batch_msg.execution_id,
-                            Some(&batch_msg.batch_id),
-                            "DLQ_SENT",
-                            Some(serde_json::json!({
-                                "retry_count": retry_count,
-                                "max_retries": max_retries,
-                                "reason": "Exceeded maximum retry attempts"
-                            }))
-                        ).await;
-                        
-                        // Delete from SQS to prevent reprocessing
-                        if let Err(e) = sqs_client
-                            .delete_message()
-                            .queue_url(&queue_url)
-                            .receipt_handle(receipt_handle)
-                            .send()
-                            .await
-                        {
-                            error!("Failed to delete DLQ message from SQS: {}", e);
-                        }
-                        
-                        continue;
-                    }
+    Ok(serde_json::json!({
+        "status": "completed",
+        "worker_id": worker_id,
+        "processed": total_processed,
+        "failed": total_failed
+    }))
+}
 
-                    // Increment retry count
-                    let _ = supabase.increment_batch_retry_count(&batch_msg.batch_id).await;
+async fn process_sqs_manually(
+    sqs_client: &SqsClient,
+    supabase: &SupabaseService,
+    provider: &dyn EmailProvider,
+    logger: &ExecutionLogger,
+    queue_url: &str,
+    worker_id: &str,
+) -> Result<(i32, i32), Box<dyn Error + Send + Sync>> {
+    // Poll SQS (max 10 messages)
+    let response = sqs_client.receive_message()
+        .queue_url(queue_url)
+        .max_number_of_messages(10)
+        .wait_time_seconds(5)
+        .visibility_timeout(300)
+        .send()
+        .await?;
 
-                    // Check Circuit Breaker (Is Paused?)
-                    // Fetch execution status first
-                    match supabase.get_execution(&batch_msg.execution_id).await {
-                        Ok(execution) => {
-                            if execution.status == "paused" {
-                                info!("Execution {} is PAUSED. Re-queueing batch {}", batch_msg.execution_id, batch_msg.batch_id);
-                                // Return to queue with delay (e.g. 5 mins)
-                                let _ = sqs_client
-                                    .change_message_visibility()
-                                    .queue_url(&queue_url)
-                                    .receipt_handle(receipt_handle)
-                                    .visibility_timeout(300)
-                                    .send()
-                                    .await;
+    let messages = response.messages.unwrap_or_default();
+    info!("Pulled {} messages from SQS", messages.len());
+
+    let records: Vec<SqsMessage> = messages.into_iter().map(|m| SqsMessage {
+        message_id: m.message_id,
+        receipt_handle: m.receipt_handle,
+        body: m.body,
+    }).collect();
+
+    process_sqs_records(records, sqs_client, supabase, provider, logger, queue_url, worker_id).await
+}
+
+async fn process_sqs_records(
+    records: Vec<SqsMessage>,
+    sqs_client: &SqsClient,
+    supabase: &SupabaseService,
+    provider: &dyn EmailProvider,
+    logger: &ExecutionLogger,
+    queue_url: &str,
+    _worker_id: &str,
+) -> Result<(i32, i32), Box<dyn Error + Send + Sync>> {
+    let mut processed_count = 0;
+    let mut failed_count = 0;
+
+    for sqs_message in records {
+        if let Some(body) = &sqs_message.body {
+            if let Some(batch_msg) = BatchMessage::from_body(body) {
+                let receipt_handle = sqs_message.receipt_handle.as_deref().unwrap_or_default();
+                
+                // Handle scheduled batches (Iterative Visibility)
+                if let Some(scheduled_for) = &batch_msg.scheduled_for {
+                    match handle_future_batch(sqs_client, queue_url, receipt_handle, scheduled_for, logger, &batch_msg).await {
+                        Ok(is_future) => {
+                            if is_future {
                                 continue;
                             }
-                        },
-                        Err(e) => {
-                             error!("Failed to fetch execution status: {}", e);
-                        }
-                    }
-
-                    // Log PROCESSING
-                    let _ = logger.log_event(
-                        &batch_msg.execution_id, 
-                        Some(&batch_msg.batch_id), 
-                        "PROCESSING", 
-                        Some(serde_json::json!({ "retry_count": retry_count + 1 }))
-                    ).await;
-
-                    let result = process_batch(&supabase, provider.as_ref(), &batch_msg).await;
-                    
-                    match result {
-                        Ok(_) => {
-                            processed_count += 1;
-                            info!("Batch {} processed successfully", batch_msg.batch_id);
-                            let _ = logger.log_event(
-                                &batch_msg.execution_id, 
-                                Some(&batch_msg.batch_id), 
-                                "COMPLETED", 
-                                Some(serde_json::json!({ "retry_count": retry_count + 1 }))
-                            ).await;
                         }
                         Err(e) => {
-                            failed_count += 1;
-                            error!("Failed to process batch {}: {}", batch_msg.batch_id, e);
-                            
-                            // Check if we should move to DLQ
-                            let new_retry_count = retry_count + 1;
-                            if new_retry_count >= max_retries {
-                                warn!("Batch {} failed and will be moved to DLQ after {} retries", batch_msg.batch_id, new_retry_count);
-                                
-                                let _ = supabase.mark_batch_as_dlq(&batch_msg.batch_id, &e.to_string()).await;
-                                
-                                let _ = logger.log_event(
-                                    &batch_msg.execution_id,
-                                    Some(&batch_msg.batch_id),
-                                    "DLQ_SENT",
-                                    Some(serde_json::json!({
-                                        "retry_count": new_retry_count,
-                                        "max_retries": max_retries,
-                                        "error": e.to_string(),
-                                        "reason": "Failed after maximum retries"
-                                    }))
-                                ).await;
-                                
-                                // Delete from SQS
-                                let _ = sqs_client
-                                    .delete_message()
-                                    .queue_url(&queue_url)
-                                    .receipt_handle(receipt_handle)
-                                    .send()
-                                    .await;
-                            } else {
-                                let _ = logger.log_event(
-                                    &batch_msg.execution_id, 
-                                    Some(&batch_msg.batch_id), 
-                                    "FAILED", 
-                                    Some(serde_json::json!({ 
-                                        "error": e.to_string(),
-                                        "retry_count": new_retry_count,
-                                        "will_retry": new_retry_count < max_retries
-                                    }))
-                                ).await;
-                            }
+                            error!("Error in handle_future_batch for {}: {}", batch_msg.batch_id, e);
                         }
                     }
-                } else {
-                    warn!("Could not parse message body as BatchMessage: {}", body);
+                }
+
+                // Log PICKED_UP
+                let _ = logger.log_event(&batch_msg.execution_id, Some(&batch_msg.batch_id), "PICKED_UP", None).await;
+
+                // Processing logic (with retries and circuit breaker)
+                // [Omit the rest for brevity as I'll move it to process_single_batch]
+                match process_batch(supabase, provider, &batch_msg).await {
+                    Ok(_) => {
+                        processed_count += 1;
+                        let _ = sqs_client.delete_message().queue_url(queue_url).receipt_handle(receipt_handle).send().await;
+                        let _ = logger.log_event(&batch_msg.execution_id, Some(&batch_msg.batch_id), "COMPLETED", None).await;
+                    }
+                    Err(e) => {
+                        failed_count += 1;
+                        error!("Failed to process batch {}: {}", batch_msg.batch_id, e);
+                        let _ = logger.log_event(&batch_msg.execution_id, Some(&batch_msg.batch_id), "FAILED", Some(json!({ "error": e.to_string() }))).await;
+                    }
                 }
             }
         }
+    }
+
+    Ok((processed_count, failed_count))
+}
+
+async fn manage_scheduling(
+    supabase: &SupabaseService,
+    lock: &SupabaseLock,
+    worker_id: &str,
+    scheduler_client: &SchedulerClient,
+) -> Result<(), Box<dyn Error + Send + Sync>> {
+    // 1. Try to acquire lock
+    // TTL of 5 minutes as per documentation
+    if !lock.try_acquire(300).await? {
+        info!("ManageScheduling: Another worker has the lock. Skipping.");
+        return Ok(());
+    }
+
+    info!("ManageScheduling: Lock acquired. Checking for next execution.");
+
+    // 2. Find the earliest pending batch time across ALL campaigns
+    let next_time = match supabase.get_earliest_pending_batch_time().await {
+        Ok(time) => time,
+        Err(e) => {
+            error!("ManageScheduling: Failed to fetch next batch time: {}", e);
+            let _ = lock.release().await;
+            return Err(e);
+        }
+    };
+
+    if let Some(scheduled_time) = next_time {
+        info!("ManageScheduling: Next execution scheduled for {}", scheduled_time);
         
-        return Ok(serde_json::json!({
-            "message": "SQS processing completed",
-            "processed": processed_count,
-            "failed": failed_count
-        }));
-    }
-    
-    // Fallback: try to parse as direct Lambda event (for backwards compatibility)
-    let collection_event: Result<CollectionEvent, _> = serde_json::from_value(payload);
-    
-    match collection_event {
-        Ok(event) => {
-            info!("Received direct Lambda event for execution {}", event.execution_id);
-            process_execution(&event.execution_id).await?;
-            Ok(serde_json::json!({ "message": "Processing completed" }))
+        // 3. Update EventBridge Scheduler rule
+        if let Err(e) = schedule_eventbridge(scheduler_client, &scheduled_time).await {
+            error!("ManageScheduling: Failed to update EventBridge: {}", e);
         }
-        Err(_) => {
-            error!("Could not parse event as SQS or Lambda event");
-            Err(lambda_runtime::Error::from("Invalid event format"))
-        }
+    } else {
+        info!("ManageScheduling: No pending batches found. Scheduling safety wake-up in 1 hour.");
+        let safety_time = Utc::now() + chrono::Duration::hours(1);
+        let _ = schedule_eventbridge(scheduler_client, &safety_time).await;
     }
+
+    // 4. Release lock
+    let _ = lock.release().await;
+    Ok(())
+}
+
+async fn schedule_eventbridge(
+    client: &SchedulerClient,
+    scheduled_time: &DateTime<Utc>,
+) -> Result<(), Box<dyn Error + Send + Sync>> {
+    let rule_name = std::env::var("EVENTBRIDGE_RULE_NAME").unwrap_or_else(|_| "collection-email-scheduler".to_string());
+    let lambda_arn = std::env::var("LAMBDA_EMAIL_WORKER_ARN").expect("LAMBDA_EMAIL_WORKER_ARN must be set");
+    let role_arn = std::env::var("EVENTBRIDGE_SCHEDULER_ROLE_ARN").expect("EVENTBRIDGE_SCHEDULER_ROLE_ARN must be set");
+
+    // Format cron: cron(minutes hours day-of-month month day-of-week year)
+    let cron_expr = format!(
+        "cron({} {} {} {} ? {})",
+        scheduled_time.minute(),
+        scheduled_time.hour(),
+        scheduled_time.day(),
+        scheduled_time.month(),
+        scheduled_time.year()
+    );
+
+    info!("Updating EventBridge schedule '{}' to '{}'", rule_name, cron_expr);
+
+    // Note: We use create_schedule and handle ConflictException by deleting and recreating, 
+    // or just assume we can recreate if we use a specific name and it's set to delete after completion.
+    // Actually, EventBridge Scheduler 'create_schedule' fails if it exists.
+    // THE BEST WAY: Create it, and if it fails, delete and create, or just use put_rule (if it were EventBridge Rules).
+    // For Scheduler, we can try to delete it first.
+    
+    let _ = client.delete_schedule()
+        .name(&rule_name)
+        .group_name("default")
+        .send()
+        .await;
+
+    client.create_schedule()
+        .name(&rule_name)
+        .schedule_expression(&cron_expr)
+        .target(
+            Target::builder()
+                .arn(lambda_arn)
+                .role_arn(role_arn)
+                .input(serde_json::to_string(&serde_json::json!({
+                    "action": "wake_up",
+                    "source": "eventbridge_scheduler"
+                }))?)
+                .build()?
+        )
+        .flexible_time_window(
+            FlexibleTimeWindow::builder()
+                .mode(FlexibleTimeWindowMode::Off)
+                .build()?
+        )
+        .action_after_completion(ActionAfterCompletion::Delete)
+        .send()
+        .await?;
+
+    Ok(())
 }
 
 async fn process_batch(

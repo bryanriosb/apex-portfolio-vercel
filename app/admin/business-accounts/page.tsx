@@ -153,10 +153,13 @@ export default function BusinessAccountsPage() {
   ) => {
     try {
       if (selectedAccount) {
-        await businessAccountService.updateAccount(
+        const result = await businessAccountService.updateAccount(
           selectedAccount.id,
           data as BusinessAccountUpdate
         )
+        if (!result.success) {
+          throw new Error(result.error)
+        }
         toast.success('Cuenta actualizada correctamente')
       } else {
         if (!user?.id) {

@@ -202,39 +202,52 @@ export async function createExecutionWithClientsAction({
         console.warn(`Failed to queue ${queueResult.failedCount} batches`)
       }
 
+      // Invocar worker inmediatamente (ahora que ya están en SQS)
+      await CollectionService.startImmediateExecution(execution.id)
+
       // Actualizar estado de ejecución
       await supabase
         .from('collection_executions')
         .update({
           status: 'processing',
           started_at: new Date().toISOString(),
-          sqs_queue_url: process.env.SQS_BATCH_QUEUE_URL,
         })
         .eq('id', execution.id)
 
     } else if (executionData.execution_mode === 'scheduled' && executionData.scheduled_at) {
       // Para ejecuciones programadas:
-      // 1. Crear regla en EventBridge para disparar el worker a la hora programada
-      // 2. Guardar el nombre de la regla para poder cancelarla si es necesario
-      
+      // 1. Encolar todos los batches en SQS (con sus respectivos scheduled_for)
+      queueResult = await SQSBatchService.enqueueBatches(
+        batches,
+        executionData.business_id,
+        {
+          delaySeconds: 0,
+          maxConcurrent: strategyType === 'batch' || strategyType === 'aggressive' ? 5 : 1,
+        }
+      )
+
+      console.log(`Queued ${queueResult.queuedCount} batches to SQS for scheduled execution`)
+
+      // 2. Crear regla en EventBridge Scheduler para disparar el worker a la hora programada
       try {
-        // Parse the scheduled_at which includes timezone offset (e.g., "2026-02-24T21:58:00-05:00")
         const scheduledDate = new Date(executionData.scheduled_at!)
-        
-        console.log(`[ExecutionWorkflow] Scheduling execution ${execution.id}`)
-        console.log(`[ExecutionWorkflow] Scheduled at (input): ${executionData.scheduled_at}`)
-        console.log(`[ExecutionWorkflow] Parsed date: ${scheduledDate.toISOString()}`)
-        
-        // Schedule in EventBridge (timezone America/Bogota by default)
+
+        console.log(`[ExecutionWorkflow] Scheduling execution ${execution.id} for ${executionData.scheduled_at}`)
+
+        // Fetch business timezone
+        const business = await getBusinessByIdAction(executionData.business_id)
+        const businessTimezone = business?.timezone || 'America/Bogota'
+
+        // El worker se despertará en esa fecha y buscará qué batches procesar en SQS
         const { ruleName } = await CollectionService.scheduleExecution(
           execution.id,
           scheduledDate,
-          'America/Bogota'
+          businessTimezone
         )
-        
-        console.log(`[ExecutionWorkflow] Successfully created EventBridge rule: ${ruleName}`)
 
-        // Actualizar ejecución con información de programación y el nombre de la regla
+        console.log(`[ExecutionWorkflow] Successfully created EventBridge schedule: ${ruleName}`)
+
+        // Actualizar ejecución con información de programación
         await supabase
           .from('collection_executions')
           .update({
@@ -244,17 +257,15 @@ export async function createExecutionWithClientsAction({
           })
           .eq('id', execution.id)
 
-        console.log(`[ExecutionWorkflow] Updated execution ${execution.id} with EventBridge rule ${ruleName}`)
       } catch (scheduleError: any) {
         console.error('[ExecutionWorkflow] Failed to schedule execution:', scheduleError)
-        
+
         // Rollback: Delete the execution since we couldn't schedule it
-        console.log(`[ExecutionWorkflow] Rolling back execution ${execution.id}`)
         await supabase
           .from('collection_executions')
           .delete()
           .eq('id', execution.id)
-        
+
         throw new Error(`Failed to schedule execution in EventBridge: ${scheduleError.message}`)
       }
     }
@@ -266,9 +277,9 @@ export async function createExecutionWithClientsAction({
     // 8. Retornar resultado
     let message: string
     if (executionData.execution_mode === 'scheduled' && executionData.scheduled_at) {
-      message = `Successfully created scheduled execution with ${batches.length} batches using ${strategyType} strategy. EventBridge rule created for ${executionData.scheduled_at}.`
+      message = `Successfully created scheduled execution with ${batches.length} batches using ${strategyType} strategy. EventBridge schedule created for ${executionData.scheduled_at}.`
     } else {
-      message = `Successfully created execution with ${batches.length} batches using ${strategyType} strategy. ${queueResult ? `${queueResult.queuedCount} batches queued to SQS.` : 'Processing started.'}`
+      message = `Successfully created execution with ${batches.length} batches using ${strategyType} strategy. Processing started with first batch.`
     }
 
     const result: WorkflowResult = {

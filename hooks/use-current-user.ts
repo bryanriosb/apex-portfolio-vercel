@@ -17,6 +17,7 @@ export function useCurrentUser() {
       business_id: (session.user as any).business_id,
       business_account_id: (session.user as any).business_account_id,
       businesses: (session.user as any).businesses,
+      timezone: (session.user as any).timezone || 'America/Bogota',
     }
     : null
 

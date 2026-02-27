@@ -6,8 +6,6 @@ import { DataTable, FilterConfig } from '@/components/DataTable'
 import { CollectionClient, ClientStatus } from '@/lib/models/collection'
 import { fetchClientsByExecutionAction } from '@/lib/actions/collection/client'
 import { Badge } from '@/components/ui/badge'
-import { formatDistanceToNow } from 'date-fns'
-import { es } from 'date-fns/locale'
 import {
   CheckCircle2,
   Clock,
@@ -23,6 +21,20 @@ import {
 
 interface ClientsDataTableProps {
   executionId: string
+}
+
+const formatDate = (date: string | Date | null | undefined) => {
+  if (!date) return '-'
+  return new Date(date).toLocaleString('es-CO', {
+    timeZone: 'America/Bogota',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).replace(',', '')
 }
 
 const statusConfig: Record<ClientStatus, { label: string; icon: any; color: string }> = {
@@ -98,10 +110,7 @@ export function ClientsDataTable({ executionId }: ClientsDataTableProps) {
           return (
             <div className="flex flex-col">
               <span className="text-xs">
-                {formatDistanceToNow(new Date(date), {
-                  addSuffix: true,
-                  locale: es,
-                })}
+                {formatDate(date)}
               </span>
             </div>
           )
@@ -115,10 +124,7 @@ export function ClientsDataTable({ executionId }: ClientsDataTableProps) {
           if (!date) return <span className="text-muted-foreground">-</span>
           return (
             <span className="text-xs">
-              {formatDistanceToNow(new Date(date), {
-                addSuffix: true,
-                locale: es,
-              })}
+              {formatDate(date)}
             </span>
           )
         },
@@ -131,10 +137,7 @@ export function ClientsDataTable({ executionId }: ClientsDataTableProps) {
           if (!date) return <span className="text-muted-foreground">-</span>
           return (
             <span className="text-xs">
-              {formatDistanceToNow(new Date(date), {
-                addSuffix: true,
-                locale: es,
-              })}
+              {formatDate(date)}
             </span>
           )
         },
@@ -146,11 +149,11 @@ export function ClientsDataTable({ executionId }: ClientsDataTableProps) {
           const invoices = row.original.invoices || []
           const customData = row.original.custom_data || {}
           // Usar total_amount_due de custom_data si existe
-          const totalAmount = customData.total_amount_due 
-            ? parseFloat(customData.total_amount_due) 
+          const totalAmount = customData.total_amount_due
+            ? parseFloat(customData.total_amount_due)
             : invoices.reduce((sum: number, inv: any) => {
-                return sum + (parseFloat(inv.amount) || 0)
-              }, 0)
+              return sum + (parseFloat(inv.amount) || 0)
+            }, 0)
           return (
             <div className="flex flex-col">
               <span className="font-medium">
@@ -170,13 +173,13 @@ export function ClientsDataTable({ executionId }: ClientsDataTableProps) {
           const fallbackRequired = row.original.fallback_required
           const fallbackSent = row.original.fallback_sent_at
           const fallbackType = row.original.fallback_type
-          
+
           if (!fallbackRequired) {
             return <span className="text-muted-foreground">-</span>
           }
-          
+
           const FallbackIcon = fallbackType === 'sms' ? Smartphone : MessageSquare
-          
+
           return (
             <div className="flex flex-col gap-1">
               <Badge
@@ -188,10 +191,7 @@ export function ClientsDataTable({ executionId }: ClientsDataTableProps) {
               </Badge>
               {fallbackSent && (
                 <span className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(fallbackSent), {
-                    addSuffix: true,
-                    locale: es,
-                  })}
+                  {formatDate(fallbackSent)}
                 </span>
               )}
             </div>
@@ -204,11 +204,11 @@ export function ClientsDataTable({ executionId }: ClientsDataTableProps) {
         cell: ({ row }) => {
           const bounceType = row.original.email_bounce_type
           const bounceReason = row.original.email_bounce_reason
-          
+
           if (!bounceType) {
             return <span className="text-muted-foreground">-</span>
           }
-          
+
           return (
             <div className="flex flex-col">
               <Badge variant="destructive" className="w-fit">

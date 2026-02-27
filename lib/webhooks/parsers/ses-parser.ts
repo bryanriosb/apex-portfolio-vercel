@@ -4,7 +4,7 @@
  */
 export interface EmailEvent {
     messageId: string
-    eventType: 'delivered' | 'bounced' | 'opened' | 'complained' | 'failed' | 'clicked'
+    eventType: 'delivered' | 'bounced' | 'opened' | 'complained' | 'failed' | 'clicked' | 'sent'
     timestamp: string
     email: string
     metadata?: Record<string, any>

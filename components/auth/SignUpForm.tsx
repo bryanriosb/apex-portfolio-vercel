@@ -293,7 +293,7 @@ export function SignUpForm() {
         email: values.email,
         password: values.password,
         phone: values.phone,
-        businessName: toCamelCase(values.businessName),
+        businessName: values.businessName.toUpperCase(),
         businessType: values.businessType as BusinessType,
         professionalCount: parseInt(values.professionalCount),
         city: values.city,
@@ -564,6 +564,7 @@ export function SignUpForm() {
                       placeholder="Empresa XYZ"
                       disabled={isLoading}
                       {...field}
+                      onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                     />
                   </FormControl>
                   <FormMessage />
@@ -726,10 +727,10 @@ export function SignUpForm() {
                 ) : (
                   <UserPlus className="h-4 w-4" />
                 )}
-                {isLoading 
-                  ? 'Creando cuenta...' 
-                  : !turnstileToken 
-                    ? 'Completa la verificación de seguridad' 
+                {isLoading
+                  ? 'Creando cuenta...'
+                  : !turnstileToken
+                    ? 'Completa la verificación de seguridad'
                     : 'Crear cuenta'}
               </Button>
             </div>

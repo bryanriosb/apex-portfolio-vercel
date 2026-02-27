@@ -14,11 +14,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Eye, RefreshCw, Trash2 } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
-import { es } from 'date-fns/locale'
 import Link from 'next/link'
+import { formatInBusinessTimeZone } from '@/lib/utils/date-format'
 
-export const executionColumns: ColumnDef<CollectionExecution>[] = [
+export const getExecutionColumns = (timezone: string = 'America/Bogota'): ColumnDef<CollectionExecution>[] => [
   {
     accessorKey: 'name',
     header: 'Nombre',
@@ -123,10 +122,10 @@ export const executionColumns: ColumnDef<CollectionExecution>[] = [
     accessorKey: 'created_at',
     header: 'Creado',
     cell: ({ row }) => {
-      const date = new Date(row.original.created_at)
+      const date = row.original.created_at
       return (
         <div className="text-sm text-muted-foreground">
-          {formatDistanceToNow(date, { addSuffix: true, locale: es })}
+          {formatInBusinessTimeZone(date, 'MMM d, yyyy HH:mm', timezone)}
         </div>
       )
     },

@@ -11,6 +11,7 @@ lambda_runtime.workspace = true
 aws-config.workspace = true
 aws-sdk-ses.workspace = true
 aws-sdk-sqs.workspace = true
+aws-sdk-scheduler.workspace = true
 reqwest.workspace = true
 uuid.workspace = true
 chrono.workspace = true

@@ -35,6 +35,7 @@ export interface BusinessAccount {
   payment_method_last4: string | null
   payment_method_brand: string | null
   tenant_name: string | null
+  created_by: string
 }
 
 export class BusinessAccount implements BusinessAccount {

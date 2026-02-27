@@ -129,6 +129,18 @@ impl BatchMessage {
     }
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ExecutionBatch {
+    pub id: String,
+    pub execution_id: String,
+    pub business_id: String,
+    pub batch_number: i32,
+    pub client_ids: Vec<String>,
+    pub total_clients: i32,
+    pub scheduled_for: Option<String>,
+    pub status: String,
+}
+
 // Email Blacklist model
 #[derive(Deserialize, Debug, Clone)]
 pub struct EmailBlacklist {

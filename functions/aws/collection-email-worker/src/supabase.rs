@@ -396,4 +396,29 @@ impl SupabaseService {
         log::info!("Fetched {} blacklisted emails for business {}", emails.len(), business_id);
         Ok(emails)
     }
+
+    pub async fn get_earliest_pending_batch_time(&self) -> Result<Option<chrono::DateTime<chrono::Utc>>, Box<dyn Error + Send + Sync>> {
+        let url = format!("{}/rest/v1/execution_batches?status=eq.pending&order=scheduled_for.asc&limit=1&select=scheduled_for", self.base_url);
+        
+        let response = self.client.get(&url)
+            .header("apikey", &self.api_key)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to fetch earliest pending batch: {}", response.status()).into());
+        }
+
+        let batches: Vec<serde_json::Value> = response.json().await?;
+        if let Some(batch) = batches.first() {
+            if let Some(scheduled_for) = batch.get("scheduled_for").and_then(|v| v.as_str()) {
+                let dt = chrono::DateTime::parse_from_rfc3339(scheduled_for)?
+                    .with_timezone(&chrono::Utc);
+                return Ok(Some(dt));
+            }
+        }
+        
+        Ok(None)
+    }
 }

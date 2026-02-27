@@ -75,6 +75,23 @@ export async function processEmailEvent(
 
         const client = clients?.[0]
 
+        // Check for existing event to avoid duplicates (Idempotency)
+        // We check event_type, client_id and the provider's message_id in event_data
+        const { data: existingEvent, error: checkError } = await supabase
+            .from('collection_events')
+            .select('id')
+            .eq('client_id', client.id)
+            .eq('event_type', event.eventType)
+            .eq('event_data->>message_id', event.messageId)
+            .limit(1)
+
+        if (checkError) {
+            console.error('[WEBHOOK] Error checking for existing event:', checkError)
+        } else if (existingEvent && existingEvent.length > 0) {
+            console.log(`[WEBHOOK] Duplicate event detected for client ${client.id}, type ${event.eventType}, msg ${event.messageId}. Skipping.`)
+            return;
+        }
+
         // Registrar evento en collection_events
         const { error: eventError } = await supabase.from('collection_events').insert({
             execution_id: client?.execution_id,
@@ -103,6 +120,11 @@ export async function processEmailEvent(
             let shouldUpdateMetrics = true
 
             switch (event.eventType) {
+                case 'sent':
+                    if (client.status === 'pending') {
+                        newStatus = 'sent'
+                    }
+                    break
                 case 'delivered':
                     newStatus = 'delivered'
                     break

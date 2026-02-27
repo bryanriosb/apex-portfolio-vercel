@@ -57,7 +57,8 @@ const formSchema = z.object({
   city: z.string().min(1, 'La ciudad es requerida'),
   state: z.string().min(1, 'El departamento es requerido'),
   phone_number: z.string().optional().or(z.literal('')),
-  type: z.custom<BusinessType>(), 
+  type: z.custom<BusinessType>(),
+  timezone: z.string().min(1, 'La zona horaria es requerida'),
 })
 
 type BusinessFormValues = z.infer<typeof formSchema>
@@ -121,6 +122,7 @@ export function BusinessModal({
       state: '',
       phone_number: '',
       type: 'BEAUTY',
+      timezone: 'America/Bogota',
     },
   })
 
@@ -165,6 +167,7 @@ export function BusinessModal({
           city: business.city,
           state: business.state,
           phone_number: business.phone_number || '',
+          timezone: business.timezone || 'America/Bogota',
         })
         setLogoPreview(business.logo_url)
         setGalleryCoverPreview(business.gallery_cover_image_url)
@@ -180,7 +183,8 @@ export function BusinessModal({
           city: '',
           state: '',
           phone_number: '',
-      type: 'BEAUTY',
+          type: 'BEAUTY',
+          timezone: 'America/Bogota',
         })
         setLogoPreview(null)
       }
@@ -281,6 +285,7 @@ export function BusinessModal({
         description: data.description || null,
         phone_number: data.phone_number || null,
         logo_url: finalLogoUrl,
+        timezone: data.timezone,
       }
 
       await onSave(saveData)
@@ -485,6 +490,40 @@ export function BusinessModal({
                             className="phone-input"
                           />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="timezone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Zona Horaria <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          disabled={isSubmitting}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecciona una zona horaria" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="America/Bogota">Bogotá (GMT-5)</SelectItem>
+                            <SelectItem value="America/Mexico_City">Ciudad de México (GMT-6)</SelectItem>
+                            <SelectItem value="America/New_York">Nueva York (GMT-5)</SelectItem>
+                            <SelectItem value="America/Santiago">Santiago (GMT-4)</SelectItem>
+                            <SelectItem value="America/Lima">Lima (GMT-5)</SelectItem>
+                            <SelectItem value="America/Caracas">Caracas (GMT-4)</SelectItem>
+                            <SelectItem value="America/Argentina/Buenos_Aires">Buenos Aires (GMT-3)</SelectItem>
+                            <SelectItem value="UTC">UTC</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}

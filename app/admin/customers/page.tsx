@@ -27,7 +27,7 @@ import {
   Ban,
 } from 'lucide-react'
 import BusinessCustomerService from '@/lib/services/customer/business-customer-service'
-import { CUSTOMERS_COLUMNS } from '@/lib/models/customer/const/data-table/customers-columns'
+import { getCustomersColumns } from '@/lib/models/customer/const/data-table/customers-columns'
 import { CustomerModal } from '@/components/customers/CustomerModal'
 import { useRef, useMemo, useState, useEffect } from 'react'
 import { useCurrentUser } from '@/hooks/use-current-user'
@@ -42,7 +42,7 @@ import { GenericImportExportButtons } from '@/components/GenericImportExportButt
 import { importCustomersWithProgress } from '@/lib/actions/customer-import-export'
 
 export default function CustomersPage() {
-  const { role, isLoading } = useCurrentUser()
+  const { user, role, isLoading } = useCurrentUser()
   const { activeBusiness } = useActiveBusinessStore()
   const customerService = useMemo(() => new BusinessCustomerService(), [])
   const dataTableRef = useRef<DataTableRef>(null)
@@ -305,7 +305,7 @@ export default function CustomersPage() {
         <DataTable
           key={activeBusinessId}
           ref={dataTableRef}
-          columns={CUSTOMERS_COLUMNS.map((col) => {
+          columns={getCustomersColumns(user?.timezone || 'America/Bogota').map((col) => {
             if (col.id === 'actions') {
               return {
                 ...col,

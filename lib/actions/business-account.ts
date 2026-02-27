@@ -163,29 +163,52 @@ export async function updateBusinessAccountAction(
       return { data: null, error: 'Usuario no autenticado' }
     }
 
-    // Si es business_admin, solo puede actualizar datos de contacto
+    // Si es business_admin, solo puede actualizar datos de contacto y generales (no plan ni estado)
     if (currentUser.role === USER_ROLES.BUSINESS_ADMIN) {
-      // Validar que solo se estén actualizando campos de contacto
-      const allowedFields = ['contact_name', 'contact_email', 'contact_phone']
-      const attemptedFields = Object.keys(data)
-      const unauthorizedFields = attemptedFields.filter(
-        field => !allowedFields.includes(field)
-      )
+      const client = await getSupabaseClient()
+      // Validar que solo se estén actualizando campos permitidos
+      const allowedFields = [
+        'company_name',
+        'tax_id',
+        'legal_name',
+        'billing_address',
+        'billing_city',
+        'billing_state',
+        'billing_postal_code',
+        'billing_country',
+        'contact_name',
+        'contact_email',
+        'contact_phone'
+      ]
+      // Obtener la cuenta actual para comparar
+      const { data: currentAccount } = await client
+        .from('business_accounts')
+        .select('*')
+        .eq('id', id)
+        .single()
 
-      if (unauthorizedFields.length > 0) {
-        return {
-          data: null,
-          error: 'Solo puedes actualizar la información de contacto (nombre, email, teléfono)'
+      if (currentAccount) {
+        const attemptedFields = Object.keys(data)
+        const unauthorizedFields = attemptedFields.filter(
+          field => !allowedFields.includes(field) && (data as any)[field] !== (currentAccount as any)[field]
+        )
+
+        if (unauthorizedFields.length > 0) {
+          return {
+            data: null,
+            error: `No tienes permisos para cambiar los siguientes campos: ${unauthorizedFields.join(', ')}`
+          }
         }
       }
 
-      // Filtrar solo los campos permitidos
+      // Filtrar solo los campos permitidos y que tengan valor definido
       const filteredData: BusinessAccountUpdate = {}
-      if (data.contact_name !== undefined) filteredData.contact_name = data.contact_name
-      if (data.contact_email !== undefined) filteredData.contact_email = data.contact_email
-      if (data.contact_phone !== undefined) filteredData.contact_phone = data.contact_phone
+      allowedFields.forEach(field => {
+        if ((data as any)[field] !== undefined) {
+          (filteredData as any)[field] = (data as any)[field]
+        }
+      })
 
-      const client = await getSupabaseClient()
       const { data: account, error } = await client
         .from('business_accounts')
         .update(filteredData)

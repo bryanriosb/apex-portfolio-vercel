@@ -89,6 +89,7 @@
 | city | VARCHAR(100) | YES | NULL | City |
 | state | VARCHAR(100) | YES | NULL | State/province |
 | phone_number | VARCHAR(50) | YES | NULL | Phone number |
+| timezone | VARCHAR(100) | NO | 'America/Bogota' | Business local timezone |
 | logo_url | TEXT | YES | NULL | Logo image URL |
 | location | JSONB | YES | NULL | Geographic coordinates {lat, lng} |
 | created_at | TIMESTAMPTZ | NO | NOW() | Creation timestamp |
@@ -1245,6 +1246,7 @@ SELECT filter_blacklisted_emails('business-uuid', ARRAY['a@test.com', 'b@test.co
 **Returns:** VOID
 **Purpose:** Creates two default delivery strategies for a new business
 **Strategies created:**
+
 - "Recuperación de Reputación" (conservative) - ID: Auto-generated
 - "Ramp-Up Gradual Estándar" (ramp_up, default) - ID: Auto-generated
 
@@ -1442,11 +1444,13 @@ Applied to all tables with `updated_at` column:
 **Purpose:** Automatically creates default delivery strategies when a new business is created
 
 **Flow:**
+
 ```
 INSERT INTO businesses → Trigger fires → create_default_delivery_strategies(NEW.id)
 ```
 
 **Strategies created:**
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Recuperación de Reputación | conservative | false | Ultra conservadora para dominios con problemas de reputación |

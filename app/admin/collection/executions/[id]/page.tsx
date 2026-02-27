@@ -40,9 +40,11 @@ import { ExecutionFlow } from '@/components/collection/executions/ExecutionFlow'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDistanceToNow, format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { formatInBusinessTimeZone } from '@/lib/utils/date-format'
 
 import { useRealtimeExecution } from '@/hooks/collection/use-realtime-execution'
 import { processExecutionAction } from '@/lib/actions/collection/execution'
+import { useCurrentUser } from '@/hooks/use-current-user'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
@@ -58,6 +60,8 @@ export default function ExecutionDetailPage() {
   const [processing, setProcessing] = useState(false)
   const [refreshingEvents, setRefreshingEvents] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
+  const { user } = useCurrentUser()
+  const businessTimezone = user?.timezone || 'America/Bogota'
 
   // Use realtime hook only when we have initial data
   const realtimeData = useRealtimeExecution(initialExecution!)
@@ -213,6 +217,9 @@ export default function ExecutionDetailPage() {
                 {execution.name}
               </h1>
               <StatusBadge status={execution.status} />
+              <span className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded">
+                ID: {execution.id}
+              </span>
             </div>
             {execution.description && (
               <p className="text-muted-foreground mt-1">
@@ -322,9 +329,7 @@ export default function ExecutionDetailPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Creado:</span>
                     <span>
-                      {format(new Date(execution.created_at), 'MMM d, yyyy', {
-                        locale: es,
-                      })}
+                      {formatInBusinessTimeZone(execution.created_at, 'MMM d, yyyy', businessTimezone)}
                     </span>
                   </div>
                   {execution.started_at && (
@@ -364,11 +369,7 @@ export default function ExecutionDetailPage() {
                         Programado para:
                       </span>
                       <span>
-                        {format(
-                          new Date(execution.scheduled_at),
-                          'MMM d, h:mm a',
-                          { locale: es }
-                        )}
+                        {formatInBusinessTimeZone(execution.scheduled_at, 'MMM d, h:mm a', businessTimezone)}
                       </span>
                     </div>
                   )}

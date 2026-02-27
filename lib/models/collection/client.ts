@@ -7,6 +7,7 @@ export type ClientStatus =
     | 'opened'
     | 'bounced'
     | 'failed'
+    | 'clicked'
 
 export type BounceType = 'hard' | 'soft' | 'complaint'
 

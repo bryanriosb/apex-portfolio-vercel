@@ -19,12 +19,37 @@ function normalizeColumnName(header: string): string {
     .replace(/\s+/g, ' ') // Normaliza espacios múltiples a uno solo
 }
 
-function tryParseDate(dateStr: string, inputFormat: string): Date | null {
-  if (!dateStr) return null
+/**
+ * Convierte un número de serie de fecha de Excel a un objeto Date de JS
+ */
+export function excelSerialToDate(serial: number): Date {
+  // El punto de referencia de Excel es 1899-12-30
+  // 25569 es la diferencia en días entre 1899-12-30 y 1970-01-01 (Unix Epoch)
+  const date = new Date(Math.round((serial - 25569) * 86400 * 1000))
+  return date
+}
+
+export function tryParseDate(dateVal: any, inputFormat: string): Date | null {
+  if (dateVal === null || dateVal === undefined) return null
+
+  // Si ya es un objeto Date (gracias a cellDates: true en XLSX)
+  if (dateVal instanceof Date && isValid(dateVal)) return dateVal
+
+  // Si es un número (Excel Serial Date)
+  if (typeof dateVal === 'number') {
+    const date = excelSerialToDate(dateVal)
+    if (isValid(date)) return date
+  }
 
   // Ensure it's a string and trim
-  const str = String(dateStr).trim()
+  const str = String(dateVal).trim()
   if (!str) return null
+
+  // Si parece un número en string
+  if (!isNaN(Number(str)) && str.length >= 5) {
+    const date = excelSerialToDate(Number(str))
+    if (isValid(date)) return date
+  }
 
   // Map our simple formats to date-fns format strings
   const formatMap: Record<string, string> = {
@@ -84,9 +109,19 @@ export async function parseInvoiceFile(
         let workbook: XLSX.WorkBook
 
         if (file.name.endsWith('.csv')) {
-          workbook = XLSX.read(data, { type: 'binary' })
+          workbook = XLSX.read(data, {
+            type: 'binary',
+            cellDates: true,
+            cellNF: true,
+            cellText: false
+          })
         } else {
-          workbook = XLSX.read(data, { type: 'array' })
+          workbook = XLSX.read(data, {
+            type: 'array',
+            cellDates: true,
+            cellNF: true,
+            cellText: false
+          })
         }
 
         const sheetName = workbook.SheetNames[0]
@@ -117,12 +152,12 @@ export async function parseInvoiceFile(
         const missingColumns = REQUIRED_COLUMNS.filter((col) => {
           // Normalizar el nombre de la columna requerida para la búsqueda
           const normalizedCol = normalizeColumnName(col)
-          
+
           // Verificar si existe directamente en los headers normalizados
           if (normalizedHeaders.includes(normalizedCol)) {
             return false
           }
-          
+
           // Verificar si hay un mapeo válido: buscar si algún header normalizado
           // mapea a la misma columna interna que esta columna requerida
           const requiredInternalName = COLUMN_MAPPING[normalizedCol]
@@ -132,10 +167,10 @@ export async function parseInvoiceFile(
             )
             if (hasMapping) return false
           }
-          
+
           return true
         }).map(col => COLUMN_LABELS[col] || col)
-        
+
         const valid = missingColumns.length === 0
 
         if (!valid) {

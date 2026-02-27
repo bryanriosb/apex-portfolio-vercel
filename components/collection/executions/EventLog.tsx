@@ -17,8 +17,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { format, parseISO } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { formatInBusinessTimeZone } from '@/lib/utils/date-format'
+import { useCurrentUser } from '@/hooks/use-current-user'
 import {
   ChevronRight,
   RefreshCcw,
@@ -111,6 +111,12 @@ const eventTypeConfig: Record<
     icon: AlertTriangle,
     bgColor: 'bg-red-50',
   },
+  email_clicked: {
+    label: 'Email clicado',
+    color: 'text-blue-500',
+    icon: MessageSquare,
+    bgColor: 'bg-blue-50',
+  },
   fallback_triggered: {
     label: 'Fallback activado',
     color: 'text-orange-600',
@@ -182,9 +188,11 @@ export function EventLog({ events, onRefresh, isRefreshing }: EventLogProps) {
     setSelectedFilters(new Set())
   }
 
+  const { user } = useCurrentUser()
+  const timezone = user?.timezone || 'America/Bogota'
+
   const formatEventTime = (timestamp: string) => {
-    const date = parseISO(timestamp)
-    return format(date, 'MMM d, yyyy, h:mm a', { locale: es })
+    return formatInBusinessTimeZone(timestamp, 'MMM d, yyyy, h:mm a', timezone)
   }
 
   return (
@@ -266,9 +274,8 @@ export function EventLog({ events, onRefresh, isRefreshing }: EventLogProps) {
                         return (
                           <div
                             key={eventType}
-                            className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-muted transition-colors ${
-                              isSelected ? 'bg-muted' : ''
-                            }`}
+                            className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-muted transition-colors ${isSelected ? 'bg-muted' : ''
+                              }`}
                             onClick={() => toggleFilter(eventType)}
                           >
                             <Checkbox
@@ -335,9 +342,8 @@ export function EventLog({ events, onRefresh, isRefreshing }: EventLogProps) {
                   return (
                     <div
                       key={event.id}
-                      className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
-                        isSelected ? 'bg-muted' : ''
-                      }`}
+                      className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${isSelected ? 'bg-muted' : ''
+                        }`}
                       onClick={() => setSelectedEvent(event)}
                     >
                       <div className="flex items-start gap-3">
@@ -465,33 +471,33 @@ export function EventLog({ events, onRefresh, isRefreshing }: EventLogProps) {
               {/* AWS Metadata */}
               {(selectedEvent.aws_request_id ||
                 selectedEvent.lambda_function_name) && (
-                <>
-                  <Separator />
-                  <div>
-                    <h4 className="text-sm font-medium mb-3">AWS Metadata</h4>
-                    <div className="space-y-2 text-sm">
-                      {selectedEvent.aws_request_id && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">
-                            Request ID:
-                          </span>
-                          <span className="font-mono text-xs">
-                            {selectedEvent.aws_request_id}
-                          </span>
-                        </div>
-                      )}
-                      {selectedEvent.lambda_function_name && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Lambda:</span>
-                          <span className="font-mono text-xs">
-                            {selectedEvent.lambda_function_name}
-                          </span>
-                        </div>
-                      )}
+                  <>
+                    <Separator />
+                    <div>
+                      <h4 className="text-sm font-medium mb-3">AWS Metadata</h4>
+                      <div className="space-y-2 text-sm">
+                        {selectedEvent.aws_request_id && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">
+                              Request ID:
+                            </span>
+                            <span className="font-mono text-xs">
+                              {selectedEvent.aws_request_id}
+                            </span>
+                          </div>
+                        )}
+                        {selectedEvent.lambda_function_name && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Lambda:</span>
+                            <span className="font-mono text-xs">
+                              {selectedEvent.lambda_function_name}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </>
-              )}
+                  </>
+                )}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground">

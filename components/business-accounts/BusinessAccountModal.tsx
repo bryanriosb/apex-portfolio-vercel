@@ -42,6 +42,7 @@ import type {
 import { Loader2, Plus, X } from 'lucide-react'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { USER_ROLES } from '@/const/roles'
+import Loading from '../ui/loading'
 
 const formSchema = z.object({
   company_name: z.string().min(1, 'El nombre de la empresa es requerido'),
@@ -60,7 +61,7 @@ const formSchema = z.object({
   contact_phone: z.string().optional().or(z.literal('')),
   subscription_plan: z.enum(['trial', 'free', 'basic', 'pro', 'enterprise']),
   status: z.enum(['active', 'trial', 'suspended', 'cancelled']),
-  created_by: z.string(),
+  created_by: z.string().optional(),
 })
 
 type BusinessAccountFormValues = z.infer<typeof formSchema>
@@ -195,9 +196,17 @@ export function BusinessAccountModal({
   const hasChanges = useMemo(() => {
     if (!isEdit || !initialValues) return true // En modo creación, siempre permitir guardar si es válido
 
-    // Si es business_admin, solo revisar campos de contacto
+    // Si es business_admin, revisar campos de contacto y generales
     if (isBusinessAdmin) {
       return (
+        formValues.company_name !== initialValues.company_name ||
+        formValues.tax_id !== initialValues.tax_id ||
+        formValues.legal_name !== initialValues.legal_name ||
+        formValues.billing_address !== initialValues.billing_address ||
+        formValues.billing_city !== initialValues.billing_city ||
+        formValues.billing_state !== initialValues.billing_state ||
+        formValues.billing_postal_code !== initialValues.billing_postal_code ||
+        formValues.billing_country !== initialValues.billing_country ||
         formValues.contact_name !== initialValues.contact_name ||
         formValues.contact_email !== initialValues.contact_email ||
         formValues.contact_phone !== initialValues.contact_phone
@@ -258,11 +267,23 @@ export function BusinessAccountModal({
           {} as Record<string, unknown>
         )
 
-      await onSave({
+      const payload: any = {
         ...data,
-        settings:
-          Object.keys(settingsObject).length > 0 ? settingsObject : null,
-      })
+        company_name: data.company_name.toUpperCase(),
+      }
+
+      // Si es business_admin, eliminar campos que no tiene permiso de enviar
+      if (isBusinessAdmin) {
+        delete payload.subscription_plan
+        delete payload.status
+        delete payload.created_by
+        // Settings ya se filtran por el bloque de canEditFullAccount en el JSX,
+        // pero aseguramos que no se envíen aquí tampoco
+      } else {
+        payload.settings = Object.keys(settingsObject).length > 0 ? settingsObject : null
+      }
+
+      await onSave(payload)
       onOpenChange(false)
       form.reset()
       setSettings([])
@@ -306,8 +327,9 @@ export function BusinessAccountModal({
                       <FormControl>
                         <Input
                           placeholder="Salón de Belleza XYZ"
-                          disabled={isSubmitting || isBusinessAdmin}
+                          disabled={isSubmitting}
                           {...field}
+                          onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                         />
                       </FormControl>
                       <FormMessage />
@@ -647,7 +669,7 @@ export function BusinessAccountModal({
               </Button>
               <Button type="submit" disabled={isSubmitting || !canSubmit}>
                 {isSubmitting && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loading className="mr-2 h-4 w-4 text-white" />
                 )}
                 {isEdit ? 'Actualizar' : 'Crear'} Cuenta
               </Button>

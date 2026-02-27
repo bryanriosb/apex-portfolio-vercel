@@ -35,7 +35,7 @@ export const ROLE_PERMISSIONS = {
     canViewOwnBusinessAccount: true,
     canManageBusinessesInAccount: true,
     canCreateBusinessAccount: false,
-    canEditBusinessAccount: false,
+    canEditBusinessAccount: true,
     canEditAccountContactInfo: true,
     canDeleteBusinessAccount: false,
     canViewReports: true,

@@ -58,6 +58,14 @@ export const BUSINESSES_COLUMNS: ColumnDef<BusinessWithAccount>[] = [
     },
   },
   {
+    accessorKey: 'timezone',
+    header: 'Zona Horaria',
+    cell: ({ row }) => {
+      const timezone = row.getValue('timezone') as string
+      return <div className="text-sm font-medium">{timezone}</div>
+    },
+  },
+  {
     accessorKey: 'address',
     header: 'Dirección',
     cell: ({ row }) => {
@@ -80,9 +88,11 @@ export const BUSINESSES_COLUMNS: ColumnDef<BusinessWithAccount>[] = [
     header: 'Fecha de Creación',
     cell: ({ row }) => {
       const date = row.getValue('created_at') as string
+      const timezone = row.original.timezone || 'America/Bogota'
       return (
         <div className="text-sm text-muted-foreground">
-          {format(new Date(date), 'dd MMM yyyy', { locale: es })}
+          {format(new Date(date), 'dd MMM yyyy, HH:mm', { locale: es })}
+          <span className="ml-1 text-[10px] opacity-50">({timezone})</span>
         </div>
       )
     },

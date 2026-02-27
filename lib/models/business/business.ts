@@ -16,6 +16,7 @@ export interface Business {
   avg_rating: number
   review_count: number
   logo_url: string | null
+  timezone: string
   created_at: string
   updated_at: string
 }
@@ -36,6 +37,7 @@ export class Business implements Business {
   avg_rating: number
   review_count: number
   logo_url: string | null
+  timezone: string
   created_at: string
   updated_at: string
 
@@ -55,6 +57,7 @@ export class Business implements Business {
     this.avg_rating = data.avg_rating
     this.review_count = data.review_count
     this.logo_url = data.logo_url
+    this.timezone = data.timezone
     this.created_at = data.created_at
     this.updated_at = data.updated_at
   }
@@ -73,6 +76,7 @@ export interface BusinessInsert {
   gallery_cover_image_url?: string | null
   type?: BusinessType
   logo_url?: string | null
+  timezone?: string
 }
 
 export interface BusinessUpdate {
@@ -89,6 +93,7 @@ export interface BusinessUpdate {
   avg_rating?: number
   review_count?: number
   logo_url?: string | null
+  timezone?: string
 }
 
 export interface BusinessWithAccount extends Business {

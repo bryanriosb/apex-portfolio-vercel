@@ -21,7 +21,9 @@ export interface AuthUser {
     id: string
     name: string
     business_account_id: string
+    timezone: string
   }> | null
+  timezone?: string | null
   accessToken?: string | null
 }
 
@@ -37,7 +39,7 @@ async function getAccountBusinesses(
     const supabase = await getSupabaseAdminClient()
     const { data: businesses, error } = await supabase
       .from('businesses')
-      .select('id, name, business_account_id')
+      .select('id, name, business_account_id, timezone')
       .eq('business_account_id', businessAccountId)
       .order('created_at', { ascending: false })
 
@@ -101,6 +103,7 @@ export async function authenticateWithSupabase(
     let subscriptionPlan = user_metadata?.subscription_plan || null
     let tenantName = user_metadata?.tenant_name || null
     let instanceId = user_metadata?.instance_id || null
+    let timezone = user_metadata?.timezone || 'America/Bogota'
 
     // Fallback: Si no hay businesses en metadata pero sí tenemos el businessAccountId, lo consultamos (por si se crearon más sucursales)
     if ((!businesses || businesses.length === 0) && businessAccountId && userRole === 'business_admin') {
@@ -135,6 +138,7 @@ export async function authenticateWithSupabase(
       tenant_name: tenantName,
       instance_id: instanceId,
       businesses,
+      timezone,
       accessToken: authData.session?.access_token || null,
     }
   } catch (err) {
@@ -206,6 +210,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     let subscriptionPlan = user_metadata?.subscription_plan || null
     let tenantName = user_metadata?.tenant_name || null
     let instanceId = user_metadata?.instance_id || null
+    let timezone = user_metadata?.timezone || 'America/Bogota'
 
     if ((!businesses || businesses.length === 0) && businessAccountId && userRole === 'business_admin') {
       const fetchedBusinesses = await getAccountBusinesses(businessAccountId)
@@ -238,6 +243,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
       tenant_name: tenantName,
       instance_id: instanceId,
       businesses,
+      timezone,
     }
   } catch (err) {
     console.error('Error getting current user:', err)

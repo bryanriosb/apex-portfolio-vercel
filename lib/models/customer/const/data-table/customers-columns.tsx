@@ -34,7 +34,9 @@ const statusVariants: Record<
   blocked: 'destructive',
 }
 
-export const CUSTOMERS_COLUMNS: ColumnDef<BusinessCustomer>[] = [
+import { formatInBusinessTimeZone } from '@/lib/utils/date-format'
+
+export const getCustomersColumns = (timezone: string = 'America/Bogota'): ColumnDef<BusinessCustomer>[] => [
   {
     accessorKey: 'company_name',
     header: 'Empresa',
@@ -107,9 +109,8 @@ export const CUSTOMERS_COLUMNS: ColumnDef<BusinessCustomer>[] = [
       return (
         <Badge
           variant={statusVariants[status]}
-          className={`block text-center ${
-            status === 'vip' ? 'bg-amber-500 hover:bg-amber-600' : ''
-          }`}
+          className={`block text-center ${status === 'vip' ? 'bg-amber-500 hover:bg-amber-600' : ''
+            }`}
         >
           {statusLabels[status]}
         </Badge>
@@ -149,7 +150,7 @@ export const CUSTOMERS_COLUMNS: ColumnDef<BusinessCustomer>[] = [
       const date = row.original.created_at
       return (
         <div className="text-sm text-muted-foreground">
-          {format(new Date(date), 'dd MMM yyyy', { locale: es })}
+          {formatInBusinessTimeZone(date, 'dd MMM yyyy, HH:mm', timezone)}
         </div>
       )
     },
