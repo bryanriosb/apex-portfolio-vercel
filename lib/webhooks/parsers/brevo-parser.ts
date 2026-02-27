@@ -37,9 +37,13 @@ export function parseBrevoEvent(body: any): EmailEvent | null {
                 normalizedEventType = 'email_clicked'
                 break
             case 'error':
-            case 'deferred':
                 normalizedEventType = 'email_failed'
                 break
+            case 'deferred':
+                // Deferred means temporarily delayed - not a failure, will retry automatically
+                // We skip this event as it's not a final state
+                console.log('[BREVO] Deferred event received - skipping (temporary delay, will retry)')
+                return null
             case 'request':
                 // 'request' means Brevo received the request but hasn't delivered yet.
                 // We'll treat it as 'sent' (corresponds to SES 'Send').
