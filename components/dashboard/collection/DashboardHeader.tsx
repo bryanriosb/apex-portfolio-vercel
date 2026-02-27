@@ -36,17 +36,6 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             Actualizaciones en Tiempo Real
           </div>
         )}
-        {/* <Button
-          variant="outline"
-          size="sm"
-          onClick={onManualRefresh}
-          disabled={statsLoading}
-        >
-          <RefreshCw
-            className={`h-4 w-4 mr-2 ${statsLoading ? 'animate-spin' : ''}`}
-          />
-          Actualizar
-        </Button> */}
       </div>
     </div>
   )

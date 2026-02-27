@@ -1,26 +1,35 @@
-import type { EmailBlacklist, BounceType } from '@/lib/models/collection/email-blacklist'
+import type {
+  EmailBlacklist,
+  BounceType,
+} from '@/lib/models/collection/email-blacklist'
 import { ColumnDef } from '@tanstack/react-table'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { MailWarning, MailX, AlertTriangle } from 'lucide-react'
+import { MailWarning, MailX, AlertTriangle, Hand } from 'lucide-react'
 
 const bounceTypeLabels: Record<BounceType, string> = {
   hard: 'Duro',
   soft: 'Suave',
   complaint: 'Queja',
+  manual: 'Manual',
 }
 
-const bounceTypeVariants: Record<BounceType, 'default' | 'secondary' | 'destructive'> = {
+const bounceTypeVariants: Record<
+  BounceType,
+  'default' | 'secondary' | 'destructive'
+> = {
   hard: 'destructive',
   soft: 'secondary',
   complaint: 'default',
+  manual: 'secondary',
 }
 
 const bounceTypeIcons: Record<BounceType, typeof MailX> = {
   hard: MailX,
   soft: MailWarning,
   complaint: AlertTriangle,
+  manual: Hand,
 }
 
 export const BLACKLIST_COLUMNS: ColumnDef<EmailBlacklist>[] = [
@@ -38,7 +47,7 @@ export const BLACKLIST_COLUMNS: ColumnDef<EmailBlacklist>[] = [
     cell: ({ row }) => {
       const bounceType = row.original.bounce_type as BounceType
       if (!bounceType) return <div className="text-muted-foreground">-</div>
-      
+
       const Icon = bounceTypeIcons[bounceType]
       return (
         <Badge
@@ -58,21 +67,12 @@ export const BLACKLIST_COLUMNS: ColumnDef<EmailBlacklist>[] = [
       const reason = row.original.bounce_reason
       if (!reason) return <div className="text-muted-foreground">-</div>
       return (
-        <div className="text-sm text-muted-foreground max-w-[300px] truncate" title={reason}>
+        <div
+          className="text-sm text-muted-foreground max-w-[300px] truncate"
+          title={reason}
+        >
           {reason}
         </div>
-      )
-    },
-  },
-  {
-    accessorKey: 'provider',
-    header: 'Proveedor',
-    cell: ({ row }) => {
-      const provider = row.original.provider
-      return (
-        <Badge variant="outline" className="text-xs capitalize">
-          {provider}
-        </Badge>
       )
     },
   },

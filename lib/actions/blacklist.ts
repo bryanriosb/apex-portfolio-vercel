@@ -184,3 +184,20 @@ export async function getBlacklistWithCustomerInfoAction(params: {
     return { data: [], total: 0, total_pages: 0 }
   }
 }
+
+/**
+ * Filter emails against blacklist
+ * Returns which emails are blacklisted from the provided array
+ */
+export async function filterBlacklistedEmailsAction(
+  businessId: string,
+  emails: string[]
+): Promise<{ email: string; is_blacklisted: boolean }[]> {
+  try {
+    return await EmailBlacklistService.filterBlacklistedEmails(businessId, emails)
+  } catch (error) {
+    console.error('Error filtering blacklisted emails:', error)
+    // Return all emails as not blacklisted in case of error
+    return emails.map((email) => ({ email, is_blacklisted: false }))
+  }
+}

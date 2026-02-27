@@ -9,6 +9,15 @@ import {
   ExportConfig,
 } from '@/components/DataTable'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import {
   DropdownMenu,
@@ -16,13 +25,27 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Trash2, RefreshCw, MailWarning, AlertTriangle } from 'lucide-react'
+import {
+  MoreHorizontal,
+  Trash2,
+  RefreshCw,
+  MailWarning,
+  AlertTriangle,
+  Plus,
+  Ban,
+  Hand,
+} from 'lucide-react'
 import { BLACKLIST_COLUMNS } from '@/lib/models/blacklist/const/data-table/blacklist-columns'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import { toast } from 'sonner'
-import type { EmailBlacklist, BounceType } from '@/lib/models/collection/email-blacklist'
+import type {
+  EmailBlacklist,
+  BounceType,
+} from '@/lib/models/collection/email-blacklist'
 import EmailBlacklistService from '@/lib/services/blacklist/email-blacklist-service'
+import { addToBlacklistAction } from '@/lib/actions/blacklist'
 import { Badge } from '@/components/ui/badge'
+import Loading from '@/components/ui/loading'
 
 interface BlacklistStats {
   total: number
@@ -43,6 +66,11 @@ export default function BlacklistPage() {
   const [entriesToDelete, setEntriesToDelete] = useState<string[]>([])
   const [stats, setStats] = useState<BlacklistStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(false)
+  const [showAddDialog, setShowAddDialog] = useState(false)
+  const [newEmail, setNewEmail] = useState('')
+  const [newBounceType, setNewBounceType] = useState<BounceType>('manual')
+  const [newBounceReason, setNewBounceReason] = useState('')
+  const [isAdding, setIsAdding] = useState(false)
 
   const activeBusinessId = activeBusiness?.id
 
@@ -158,7 +186,9 @@ export default function BlacklistPage() {
     try {
       const result = await blacklistService.destroyMany(entriesToDelete)
       if (result.success) {
-        toast.success(`${result.deletedCount} email(s) removido(s) de la lista negra`)
+        toast.success(
+          `${result.deletedCount} email(s) removido(s) de la lista negra`
+        )
         dataTableRef.current?.refreshData()
         dataTableRef.current?.clearSelection()
         fetchStats()
@@ -170,6 +200,43 @@ export default function BlacklistPage() {
     } finally {
       setBatchDeleteDialogOpen(false)
       setEntriesToDelete([])
+    }
+  }
+
+  const handleAddToBlacklist = async () => {
+    if (!activeBusinessId || !newEmail.trim()) return
+
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(newEmail.trim())) {
+      toast.error('Por favor ingresa un email válido')
+      return
+    }
+
+    setIsAdding(true)
+    try {
+      const result = await addToBlacklistAction(
+        activeBusinessId,
+        newEmail.trim(),
+        newBounceType,
+        newBounceReason.trim() || 'Agregado manualmente'
+      )
+
+      if (result.success) {
+        toast.success('Email agregado a la lista negra')
+        setNewEmail('')
+        setNewBounceReason('')
+        setNewBounceType('manual')
+        setShowAddDialog(false)
+        dataTableRef.current?.refreshData()
+        fetchStats()
+      } else {
+        throw new Error(result.error)
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'No se pudo agregar el email')
+    } finally {
+      setIsAdding(false)
     }
   }
 
@@ -234,17 +301,25 @@ export default function BlacklistPage() {
             Emails que han rebotado o generado quejas
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => {
-            fetchStats()
-            dataTableRef.current?.refreshData()
-          }}
-          disabled={statsLoading}
-        >
-          <RefreshCw className={`mr-2 h-4 w-4 ${statsLoading ? 'animate-spin' : ''}`} />
-          Actualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setShowAddDialog(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Agregar Email
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              fetchStats()
+              dataTableRef.current?.refreshData()
+            }}
+            disabled={statsLoading}
+          >
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${statsLoading ? 'animate-spin' : ''}`}
+            />
+            Actualizar
+          </Button>
+        </div>
       </div>
 
       {/* Simple stats banner */}
@@ -259,7 +334,9 @@ export default function BlacklistPage() {
           {stats.hard_bounces > 0 && (
             <div className="flex items-center gap-2">
               <MailWarning className="h-4 w-4 text-destructive" />
-              <span className="text-sm text-destructive">{stats.hard_bounces} duros</span>
+              <span className="text-sm text-destructive">
+                {stats.hard_bounces} duros
+              </span>
             </div>
           )}
           {stats.soft_bounces > 0 && (
@@ -270,7 +347,9 @@ export default function BlacklistPage() {
           {stats.complaints > 0 && (
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
-              <span className="text-sm text-amber-500">{stats.complaints} quejas</span>
+              <span className="text-sm text-amber-500">
+                {stats.complaints} quejas
+              </span>
             </div>
           )}
         </div>
@@ -309,6 +388,145 @@ export default function BlacklistPage() {
         variant="outline"
         description="Estos emails podrán recibir correos nuevamente. ¿Estás seguro?"
       />
+
+      {/* Dialog para agregar email a lista negra */}
+      {showAddDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background border w-full max-w-md mx-4">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <div className="flex items-center gap-2">
+                <Ban className="h-5 w-5 text-destructive" />
+                <h2 className="text-lg font-semibold">Agregar a Lista Negra</h2>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAddDialog(false)}
+                className="h-8 w-8 p-0"
+              >
+                <span className="sr-only">Cerrar</span>
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </Button>
+            </div>
+
+            {/* Content */}
+            <div className="p-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="ejemplo@correo.com"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  disabled={isAdding}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="bounceType">Tipo de Rechazo *</Label>
+                <Select
+                  value={newBounceType}
+                  onValueChange={(value: BounceType) => setNewBounceType(value)}
+                  disabled={isAdding}
+                >
+                  <SelectTrigger id="bounceType">
+                    <SelectValue placeholder="Selecciona el tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hard">
+                      <div className="flex items-center gap-2">
+                        <MailWarning className="h-4 w-4 text-destructive" />
+                        Rebote Duro
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="soft">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                        Rebote Suave
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="complaint">
+                      <div className="flex items-center gap-2">
+                        <Ban className="h-4 w-4 text-orange-500" />
+                        Queja
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="manual">
+                      <div className="flex items-center gap-2">
+                        <Hand className="h-4 w-4 text-blue-500" />
+                        Manual
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="reason">Razón (opcional)</Label>
+                <Input
+                  id="reason"
+                  placeholder="Motivo del rechazo..."
+                  value={newBounceReason}
+                  onChange={(e) => setNewBounceReason(e.target.value)}
+                  disabled={isAdding}
+                />
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+                <p className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>
+                    Este email será excluido de futuros envíos de cobros.
+                    Asegúrate de que la dirección sea correcta.
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2 p-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => setShowAddDialog(false)}
+                disabled={isAdding}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleAddToBlacklist}
+                disabled={isAdding || !newEmail.trim()}
+                className="gap-2"
+              >
+                {isAdding ? (
+                  <>
+                    <Loading className="text-white" />
+                    Agregando...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" />
+                    Agregar a Lista Negra
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

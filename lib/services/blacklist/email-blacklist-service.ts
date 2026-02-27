@@ -16,20 +16,20 @@ export default class EmailBlacklistService {
   async fetchItems(params?: {
     page?: number
     page_size?: number
-    businessId?: string
-    bounceType?: BounceType
+    business_id?: string
+    bounce_type?: BounceType
     search?: string
   }): Promise<BlacklistListResponse> {
     try {
-      if (!params?.businessId) {
+      if (!params?.business_id) {
         return { data: [], total: 0, total_pages: 0 }
       }
 
       return await fetchBlacklistAction({
-        businessId: params.businessId,
+        businessId: params.business_id,
         page: params.page,
         pageSize: params.page_size,
-        bounceType: params.bounceType,
+        bounceType: params.bounce_type,
         search: params.search,
       })
     } catch (error) {

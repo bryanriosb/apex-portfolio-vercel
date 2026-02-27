@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Plus, X } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -52,7 +52,6 @@ const formSchema = z.object({
   company_name: z.string().optional(),
   nit: z.string().min(1, 'El NIT es requerido'),
   full_name: z.string().min(1, 'El nombre completo es requerido'),
-  email: z.string().email('Email inválido'),
   phone: z.string().optional(),
   status: z.enum(['active', 'inactive', 'vip', 'blocked']).optional(),
   category: z.string().optional(),
@@ -84,6 +83,8 @@ function CustomerModal({
 }: CustomerModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [tags, setTags] = useState<string[]>([])
+  const [emails, setEmails] = useState<string[]>([''])
+  const [emailErrors, setEmailErrors] = useState<(string | null)[]>([null])
 
   const isEditing = !!customer
 
@@ -93,7 +94,6 @@ function CustomerModal({
       company_name: '',
       nit: '',
       full_name: '',
-      email: '',
       phone: '',
       status: 'active',
       category: 'none',
@@ -111,11 +111,13 @@ function CustomerModal({
         }
 
         setTags(customer.tags || [])
+        const customerEmails = customer.emails?.length > 0 ? customer.emails : ['']
+        setEmails(customerEmails)
+        setEmailErrors(customerEmails.map(() => null))
         form.reset({
           company_name: customer.company_name || '',
           nit: customer.nit,
           full_name: customer.full_name,
-          email: customer.emails?.[0] || '',
           phone: normalizedPhone,
           status: customer.status,
           category: customer.category || 'none',
@@ -124,11 +126,12 @@ function CustomerModal({
         })
       } else {
         setTags([])
+        setEmails([''])
+        setEmailErrors([null])
         form.reset({
           company_name: '',
           nit: '',
           full_name: '',
-          email: '',
           phone: '',
           status: 'active',
           category: 'none',
@@ -139,7 +142,61 @@ function CustomerModal({
     }
   }, [open, customer, form])
 
+  const validateEmail = (email: string): string | null => {
+    if (!email.trim()) {
+      return 'El email es requerido'
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email.trim())) {
+      return 'Email inválido'
+    }
+    return null
+  }
+
+  const validateAllEmails = (): boolean => {
+    const errors = emails.map(email => validateEmail(email))
+    setEmailErrors(errors)
+    return errors.every(error => error === null) && emails.length > 0 && emails.some(email => email.trim() !== '')
+  }
+
+  const addEmailField = () => {
+    setEmails([...emails, ''])
+    setEmailErrors([...emailErrors, null])
+  }
+
+  const removeEmailField = (index: number) => {
+    if (emails.length > 1) {
+      const newEmails = emails.filter((_, i) => i !== index)
+      const newErrors = emailErrors.filter((_, i) => i !== index)
+      setEmails(newEmails)
+      setEmailErrors(newErrors)
+    }
+  }
+
+  const updateEmail = (index: number, value: string) => {
+    const newEmails = [...emails]
+    newEmails[index] = value
+    setEmails(newEmails)
+    
+    // Validar en tiempo real
+    const newErrors = [...emailErrors]
+    newErrors[index] = value.trim() ? validateEmail(value) : null
+    setEmailErrors(newErrors)
+  }
+
   const onSubmit = async (data: CustomerFormValues) => {
+    // Validar emails antes de enviar
+    if (!validateAllEmails()) {
+      return
+    }
+
+    const validEmails = emails.filter(email => email.trim() !== '')
+    
+    if (validEmails.length === 0) {
+      setEmailErrors(emails.map(() => 'Debe agregar al menos un email'))
+      return
+    }
+
     setIsSubmitting(true)
     try {
       if (isEditing && customer) {
@@ -147,7 +204,7 @@ function CustomerModal({
           company_name: data.company_name?.trim() || null,
           nit: data.nit.trim(),
           full_name: data.full_name.trim(),
-          emails: [data.email.trim()],
+          emails: validEmails.map(email => email.trim()),
           phone: data.phone?.trim() || null,
           status: data.status,
           category:
@@ -163,7 +220,7 @@ function CustomerModal({
           company_name: data.company_name?.trim() || null,
           nit: data.nit.trim(),
           full_name: data.full_name.trim(),
-          emails: [data.email.trim()],
+          emails: validEmails.map(email => email.trim()),
           phone: data.phone?.trim() || null,
           status: data.status,
           category:
@@ -266,27 +323,58 @@ function CustomerModal({
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Correo electrónico{' '}
-                        <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="email"
-                          placeholder="maria@empresaabc.com"
-                          disabled={isSubmitting}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <FormLabel className="text-sm font-medium leading-none">
+                      Correos electrónicos{' '}
+                      <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addEmailField}
+                      disabled={isSubmitting}
+                      className="h-8 px-2 text-xs"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Agregar email
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {emails.map((email, index) => (
+                      <div key={index} className="flex gap-2 items-start">
+                        <div className="flex-1">
+                          <Input
+                            type="email"
+                            placeholder="maria@empresaabc.com"
+                            disabled={isSubmitting}
+                            value={email}
+                            onChange={(e) => updateEmail(index, e.target.value)}
+                            className={emailErrors[index] ? 'border-destructive' : ''}
+                          />
+                          {emailErrors[index] && (
+                            <p className="text-sm text-destructive mt-1">
+                              {emailErrors[index]}
+                            </p>
+                          )}
+                        </div>
+                        {emails.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeEmailField(index)}
+                            disabled={isSubmitting}
+                            className="h-10 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <FormField

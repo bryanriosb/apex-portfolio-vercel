@@ -71,7 +71,7 @@ export function CampaignInfoSidebar({
             <p className="text-xs text-muted-foreground">
               La Información Requerida para Crear Campaña se guardará junto con
               los datos de ejecución y te permitirá rastrear fácilmente tus
-              envíos.
+              ejecituciones.
             </p>
           </div>
         </div>

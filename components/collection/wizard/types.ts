@@ -83,12 +83,33 @@ export interface GroupedClient {
   nit: string
   invoices: Invoice[]
   customer?: BusinessCustomer
-  status: 'pending' | 'found' | 'not_found'
+  status: 'pending' | 'found' | 'not_found' | 'blacklisted'
   total: {
     total_amount_due: number
     total_days_overdue: number
     total_invoices: number
   }
+  emailValidation?: {
+    validEmails: string[]
+    blacklistedEmails: Array<{
+      email: string
+      bounceType?: string
+      bounceReason?: string
+    }>
+  }
+}
+
+export interface BlacklistValidationResult {
+  clientNit: string
+  clientName: string
+  originalEmails: string[]
+  validEmails: string[]
+  blacklistedEmails: Array<{
+    email: string
+    bounceType?: string
+    bounceReason?: string
+  }>
+  isFullyBlacklisted: boolean
 }
 
 export interface FileData {

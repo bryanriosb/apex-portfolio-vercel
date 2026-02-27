@@ -1,4 +1,4 @@
-export type BounceType = 'hard' | 'soft' | 'complaint'
+export type BounceType = 'hard' | 'soft' | 'complaint' | 'manual'
 
 export interface EmailBlacklist {
   id: string
