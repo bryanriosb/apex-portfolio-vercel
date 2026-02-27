@@ -598,20 +598,27 @@ async fn process_batch(
                 if let Some(obj) = new_custom_data.as_object_mut() {
                     obj.insert("message_id".to_string(), serde_json::Value::String(message_id));
                     obj.insert("email_sent_at".to_string(), serde_json::Value::String(chrono::Utc::now().to_rfc3339()));
-                    obj.insert("template_id".to_string(), serde_json::Value::String(template_id));
+                    obj.insert("template_id".to_string(), serde_json::Value::String(template_id.clone()));
                     if let Some(threshold_id) = &client.threshold_id {
                         obj.insert("threshold_id".to_string(), serde_json::Value::String(threshold_id.clone()));
                     }
                 }
-                let _ = supabase.update_client_status(&client.id, "sent", Some(new_custom_data)).await;
+                if let Err(err) = supabase.update_client_status(&client.id, "sent", Some(new_custom_data)).await {
+                    log::error!("CRITICAL: Failed to update client {} to 'sent' status in DB: {}", client.id, err);
+                } else {
+                    log::info!("Successfully updated client {} to 'sent' status in DB", client.id);
+                }
             }
             Err(e) => {
                 let mut new_custom_data = client.custom_data.clone().unwrap_or(serde_json::json!({}));
                 if let Some(obj) = new_custom_data.as_object_mut() {
                     obj.insert("error".to_string(), serde_json::Value::String(e.to_string()));
-                    obj.insert("template_id".to_string(), serde_json::Value::String(template_id));
+                    obj.insert("template_id".to_string(), serde_json::Value::String(template_id.clone()));
                 }
-                let _ = supabase.update_client_status(&client.id, "failed", Some(new_custom_data)).await;
+                if let Err(err) = supabase.update_client_status(&client.id, "failed", Some(new_custom_data)).await {
+                    log::error!("Failed to update client {} to 'failed' status in DB: {}", client.id, err);
+                }
+                log::error!("Failed to send email to client {}: {}", client.id, e);
             }
         }
     }

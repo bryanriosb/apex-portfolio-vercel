@@ -37,6 +37,11 @@ export function parseBrevoEvent(body: any): EmailEvent | null {
             case 'deferred':
                 normalizedEventType = 'failed'
                 break
+            case 'request':
+                // 'request' means Brevo received the request but hasn't delivered yet.
+                // We'll treat it as 'delivered' to track the start, or we could ignore it.
+                normalizedEventType = 'delivered'
+                break
             default:
                 console.warn('Unknown Brevo event type:', eventType)
                 return null
