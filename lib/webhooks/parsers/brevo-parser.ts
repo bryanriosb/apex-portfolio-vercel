@@ -58,16 +58,20 @@ export function parseBrevoEvent(body: any): EmailEvent | null {
         if (ts) {
             // ts_epoch is in milliseconds, others usually in seconds.
             // Heuristic: if ts > 10^10, it's likely already in milliseconds.
-            const isMillis = !!body.ts_epoch || Number(ts) > 10000000000
+            const tsNum = Number(ts)
+            const isMillis = !!body.ts_epoch || tsNum > 10000000000
             const multiplier = isMillis ? 1 : 1000
-            const parsedDate = new Date(Number(ts) * multiplier)
+            const parsedDate = new Date(tsNum * multiplier)
             
             // Validate the parsed date - if it's before 2020, it's likely an invalid timestamp
             const minValidDate = new Date('2020-01-01')
-            if (parsedDate >= minValidDate) {
+            const maxValidDate = new Date('2030-12-31')
+            
+            if (parsedDate >= minValidDate && parsedDate <= maxValidDate) {
                 eventTimestamp = parsedDate.toISOString()
             } else {
-                console.warn(`[BREVO] Invalid timestamp received: ${ts}, using current time. Parsed date: ${parsedDate.toISOString()}`)
+                console.warn(`[BREVO] Invalid timestamp received: ts=${ts}, isMillis=${isMillis}, parsedDate=${parsedDate.toISOString()}. Using current time.`)
+                console.warn(`[BREVO] Full body:`, JSON.stringify(body))
                 eventTimestamp = new Date().toISOString()
             }
         } else if (body.date && typeof body.date === 'string') {

@@ -93,6 +93,7 @@ export async function processEmailEvent(
         }
 
         // Registrar evento en collection_events
+        console.log(`[WEBHOOK] Inserting event: type=${event.eventType}, timestamp=${event.timestamp}`)
         const { error: eventError } = await supabase.from('collection_events').insert({
             execution_id: client?.execution_id,
             client_id: client?.id,
