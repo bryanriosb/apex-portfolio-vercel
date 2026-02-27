@@ -50,39 +50,44 @@ export function parseBrevoEvent(body: any): EmailEvent | null {
                 return null
         }
 
-        // Brevo typically sends Unix timestamps in 'ts' or 'ts_event' (seconds)
-        // These are guaranteed to be UTC.
-        const ts = body.ts || body.ts_event || body.ts_epoch
+        // Parse timestamp - prioritize 'date' field as it's more reliable
+        // Brevo sends 'date' in format: "2026-02-27 03:38:07" (UTC time)
         let eventTimestamp = new Date().toISOString()
+        let usedDateField = false
 
-        if (ts) {
-            // ts_epoch is in milliseconds, others usually in seconds.
-            // Heuristic: if ts > 10^10, it's likely already in milliseconds.
-            const tsNum = Number(ts)
-            const isMillis = !!body.ts_epoch || tsNum > 10000000000
-            const multiplier = isMillis ? 1 : 1000
-            const parsedDate = new Date(tsNum * multiplier)
+        if (body.date && typeof body.date === 'string') {
+            const rawDate = body.date.trim()
+            // Parse "2026-02-27 03:38:07" format - it's UTC time from Brevo
+            const isoDate = rawDate.replace(' ', 'T') + 'Z'
+            const parsedDate = new Date(isoDate)
             
-            // Validate the parsed date - if it's before 2020, it's likely an invalid timestamp
-            const minValidDate = new Date('2020-01-01')
-            const maxValidDate = new Date('2030-12-31')
-            
-            if (parsedDate >= minValidDate && parsedDate <= maxValidDate) {
+            if (!isNaN(parsedDate.getTime())) {
                 eventTimestamp = parsedDate.toISOString()
+                usedDateField = true
             } else {
-                console.warn(`[BREVO] Invalid timestamp received: ts=${ts}, isMillis=${isMillis}, parsedDate=${parsedDate.toISOString()}. Using current time.`)
-                console.warn(`[BREVO] Full body:`, JSON.stringify(body))
-                eventTimestamp = new Date().toISOString()
+                console.warn(`[BREVO] Failed to parse date field: ${rawDate}`)
             }
-        } else if (body.date && typeof body.date === 'string') {
-            const rawDate = body.date
-            const hasTimezone = rawDate.includes('Z') || rawDate.includes('+')
+        }
 
-            if (!hasTimezone) {
-                // We assume it's Bogota time (-05:00) as fallback
-                eventTimestamp = `${rawDate.replace(' ', 'T')}-05:00`
-            } else {
-                eventTimestamp = rawDate.replace(' ', 'T')
+        // Fallback to timestamp fields if date field wasn't used
+        if (!usedDateField) {
+            const ts = body.ts || body.ts_event
+            
+            if (ts) {
+                const tsNum = Number(ts)
+                // ts_event is typically in seconds
+                const parsedDate = new Date(tsNum * 1000)
+                
+                // Validate the parsed date
+                const minValidDate = new Date('2020-01-01')
+                const maxValidDate = new Date('2030-12-31')
+                
+                if (parsedDate >= minValidDate && parsedDate <= maxValidDate) {
+                    eventTimestamp = parsedDate.toISOString()
+                } else {
+                    console.warn(`[BREVO] Invalid timestamp received: ts=${ts}, parsedDate=${parsedDate.toISOString()}. Using current time.`)
+                    console.warn(`[BREVO] Full body:`, JSON.stringify(body))
+                }
             }
         }
 
@@ -96,7 +101,7 @@ export function parseBrevoEvent(body: any): EmailEvent | null {
                 reason: body.reason,
                 tag: body.tag,
                 subject: body.subject,
-                link: body.link, // URL del link clickeado (para eventos click)
+                link: body.link,
             },
         }
     } catch (error) {
