@@ -17,6 +17,7 @@ import {
   RotateCcw,
   MessageSquare,
   Smartphone,
+  MousePointerClick,
 } from 'lucide-react'
 
 interface ClientsDataTableProps {
@@ -45,6 +46,7 @@ const statusConfig: Record<ClientStatus, { label: string; icon: any; color: stri
   opened: { label: 'Abierto', icon: MailOpen, color: 'bg-purple-500' },
   bounced: { label: 'Rebotado', icon: XCircle, color: 'bg-red-500' },
   failed: { label: 'Fallido', icon: AlertTriangle, color: 'bg-orange-500' },
+  clicked: { label: 'Clicado', icon: MousePointerClick, color: 'bg-blue-400' },
 }
 
 export function ClientsDataTable({ executionId }: ClientsDataTableProps) {
