@@ -26,7 +26,10 @@ interface ClientsDataTableProps {
   timezone: string
 }
 
-const statusConfig: Record<ClientStatus, { label: string; icon: any; color: string }> = {
+const statusConfig: Record<
+  ClientStatus,
+  { label: string; icon: any; color: string }
+> = {
   pending: { label: 'Pendiente', icon: Clock, color: 'bg-gray-500' },
   queued: { label: 'En cola', icon: Loader2, color: 'bg-blue-500' },
   sent: { label: 'Enviado', icon: Mail, color: 'bg-yellow-500' },
@@ -37,39 +40,25 @@ const statusConfig: Record<ClientStatus, { label: string; icon: any; color: stri
   clicked: { label: 'Clicado', icon: MousePointerClick, color: 'bg-blue-400' },
 }
 
-export function ClientsDataTable({ executionId, timezone }: ClientsDataTableProps) {
-
+export function ClientsDataTable({
+  executionId,
+  timezone,
+}: ClientsDataTableProps) {
   const columns = useMemo<ColumnDef<CollectionClient>[]>(
-
     () => [
       {
-        accessorKey: 'custom_data.email',
-        header: 'Email',
+        accessorKey: 'custom_data.nit',
+        header: 'Empresa',
         cell: ({ row }) => {
           const customData = row.original.custom_data || {}
           return (
             <div className="flex flex-col">
-              <span className="font-medium">{customData.email || '-'}</span>
-              {customData.company_name && (
+              <span className="font-medium truncate max-w-[400px]">
+                {customData.company_name || '-'}
+              </span>
+              {customData.nit && (
                 <span className="text-xs text-muted-foreground">
-                  {customData.company_name}
-                </span>
-              )}
-            </div>
-          )
-        },
-      },
-      {
-        accessorKey: 'custom_data.full_name',
-        header: 'Nombre',
-        cell: ({ row }) => {
-          const customData = row.original.custom_data || {}
-          return (
-            <div className="flex flex-col">
-              <span>{customData.full_name || '-'}</span>
-              {customData.phone && (
-                <span className="text-xs text-muted-foreground">
-                  {customData.phone}
+                  NIT: {customData.nit}
                 </span>
               )}
             </div>
@@ -84,9 +73,7 @@ export function ClientsDataTable({ executionId, timezone }: ClientsDataTableProp
           const config = statusConfig[status]
           const Icon = config.icon
           return (
-            <Badge
-              className="flex items-center gap-1 bg-primary text-primary-foreground hover:bg-primary/90"
-            >
+            <Badge className="flex items-center gap-1 bg-primary text-primary-foreground hover:bg-primary/90">
               <Icon className="h-3 w-3" />
               {config.label}
             </Badge>
@@ -144,13 +131,11 @@ export function ClientsDataTable({ executionId, timezone }: ClientsDataTableProp
           const totalAmount = customData.total_amount_due
             ? parseFloat(customData.total_amount_due)
             : invoices.reduce((sum: number, inv: any) => {
-              return sum + (parseFloat(inv.amount) || 0)
-            }, 0)
+                return sum + (parseFloat(inv.amount) || 0)
+              }, 0)
           return (
             <div className="flex flex-col">
-              <span className="font-medium">
-                {invoices.length} factura(s)
-              </span>
+              <span className="font-medium">{invoices.length} factura(s)</span>
               <span className="text-xs text-muted-foreground">
                 ${totalAmount.toFixed(2)}
               </span>
@@ -170,7 +155,8 @@ export function ClientsDataTable({ executionId, timezone }: ClientsDataTableProp
             return <span className="text-muted-foreground">-</span>
           }
 
-          const FallbackIcon = fallbackType === 'sms' ? Smartphone : MessageSquare
+          const FallbackIcon =
+            fallbackType === 'sms' ? Smartphone : MessageSquare
 
           return (
             <div className="flex flex-col gap-1">
@@ -204,7 +190,11 @@ export function ClientsDataTable({ executionId, timezone }: ClientsDataTableProp
           return (
             <div className="flex flex-col">
               <Badge variant="destructive" className="w-fit">
-                {bounceType === 'hard' ? 'Duro' : bounceType === 'soft' ? 'Suave' : 'Queja'}
+                {bounceType === 'hard'
+                  ? 'Duro'
+                  : bounceType === 'soft'
+                    ? 'Suave'
+                    : 'Queja'}
               </Badge>
               {bounceReason && (
                 <span className="text-xs text-muted-foreground truncate max-w-[150px]">

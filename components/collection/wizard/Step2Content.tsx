@@ -28,7 +28,7 @@ export function Step2Content({
   onChange,
 }: Step2ContentProps) {
   const { activeBusiness } = useActiveBusinessStore()
-  
+
   // Usar el hook con Zustand store para evitar recálculos entre pasos
   const {
     previewData,
@@ -36,7 +36,7 @@ export function Step2Content({
     unassignedCount,
     totalClients,
     isLoading,
-    hasAllThresholds
+    hasAllThresholds,
   } = useWizardThresholdPreview(
     fileData?.groupedClients || new Map(),
     activeBusiness?.id || ''
@@ -68,11 +68,11 @@ export function Step2Content({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            Archivos Adjuntos Globales
+            Seleccion de Archivo Adjuntos Generales
           </CardTitle>
           <CardDescription>
-            Estos adjuntos se incluirán en todos los correos según las reglas
-            configuradas
+            Estos adjuntos que se incluirán en todos los correos que se van a
+            procesar
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -109,5 +109,3 @@ export function Step2Content({
     </div>
   )
 }
-
-

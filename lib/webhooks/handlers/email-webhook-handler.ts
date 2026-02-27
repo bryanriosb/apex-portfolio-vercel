@@ -51,12 +51,13 @@ export async function processEmailEvent(
             console.log(`[BREVO] No client found for message_id: ${event.messageId}. Trying fallback by email: ${event.email}...`);
 
             // Search by email (array or string) in custom_data
-            // We remove the strict 'pending' requirement as the worker might have already marked it as 'sent'
+            // Worker marks as 'accepted' when the provider accepts the request
+            // Webhook confirms as 'sent' when the provider actually sends the email
             const { data: emailClients, error: emailSearchError } = await supabase
                 .from('collection_clients')
                 .select('id, status, custom_data, execution_id, email_sent_at')
                 .or(`custom_data->emails.cs.["${event.email}"],custom_data->>email.eq.${event.email}`)
-                .in('status', ['pending', 'sent', 'queued'])
+                .in('status', ['pending', 'accepted', 'sent', 'queued'])
                 .order('created_at', { ascending: false })
                 .limit(1)
 
@@ -122,7 +123,9 @@ export async function processEmailEvent(
 
             switch (event.eventType) {
                 case 'email_sent':
-                    if (client.status === 'pending') {
+                    // Worker marca como 'accepted' cuando el proveedor acepta la petición
+                    // El webhook confirma cuando realmente se envía
+                    if (client.status === 'pending' || client.status === 'accepted') {
                         newStatus = 'sent'
                     }
                     break
@@ -136,7 +139,7 @@ export async function processEmailEvent(
                     newStatus = 'complained'
                     break
                 case 'email_opened':
-                    if (client.status === 'sent' || client.status === 'delivered' || client.status === 'pending') {
+                    if (client.status === 'sent' || client.status === 'delivered' || client.status === 'pending' || client.status === 'accepted') {
                         newStatus = 'opened'
                     } else if (client.status === 'opened') {
                         shouldUpdateMetrics = false
@@ -144,7 +147,7 @@ export async function processEmailEvent(
                     }
                     break
                 case 'email_clicked':
-                    if (client.status === 'sent' || client.status === 'delivered' || client.status === 'pending') {
+                    if (client.status === 'sent' || client.status === 'delivered' || client.status === 'pending' || client.status === 'accepted') {
                         newStatus = 'opened'
                     }
                     break

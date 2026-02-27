@@ -627,10 +627,10 @@ async fn process_batch(
                         obj.insert("threshold_id".to_string(), serde_json::Value::String(threshold_id.clone()));
                     }
                 }
-                if let Err(err) = supabase.update_client_status(&client.id, "sent", Some(new_custom_data)).await {
-                    log::error!("CRITICAL: Failed to update client {} to 'sent' status in DB: {}", client.id, err);
+                if let Err(err) = supabase.update_client_status(&client.id, "accepted", Some(new_custom_data)).await {
+                    log::error!("CRITICAL: Failed to update client {} to 'accepted' status in DB: {}", client.id, err);
                 } else {
-                    log::info!("Successfully updated client {} to 'sent' status in DB", client.id);
+                    log::info!("Successfully updated client {} to 'accepted' status in DB (waiting for webhook confirmation)", client.id);
                 }
             }
             Err(e) => {
@@ -789,7 +789,7 @@ async fn process_execution(execution_id: &str) -> Result<(), Box<dyn Error + Sen
                         obj.insert("threshold_id".to_string(), serde_json::Value::String(threshold_id.clone()));
                     }
                 }
-                let _ = supabase.update_client_status(&client.id, "sent", Some(new_custom_data)).await;
+                let _ = supabase.update_client_status(&client.id, "accepted", Some(new_custom_data)).await;
             }
             Err(e) => {
                 let mut new_custom_data = client.custom_data.clone().unwrap_or(serde_json::json!({}));
