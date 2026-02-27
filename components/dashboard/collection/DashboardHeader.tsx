@@ -7,14 +7,12 @@ import { RefreshCw } from 'lucide-react'
 
 interface DashboardHeaderProps {
   today: string
-  isPolling: boolean
   statsLoading: boolean
   onManualRefresh: () => void
 }
 
 export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   today,
-  isPolling,
   statsLoading,
   onManualRefresh,
 }) => {
@@ -27,15 +25,13 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         <p className="text-sm text-muted-foreground capitalize">{today}</p>
       </div>
       <div className="flex items-center gap-2">
-        {isPolling && (
-          <div className="flex items-center gap-2 text-xs">
-            <div className="relative flex items-center">
-              <div className="h-2 w-2 rounded-full bg-primary" />
-              <div className="absolute !h-2.5 !w-2.5 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary animate-ping" />
-            </div>
-            Actualizaciones en Tiempo Real
+        <div className="flex items-center gap-2 text-xs">
+          <div className="relative flex items-center">
+            <div className="h-2 w-2 rounded-full bg-primary" />
+            <div className="absolute !h-2.5 !w-2.5 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary animate-ping" />
           </div>
-        )}
+          Actualizaciones en Tiempo Real
+        </div>
       </div>
     </div>
   )

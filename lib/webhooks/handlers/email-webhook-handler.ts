@@ -51,13 +51,12 @@ export async function processEmailEvent(
             console.log(`[BREVO] No client found for message_id: ${event.messageId}. Trying fallback by email: ${event.email}...`);
 
             // Search by email (array or string) in custom_data
-            // Worker marks as 'accepted' when the provider accepts the request
-            // Webhook confirms as 'sent' when the provider actually sends the email
+            // CRITICAL: Search in ALL statuses, not just initial ones, because clients can receive
+            // multiple events (e.g., multiple opens) after being processed
             const { data: emailClients, error: emailSearchError } = await supabase
                 .from('collection_clients')
                 .select('id, customer_id, status, custom_data, execution_id, email_sent_at')
                 .or(`custom_data->emails.cs.["${event.email}"],custom_data->>email.eq.${event.email}`)
-                .in('status', ['pending', 'accepted', 'sent', 'queued'])
                 .order('created_at', { ascending: false })
                 .limit(1)
 

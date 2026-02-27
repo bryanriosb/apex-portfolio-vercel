@@ -48,9 +48,7 @@ export default function DashboardPage() {
   const [statsLoading, setStatsLoading] = useState(true)
   const [recentLoading, setRecentLoading] = useState(true)
   const [reputationLoading, setReputationLoading] = useState(true)
-  const [isPolling, setIsPolling] = useState(false)
 
-  const pollingTimerRef = useRef<NodeJS.Timeout | null>(null)
   const activeExecutionsRef = useRef(activeExecutions)
   const realtimeService = useMemo(() => new RealtimeDashboardService(), [])
 
@@ -134,43 +132,11 @@ export default function DashboardPage() {
       .finally(() => setReputationLoading(false))
   }, [activeBusiness?.id, loadData])
 
-  // Polling logic for progress
-  const startPolling = useCallback(() => {
-    if (pollingTimerRef.current) return
-    setIsPolling(true)
-    pollingTimerRef.current = setInterval(async () => {
-      if (!activeBusiness?.id) return
-      const activeData = await getActiveExecutionsAction(activeBusiness.id)
-      setActiveExecutions(activeData)
-      for (const exec of activeData) {
-        const clientStats = await getExecutionClientsAction(exec.id)
-        setActiveExecutionClientStats(exec.id, clientStats)
-      }
-    }, 5000)
-  }, [activeBusiness?.id])
-
-  const stopPolling = useCallback(() => {
-    if (pollingTimerRef.current) {
-      clearInterval(pollingTimerRef.current)
-      pollingTimerRef.current = null
-      setIsPolling(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (activeExecutions.length > 0) {
-      startPolling()
-    } else {
-      stopPolling()
-    }
-    return () => stopPolling()
-  }, [activeExecutions.length, startPolling, stopPolling])
-
   useEffect(() => {
     activeExecutionsRef.current = activeExecutions
   }, [activeExecutions])
 
-  // Realtime
+  // Realtime updates for dashboard data
   useEffect(() => {
     if (!activeBusiness?.id) return
 
@@ -242,7 +208,6 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-4 sm:gap-6 w-full h-full min-h-[calc(100vh-120px)]">
       <DashboardHeader
         today={today}
-        isPolling={isPolling}
         statsLoading={statsLoading}
         onManualRefresh={manualRefresh}
       />
