@@ -16,67 +16,60 @@ export async function processEmailEvent(
         let clients = null;
         let searchError = null;
 
-        // Try exact match first
-        const { data: exactClients, error: exactSearchError } = await supabase
-            .from('collection_clients')
-            .select('id, status, custom_data, execution_id')
-            .contains('custom_data', { message_id: event.messageId })
-            .limit(1)
+        let foundByMessageId = false;
 
-        clients = exactClients;
-        searchError = exactSearchError;
+        // Consolidar búsqueda por message_id (variaciones con/sin <>)
+        const messageIdsToTry = [event.messageId];
+        if (event.messageId.startsWith('<') && event.messageId.endsWith('>')) {
+            messageIdsToTry.push(event.messageId.substring(1, event.messageId.length - 1));
+        } else {
+            messageIdsToTry.push(`<${event.messageId}>`);
+        }
 
-        // If not found, try alternative formats of message_id (Brevo sometimes sends with <>, sometimes without)
-        if (!exactSearchError && (!exactClients || exactClients.length === 0)) {
-            let altMessageId = event.messageId;
-            if (altMessageId.startsWith('<') && altMessageId.endsWith('>')) {
-                // Try without brackets
-                altMessageId = altMessageId.substring(1, altMessageId.length - 1);
-            } else {
-                // Try with brackets
-                altMessageId = `<${altMessageId}>`;
-            }
-
-            console.log(`[DEBUG-v2] Original message_id "${event.messageId}" not found, trying "${altMessageId}"...`);
-
-            const { data: altClients, error: altSearchError } = await supabase
+        for (const mid of messageIdsToTry) {
+            const { data, error } = await supabase
                 .from('collection_clients')
                 .select('id, status, custom_data, execution_id')
-                .contains('custom_data', { message_id: altMessageId })
-                .limit(1)
+                .eq('custom_data->>message_id', mid)
+                .limit(1);
 
-            clients = altClients;
-            searchError = altSearchError;
+            if (data && data.length > 0) {
+                clients = data;
+                foundByMessageId = true;
+                break;
+            }
+            if (error) searchError = error;
         }
 
         if (searchError) {
-            console.error('[DEBUG-v2] Error searching for client:', searchError)
+            console.error('[BREVO] Error searching for client by message_id:', searchError)
             throw searchError
         }
 
         // Email Fallback if message_id failed
         if (!clients || clients.length === 0) {
-            console.log(`[DEBUG-v2] No client found for message_id: ${event.messageId}. Trying fallback by email: ${event.email}...`);
+            console.log(`[BREVO] No client found for message_id: ${event.messageId}. Trying fallback by email: ${event.email}...`);
 
             // Search by email (array or string) in custom_data
+            // We remove the strict 'pending' requirement as the worker might have already marked it as 'sent'
             const { data: emailClients, error: emailSearchError } = await supabase
                 .from('collection_clients')
                 .select('id, status, custom_data, execution_id')
                 .or(`custom_data->emails.cs.["${event.email}"],custom_data->>email.eq.${event.email}`)
-                .eq('status', 'pending')
+                .in('status', ['pending', 'sent', 'queued'])
                 .order('created_at', { ascending: false })
                 .limit(1)
 
             if (emailSearchError) {
-                console.error('[DEBUG-v2] Error in email fallback search:', emailSearchError)
+                console.error('[BREVO] Error in email fallback search:', emailSearchError)
             } else if (emailClients && emailClients.length > 0) {
-                console.log(`[DEBUG-v2] Fallback found client ${emailClients[0].id} by email search.`);
+                console.log(`[BREVO] Fallback found client ${emailClients[0].id} by email search.`);
                 clients = emailClients;
             }
         }
 
         if (!clients || clients.length === 0) {
-            console.warn(`[DEBUG-v2] No client found for id: ${event.messageId} or email: ${event.email}. Skipping to avoid constraint error.`)
+            console.warn(`[BREVO] No client found for id: ${event.messageId} or email: ${event.email}. Skipping to avoid constraint error.`)
             return;
         }
 
@@ -94,7 +87,7 @@ export async function processEmailEvent(
                 email: event.email,
                 timestamp: event.timestamp,
                 metadata: event.metadata,
-                recovered_by_email: !exactClients || exactClients.length === 0
+                recovered_by_email: !foundByMessageId
             },
             timestamp: event.timestamp,
         })

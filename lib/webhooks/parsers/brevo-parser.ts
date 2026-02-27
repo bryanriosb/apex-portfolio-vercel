@@ -6,7 +6,10 @@ import type { EmailEvent } from './ses-parser'
  */
 export function parseBrevoEvent(body: any): EmailEvent | null {
     try {
-        const eventType = body.event
+        const rawEventType = body.event
+        if (!rawEventType) return null
+
+        const eventType = rawEventType.trim().toLowerCase()
 
         // Map Brevo event types to our internal types
         let normalizedEventType: EmailEvent['eventType']
@@ -39,7 +42,7 @@ export function parseBrevoEvent(body: any): EmailEvent | null {
                 break
             case 'request':
                 // 'request' means Brevo received the request but hasn't delivered yet.
-                // We'll treat it as 'delivered' to track the start, or we could ignore it.
+                // We'll treat it as 'delivered' to track the start.
                 normalizedEventType = 'delivered'
                 break
             default:
