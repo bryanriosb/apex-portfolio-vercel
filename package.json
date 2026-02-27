@@ -86,6 +86,7 @@
     "cmdk": "^1.1.1",
     "contiguity": "^0.0.5",
     "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
     "echarts": "^6.0.0",
     "echarts-for-react": "^3.0.2",
     "fish-audio": "^0.0.3",

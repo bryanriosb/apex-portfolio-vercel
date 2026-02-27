@@ -7,6 +7,7 @@ export interface Business {
   id: string
   name: string
   business_account_id: string
+  timezone: string
 }
 
 interface ActiveBusinessState {
@@ -116,6 +117,7 @@ export const useActiveBusinessStore = create<ActiveBusinessState>()(
             id: b.id,
             name: b.name,
             business_account_id: b.business_account_id,
+            timezone: b.timezone,
           }))
 
           const currentActive = state.activeBusiness

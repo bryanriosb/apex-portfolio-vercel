@@ -38,13 +38,13 @@ import { EventChart } from '@/components/collection/executions/EventChart'
 import { EventLog } from '@/components/collection/executions/EventLog'
 import { ExecutionFlow } from '@/components/collection/executions/ExecutionFlow'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatDistanceToNow, format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { format } from 'date-fns'
 import { formatInBusinessTimeZone } from '@/lib/utils/date-format'
 
 import { useRealtimeExecution } from '@/hooks/collection/use-realtime-execution'
 import { processExecutionAction } from '@/lib/actions/collection/execution'
 import { useCurrentUser } from '@/hooks/use-current-user'
+import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
@@ -61,7 +61,8 @@ export default function ExecutionDetailPage() {
   const [refreshingEvents, setRefreshingEvents] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
   const { user } = useCurrentUser()
-  const businessTimezone = user?.timezone || 'America/Bogota'
+  const activeBusiness = useActiveBusinessStore((state) => state.activeBusiness)
+  const businessTimezone = activeBusiness?.timezone || user?.timezone || 'America/Bogota'
 
   // Use realtime hook only when we have initial data
   const realtimeData = useRealtimeExecution(initialExecution!)
@@ -336,10 +337,7 @@ export default function ExecutionDetailPage() {
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Iniciado:</span>
                       <span>
-                        {formatDistanceToNow(new Date(execution.started_at), {
-                          addSuffix: true,
-                          locale: es,
-                        })}
+                        {formatInBusinessTimeZone(execution.started_at, 'dd/MM/yyyy HH:mm', businessTimezone)}
                       </span>
                     </div>
                   )}
@@ -347,10 +345,7 @@ export default function ExecutionDetailPage() {
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Completado:</span>
                       <span>
-                        {formatDistanceToNow(new Date(execution.completed_at), {
-                          addSuffix: true,
-                          locale: es,
-                        })}
+                        {formatInBusinessTimeZone(execution.completed_at, 'dd/MM/yyyy HH:mm', businessTimezone)}
                       </span>
                     </div>
                   )}
@@ -434,14 +429,14 @@ export default function ExecutionDetailPage() {
                 </Button>
               </CardHeader>
               <CardContent>
-                <EventChart events={events} />
+                <EventChart events={events} timezone={businessTimezone} />
               </CardContent>
             </Card>
           )}
         </TabsContent>
 
         <TabsContent value="clients">
-          <ClientsDataTable executionId={executionId} />
+          <ClientsDataTable executionId={executionId} timezone={businessTimezone} />
         </TabsContent>
 
         {/* Events Tab - Similar to events.png */}
@@ -455,7 +450,7 @@ export default function ExecutionDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <EventChart events={events} />
+                <EventChart events={events} timezone={businessTimezone} />
               </CardContent>
             </Card>
 
@@ -464,6 +459,7 @@ export default function ExecutionDetailPage() {
               events={events}
               onRefresh={handleRefreshEvents}
               isRefreshing={refreshingEvents}
+              timezone={businessTimezone}
             />
           </div>
         </TabsContent>

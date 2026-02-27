@@ -18,7 +18,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { formatInBusinessTimeZone } from '@/lib/utils/date-format'
-import { useCurrentUser } from '@/hooks/use-current-user'
 import {
   ChevronRight,
   RefreshCcw,
@@ -45,6 +44,7 @@ interface EventLogProps {
   events: CollectionEvent[]
   onRefresh?: () => void
   isRefreshing?: boolean
+  timezone: string
 }
 
 const eventTypeConfig: Record<
@@ -149,7 +149,7 @@ const statusConfig: Record<EventStatus, { label: string; variant: any }> = {
   pending: { label: 'Pendiente', variant: 'secondary' },
 }
 
-export function EventLog({ events, onRefresh, isRefreshing }: EventLogProps) {
+export function EventLog({ events, onRefresh, isRefreshing, timezone }: EventLogProps) {
   const [selectedEvent, setSelectedEvent] = useState<CollectionEvent | null>(
     null
   )
@@ -187,9 +187,6 @@ export function EventLog({ events, onRefresh, isRefreshing }: EventLogProps) {
   const clearFilters = () => {
     setSelectedFilters(new Set())
   }
-
-  const { user } = useCurrentUser()
-  const timezone = user?.timezone || 'America/Bogota'
 
   const formatEventTime = (timestamp: string) => {
     return formatInBusinessTimeZone(timestamp, 'MMM d, yyyy, h:mm a', timezone)

@@ -2,11 +2,13 @@
 
 import { useMemo } from 'react'
 import { CollectionEvent } from '@/lib/models/collection'
-import { format, parseISO } from 'date-fns'
+import { format } from 'date-fns'
+import { toZonedTime } from 'date-fns-tz'
 import { es } from 'date-fns/locale'
 
 interface EventChartProps {
   events: CollectionEvent[]
+  timezone?: string
 }
 
 const eventTypeConfig: Record<string, { label: string; color: string }> = {
@@ -54,7 +56,24 @@ const eventTypePriority: Record<string, number> = {
   error: 15,
 }
 
-export function EventChart({ events }: EventChartProps) {
+function parseEventDate(timestamp: string | number): Date {
+  if (typeof timestamp === 'number') {
+    return new Date(timestamp < 10000000000 ? timestamp * 1000 : timestamp)
+  }
+  return new Date(timestamp)
+}
+
+function formatInTimezone(date: Date, timezone: string, formatStr: string): string {
+  try {
+    const zonedDate = toZonedTime(date, timezone)
+    return format(zonedDate, formatStr, { locale: es })
+  } catch (error) {
+    console.error('Error formatting date:', error)
+    return date.toLocaleString()
+  }
+}
+
+export function EventChart({ events, timezone = 'America/Bogota' }: EventChartProps) {
   const { chartRows, timeLabels, startTime, endTime } = useMemo(() => {
     if (!events || events.length === 0) {
       return { chartRows: [], timeLabels: [], startTime: null, endTime: null }
@@ -62,12 +81,12 @@ export function EventChart({ events }: EventChartProps) {
 
     // Ordenar eventos por timestamp
     const sortedEvents = [...events].sort(
-      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      (a, b) => parseEventDate(a.timestamp).getTime() - parseEventDate(b.timestamp).getTime()
     )
 
     // Obtener rango de tiempo
-    const start = new Date(sortedEvents[0].timestamp)
-    const end = new Date(sortedEvents[sortedEvents.length - 1].timestamp)
+    const start = parseEventDate(sortedEvents[0].timestamp)
+    const end = parseEventDate(sortedEvents[sortedEvents.length - 1].timestamp)
     const duration = end.getTime() - start.getTime()
 
     // Generar etiquetas de tiempo (5 puntos)
@@ -101,14 +120,14 @@ export function EventChart({ events }: EventChartProps) {
         events: typeEvents.map((e) => ({
           ...e,
           position: duration > 0
-            ? ((new Date(e.timestamp).getTime() - start.getTime()) / duration) * 100
+            ? ((parseEventDate(e.timestamp).getTime() - start.getTime()) / duration) * 100
             : 50,
-          time: format(parseISO(e.timestamp), 'HH:mm:ss'),
+          time: formatInTimezone(parseEventDate(e.timestamp), timezone, 'HH:mm:ss'),
         })),
       }))
 
     return { chartRows: rows, timeLabels: labels, startTime: start, endTime: end }
-  }, [events])
+  }, [events, timezone])
 
   if (!events || events.length === 0) {
     return (
@@ -175,7 +194,7 @@ export function EventChart({ events }: EventChartProps) {
         <div className="flex justify-between mt-4 ml-40 text-xs text-muted-foreground border-t pt-2">
           {timeLabels.map((time, index) => (
             <span key={index}>
-              {format(time, 'HH:mm', { locale: es })}
+              {formatInTimezone(time, timezone, 'HH:mm')}
             </span>
           ))}
         </div>
@@ -195,7 +214,7 @@ export function EventChart({ events }: EventChartProps) {
       {/* Info */}
       {startTime && endTime && (
         <div className="text-xs text-muted-foreground text-center">
-          Rango de tiempo: {format(startTime, 'dd/MM/yyyy HH:mm', { locale: es })} - {format(endTime, 'dd/MM/yyyy HH:mm', { locale: es })}
+          Rango de tiempo: {formatInTimezone(startTime, timezone, 'dd/MM/yyyy HH:mm')} - {formatInTimezone(endTime, timezone, 'dd/MM/yyyy HH:mm')}
         </div>
       )}
     </div>
