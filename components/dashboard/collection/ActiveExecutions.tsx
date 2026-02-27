@@ -49,19 +49,19 @@ export const ActiveExecutions: React.FC<ActiveExecutionsProps> = ({
                             <div className="grid grid-cols-4 gap-2 text-center text-xs">
                                 <div className="bg-muted rounded p-1">
                                     <span className="text-muted-foreground block">Total</span>
-                                    <p className="font-semibold">{exec.clientStats?.total || exec.total_clients}</p>
+                                    <p className="font-semibold">{exec.total_clients}</p>
                                 </div>
                                 <div className="bg-muted rounded p-1">
                                     <span className="text-muted-foreground block">Enviados</span>
-                                    <p className="font-semibold">{exec.clientStats?.sent || exec.emails_sent}</p>
+                                    <p className="font-semibold">{exec.emails_sent}</p>
                                 </div>
                                 <div className="bg-muted rounded p-1">
                                     <span className="text-muted-foreground block">Entregados</span>
-                                    <p className="font-semibold">{exec.clientStats?.delivered || exec.emails_delivered}</p>
+                                    <p className="font-semibold">{exec.emails_delivered}</p>
                                 </div>
                                 <div className="bg-muted rounded p-1">
                                     <span className="text-muted-foreground block">Abiertos</span>
-                                    <p className="font-semibold">{exec.clientStats?.opened || exec.emails_opened}</p>
+                                    <p className="font-semibold">{exec.emails_opened}</p>
                                 </div>
                             </div>
                         </CardContent>

@@ -305,6 +305,24 @@ async fn func(event: LambdaEvent<Value>) -> Result<Value, lambda_runtime::Error>
         let result = process_sqs_manually(&sqs_client, &supabase, provider.as_ref(), &logger, &queue_url, &worker_id).await?;
         total_processed = result.0;
         total_failed = result.1;
+    } else if action == "process_execution" {
+        // Direct execution mode: process pending clients from DB without SQS
+        if let Some(exec_id) = payload.get("execution_id").and_then(|v| v.as_str()) {
+            info!("Processing execution directly: {}", exec_id);
+            match process_execution(exec_id).await {
+                Ok(_) => {
+                    info!("Successfully processed execution: {}", exec_id);
+                    total_processed = 1;
+                }
+                Err(e) => {
+                    error!("Failed to process execution {}: {}", exec_id, e);
+                    total_failed = 1;
+                }
+            }
+        } else {
+            error!("process_execution action requires execution_id");
+            total_failed = 1;
+        }
     } else if let Some(records) = payload.get("Records") {
         info!("SQS Records received. Processing batch event.");
         if let Ok(sqs_event) = serde_json::from_value::<SqsEvent>(payload.clone()) {
