@@ -19,15 +19,16 @@ import {
   Smartphone,
   MousePointerClick,
 } from 'lucide-react'
+import { useCurrentUser } from '@/hooks/use-current-user'
 
 interface ClientsDataTableProps {
   executionId: string
 }
 
-const formatDate = (date: string | Date | null | undefined) => {
+const formatDate = (date: string | Date | null | undefined, timezone: string = 'America/Bogota') => {
   if (!date) return '-'
   return new Date(date).toLocaleString('es-CO', {
-    timeZone: 'America/Bogota',
+    timeZone: timezone,
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -50,7 +51,11 @@ const statusConfig: Record<ClientStatus, { label: string; icon: any; color: stri
 }
 
 export function ClientsDataTable({ executionId }: ClientsDataTableProps) {
+  const { user } = useCurrentUser()
+  const businessTimezone = user?.timezone || 'America/Bogota'
+
   const columns = useMemo<ColumnDef<CollectionClient>[]>(
+
     () => [
       {
         accessorKey: 'custom_data.email',
@@ -112,7 +117,7 @@ export function ClientsDataTable({ executionId }: ClientsDataTableProps) {
           return (
             <div className="flex flex-col">
               <span className="text-xs">
-                {formatDate(date)}
+                {formatDate(date, businessTimezone)}
               </span>
             </div>
           )
@@ -126,7 +131,7 @@ export function ClientsDataTable({ executionId }: ClientsDataTableProps) {
           if (!date) return <span className="text-muted-foreground">-</span>
           return (
             <span className="text-xs">
-              {formatDate(date)}
+              {formatDate(date, businessTimezone)}
             </span>
           )
         },
@@ -139,7 +144,7 @@ export function ClientsDataTable({ executionId }: ClientsDataTableProps) {
           if (!date) return <span className="text-muted-foreground">-</span>
           return (
             <span className="text-xs">
-              {formatDate(date)}
+              {formatDate(date, businessTimezone)}
             </span>
           )
         },
@@ -193,7 +198,7 @@ export function ClientsDataTable({ executionId }: ClientsDataTableProps) {
               </Badge>
               {fallbackSent && (
                 <span className="text-xs text-muted-foreground">
-                  {formatDate(fallbackSent)}
+                  {formatDate(fallbackSent, businessTimezone)}
                 </span>
               )}
             </div>

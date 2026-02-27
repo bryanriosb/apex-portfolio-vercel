@@ -16,34 +16,34 @@ export function parseBrevoEvent(body: any): EmailEvent | null {
 
         switch (eventType) {
             case 'delivered':
-                normalizedEventType = 'delivered'
+                normalizedEventType = 'email_delivered'
                 break
             case 'hard_bounce':
             case 'soft_bounce':
             case 'blocked':
             case 'invalid_email':
-                normalizedEventType = 'bounced'
+                normalizedEventType = 'email_bounced'
                 break
             case 'spam':
             case 'unsubscribed':
-                normalizedEventType = 'complained'
+                normalizedEventType = 'email_complained'
                 break
             case 'opened':
             case 'unique_opened':
-                normalizedEventType = 'opened'
+                normalizedEventType = 'email_opened'
                 break
             case 'click':
             case 'clicked':
-                normalizedEventType = 'clicked'
+                normalizedEventType = 'email_clicked'
                 break
             case 'error':
             case 'deferred':
-                normalizedEventType = 'failed'
+                normalizedEventType = 'email_failed'
                 break
             case 'request':
                 // 'request' means Brevo received the request but hasn't delivered yet.
                 // We'll treat it as 'sent' (corresponds to SES 'Send').
-                normalizedEventType = 'sent'
+                normalizedEventType = 'email_sent'
                 break
             default:
                 console.warn('Unknown Brevo event type:', eventType)
@@ -56,8 +56,10 @@ export function parseBrevoEvent(body: any): EmailEvent | null {
         let eventTimestamp = new Date().toISOString()
 
         if (ts) {
-            // ts_epoch is in milliseconds, others in seconds
-            const multiplier = body.ts_epoch ? 1 : 1000
+            // ts_epoch is in milliseconds, others usually in seconds.
+            // Heuristic: if ts > 10^10, it's likely already in milliseconds.
+            const isMillis = !!body.ts_epoch || Number(ts) > 10000000000
+            const multiplier = isMillis ? 1 : 1000
             eventTimestamp = new Date(Number(ts) * multiplier).toISOString()
         } else if (body.date && typeof body.date === 'string') {
             const rawDate = body.date

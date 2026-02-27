@@ -8,7 +8,7 @@ process.env.SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY || 'sb_secret_
 async function testWebhook() {
     console.log('--- Testing Brevo Webhook Fixes ---');
 
-    // Test Case 1: 'request' event type (should be normalized to 'delivered')
+    // Test Case 1: 'request' event type (should be normalized to 'email_sent')
     const requestEventPayload = {
         event: 'request',
         'message-id': '<202602270408.87469687366@smtp-relay.mailin.fr>',
@@ -20,8 +20,8 @@ async function testWebhook() {
     const parsedRequest = parseBrevoEvent(requestEventPayload);
     console.log('Parsed Event:', JSON.stringify(parsedRequest, null, 2));
 
-    if (parsedRequest?.eventType === 'delivered') {
-        console.log('✅ OK: "request" mapped to "delivered"');
+    if (parsedRequest?.eventType === 'email_sent') {
+        console.log('✅ OK: "request" mapped to "email_sent"');
     } else {
         console.error('❌ FAIL: "request" not mapped correctly');
     }
@@ -49,7 +49,7 @@ async function testWebhook() {
     const parsedMixed = parseBrevoEvent(mixedCasePayload);
     console.log('Parsed Mixed Event:', JSON.stringify(parsedMixed, null, 2));
 
-    if (parsedMixed?.eventType === 'delivered') {
+    if (parsedMixed?.eventType === 'email_delivered') {
         console.log('✅ OK: Normalization works');
     } else {
         console.error('❌ FAIL: Normalization failed');

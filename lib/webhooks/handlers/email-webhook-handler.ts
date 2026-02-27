@@ -120,21 +120,21 @@ export async function processEmailEvent(
             let shouldUpdateMetrics = true
 
             switch (event.eventType) {
-                case 'sent':
+                case 'email_sent':
                     if (client.status === 'pending') {
                         newStatus = 'sent'
                     }
                     break
-                case 'delivered':
+                case 'email_delivered':
                     newStatus = 'delivered'
                     break
-                case 'bounced':
+                case 'email_bounced':
                     newStatus = 'bounced'
                     break
-                case 'complained':
+                case 'email_complained':
                     newStatus = 'complained'
                     break
-                case 'opened':
+                case 'email_opened':
                     if (client.status === 'sent' || client.status === 'delivered' || client.status === 'pending') {
                         newStatus = 'opened'
                     } else if (client.status === 'opened') {
@@ -142,12 +142,12 @@ export async function processEmailEvent(
                         console.log(`[DEBUG-v2] Client ${client.id} already opened, skipping duplicate metrics`)
                     }
                     break
-                case 'clicked':
+                case 'email_clicked':
                     if (client.status === 'sent' || client.status === 'delivered' || client.status === 'pending') {
                         newStatus = 'opened'
                     }
                     break
-                case 'failed':
+                case 'email_failed':
                     newStatus = 'failed'
                     break
             }
@@ -166,18 +166,18 @@ export async function processEmailEvent(
                 }
 
                 // Mapear eventos a columnas específicas para la UI
-                if (event.eventType === 'delivered') {
+                if (event.eventType === 'email_delivered') {
                     updatePayload.email_delivered_at = event.timestamp
-                } else if (event.eventType === 'opened' || event.eventType === 'clicked') {
+                } else if (event.eventType === 'email_opened' || event.eventType === 'email_clicked') {
                     updatePayload.email_opened_at = event.timestamp
-                } else if (event.eventType === 'bounced') {
+                } else if (event.eventType === 'email_bounced') {
                     // Determinar tipo de rebote
                     const isHard = event.metadata?.originalEvent?.includes('hard') ||
                         event.metadata?.originalEvent === 'invalid_email' ||
                         event.metadata?.originalEvent === 'blocked'
                     updatePayload.email_bounce_type = isHard ? 'hard' : 'soft'
                     updatePayload.email_bounce_reason = event.metadata?.reason || 'Unknown bounce'
-                } else if (event.eventType === 'failed') {
+                } else if (event.eventType === 'email_failed') {
                     updatePayload.error_message = event.metadata?.reason || 'Delivery failed'
                 }
 
@@ -207,7 +207,7 @@ export async function processEmailEvent(
                 await updateReputationMetrics(supabase, client.execution_id, event.eventType)
             }
 
-            if (event.eventType === 'bounced' || event.eventType === 'complained') {
+            if (event.eventType === 'email_bounced' || event.eventType === 'email_complained') {
                 await addToBlacklistFromEvent(supabase, client, event, provider)
             }
         }
@@ -252,27 +252,27 @@ async function updateReputationMetrics(
         let profileField: string | null = null
 
         switch (eventType) {
-            case 'delivered':
+            case 'email_delivered':
                 batchField = 'emails_delivered'
                 dailyField = 'emails_delivered'
                 profileField = 'total_emails_delivered'
                 break
-            case 'opened':
+            case 'email_opened':
                 batchField = 'emails_opened'
                 dailyField = 'emails_opened'
                 profileField = 'total_emails_opened'
                 break
-            case 'bounced':
+            case 'email_bounced':
                 batchField = 'emails_bounced'
                 dailyField = 'emails_bounced'
                 profileField = 'total_emails_bounced'
                 break
-            case 'complained':
+            case 'email_complained':
                 // Los complaints solo se trackean en el perfil
                 profileField = 'total_complaints'
                 break
             default:
-                // Para otros eventos (clicked, failed), no actualizamos métricas de reputación
+                // Para otros eventos (email_clicked, email_failed), no actualizamos métricas de reputación
                 return
         }
 
@@ -468,14 +468,14 @@ async function addToBlacklistFromEvent(
         const customerId = client.customer_id || null
 
         // Determinar tipo de bounce
-        const bounceType = event.eventType === 'bounced'
+        const bounceType = event.eventType === 'email_bounced'
             ? (event.metadata?.bounceType as 'hard' | 'soft' | 'complaint') || 'hard'
             : 'complaint'
 
         // Obtener razón del bounce
         const bounceReason = event.metadata?.bounceReason ||
             event.metadata?.reason ||
-            (event.eventType === 'complained' ? 'User complaint' : 'Unknown bounce reason')
+            (event.eventType === 'email_complained' ? 'User complaint' : 'Unknown bounce reason')
 
         // Agregar a blacklist usando el servicio
         const result = await EmailBlacklistService.addToBlacklist(

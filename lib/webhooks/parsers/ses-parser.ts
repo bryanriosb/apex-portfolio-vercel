@@ -4,7 +4,7 @@
  */
 export interface EmailEvent {
     messageId: string
-    eventType: 'delivered' | 'bounced' | 'opened' | 'complained' | 'failed' | 'clicked' | 'sent'
+    eventType: 'email_delivered' | 'email_bounced' | 'email_opened' | 'email_complained' | 'email_failed' | 'email_clicked' | 'email_sent'
     timestamp: string
     email: string
     metadata?: Record<string, any>
@@ -26,7 +26,7 @@ export function parseSesEvent(body: any): EmailEvent | null {
             case 'Delivery':
                 return {
                     messageId: message.mail.messageId,
-                    eventType: 'delivered',
+                    eventType: 'email_delivered',
                     timestamp: message.delivery.timestamp,
                     email: message.mail.destination[0],
                     metadata: {
@@ -38,7 +38,7 @@ export function parseSesEvent(body: any): EmailEvent | null {
             case 'Bounce':
                 return {
                     messageId: message.mail.messageId,
-                    eventType: 'bounced',
+                    eventType: 'email_bounced',
                     timestamp: message.bounce.timestamp,
                     email: message.bounce.bouncedRecipients[0]?.emailAddress || message.mail.destination[0],
                     metadata: {
@@ -51,7 +51,7 @@ export function parseSesEvent(body: any): EmailEvent | null {
             case 'Complaint':
                 return {
                     messageId: message.mail.messageId,
-                    eventType: 'complained',
+                    eventType: 'email_complained',
                     timestamp: message.complaint.timestamp,
                     email: message.complaint.complainedRecipients[0]?.emailAddress || message.mail.destination[0],
                     metadata: {
@@ -63,7 +63,7 @@ export function parseSesEvent(body: any): EmailEvent | null {
             case 'Open':
                 return {
                     messageId: message.mail.messageId,
-                    eventType: 'opened',
+                    eventType: 'email_opened',
                     timestamp: message.open.timestamp,
                     email: message.mail.destination[0],
                     metadata: {
