@@ -10,7 +10,7 @@ import type {
   CollectionExecution,
   CollectionExecutionUpdate,
 } from '@/lib/models/collection'
-import { SQSBatchService } from '@/lib/services/collection/sqs-batch-service'
+import { CollectionService } from '@/lib/services/collection/collection-service'
 
 export interface ExecutionListResponse {
   data: CollectionExecution[]
@@ -408,33 +408,33 @@ export async function deleteExecutionAction(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await getSupabaseAdminClient()
-    
+
     // Eliminar registros dependientes en orden
     // 1. Eliminar logs de auditoría
     const { error: logsError } = await supabase
       .from('execution_audit_logs')
       .delete()
       .eq('execution_id', id)
-    
+
     if (logsError) {
       console.error('Error deleting audit logs:', logsError)
       throw new Error(`Error al eliminar logs de auditoría: ${logsError.message}`)
     }
-    
+
     // 2. Eliminar clientes asociados
     const { error: clientsError } = await supabase
       .from('collection_clients')
       .delete()
       .eq('execution_id', id)
-    
+
     if (clientsError) {
       console.error('Error deleting clients:', clientsError)
       throw new Error(`Error al eliminar clientes: ${clientsError.message}`)
     }
-    
+
     // 3. Finalmente eliminar la ejecución
     await deleteRecord('collection_executions', id)
-    
+
     return { success: true }
   } catch (error: any) {
     console.error('Error deleting execution:', error)
@@ -496,7 +496,7 @@ export async function getExecutionStatsAction(businessId: string): Promise<{
 }
 
 /**
- * Process execution - enqueue pending batches to SQS
+ * Process execution - trigger Lambda worker directly (no SQS)
  */
 export async function processExecutionAction(
   executionId: string
@@ -504,7 +504,6 @@ export async function processExecutionAction(
   try {
     const supabase = await getSupabaseAdminClient()
 
-    // Get execution
     const { data: execution, error: execError } = await supabase
       .from('collection_executions')
       .select('*')
@@ -519,36 +518,22 @@ export async function processExecutionAction(
       return { success: false, error: 'Solo se pueden procesar ejecuciones en estado pending' }
     }
 
-    // Get pending batches for this execution
-    const { data: batches, error: batchesError } = await supabase
+    const { data: batches } = await supabase
       .from('execution_batches')
-      .select('*')
+      .select('id')
       .eq('execution_id', executionId)
       .eq('status', 'pending')
-
-    if (batchesError) {
-      return { success: false, error: `Error al obtener batches: ${batchesError.message}` }
-    }
 
     if (!batches || batches.length === 0) {
       return { success: false, error: 'No hay batches pendientes para procesar' }
     }
 
-    // Update execution status to processing
     await supabase
       .from('collection_executions')
       .update({ status: 'processing', started_at: new Date().toISOString() })
       .eq('id', executionId)
 
-    // Enqueue batches to SQS
-    await SQSBatchService.enqueueBatches(
-      batches,
-      execution.business_id,
-      {
-        delaySeconds: 0,
-        maxConcurrent: 5,
-      }
-    )
+    await CollectionService.startImmediateExecution(executionId)
 
     return { success: true }
   } catch (error: any) {

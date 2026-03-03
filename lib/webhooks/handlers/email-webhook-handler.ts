@@ -30,7 +30,7 @@ export async function processEmailEvent(
             const { data, error } = await supabase
                 .from('collection_clients')
                 .select('id, customer_id, status, custom_data, execution_id, email_sent_at')
-                .eq('custom_data->>message_id', mid)
+                .eq("custom_data->>'message_id'", mid)
                 .limit(1);
 
             if (data && data.length > 0) {
@@ -56,7 +56,7 @@ export async function processEmailEvent(
             const { data: emailClients, error: emailSearchError } = await supabase
                 .from('collection_clients')
                 .select('id, customer_id, status, custom_data, execution_id, email_sent_at')
-                .or(`custom_data->emails.cs.["${event.email}"],custom_data->>email.eq.${event.email}`)
+                .or(`custom_data->emails.cs.["${event.email}"],custom_data->>'email'.eq.${event.email}`)
                 .order('created_at', { ascending: false })
                 .limit(1)
 
@@ -77,45 +77,59 @@ export async function processEmailEvent(
 
         // Check for existing event to avoid duplicates (Idempotency)
         // We check event_type, client_id and the provider's message_id in event_data
-        const { data: existingEvent, error: checkError } = await supabase
-            .from('collection_events')
-            .select('id')
-            .eq('client_id', client.id)
-            .eq('event_type', event.eventType)
-            .eq('event_data->>message_id', event.messageId)
-            .limit(1)
+        // IMPORTANT: email_opened and email_clicked events can occur multiple times (user opens/clicks multiple times)
+        // So we only deduplicate other event types
+        const canHaveMultipleEvents = event.eventType === 'email_opened' || event.eventType === 'email_clicked'
+        
+        let isDuplicateEvent = false
+        
+        if (!canHaveMultipleEvents) {
+            const { data: existingEvent, error: checkError } = await supabase
+                .from('collection_events')
+                .select('id')
+                .eq('client_id', client.id)
+                .eq('event_type', event.eventType)
+                .eq("event_data->>'message_id'", event.messageId)
+                .limit(1)
 
-        if (checkError) {
-            console.error('[WEBHOOK] Error checking for existing event:', checkError)
-        } else if (existingEvent && existingEvent.length > 0) {
-            console.log(`[WEBHOOK] Duplicate event detected for client ${client.id}, type ${event.eventType}, msg ${event.messageId}. Skipping.`)
-            return;
+            if (checkError) {
+                console.error('[WEBHOOK] Error checking for existing event:', checkError)
+            }
+            
+            isDuplicateEvent = !!(existingEvent && existingEvent.length > 0)
         }
-
-        // Registrar evento en collection_events
-        console.log(`[WEBHOOK] Inserting event: type=${event.eventType}, timestamp=${event.timestamp}`)
-        const { error: eventError } = await supabase.from('collection_events').insert({
-            execution_id: client?.execution_id,
-            client_id: client?.id,
-            event_type: event.eventType,
-            event_status: 'success',
-            event_data: {
-                provider: provider,
-                message_id: event.messageId,
-                email: event.email,
+        
+        if (isDuplicateEvent) {
+            console.log(`[WEBHOOK] Duplicate event detected for client ${client.id}, type ${event.eventType}, msg ${event.messageId}. Will update client status if needed, but skip metrics.`)
+        } else if (canHaveMultipleEvents) {
+            console.log(`[WEBHOOK] Processing ${event.eventType} event for client ${client.id} (can have multiple events per message)`)    
+        } else {
+            // Registrar evento en collection_events
+            console.log(`[WEBHOOK] Inserting event: type=${event.eventType}, timestamp=${event.timestamp}`)
+            const { error: eventError } = await supabase.from('collection_events').insert({
+                execution_id: client?.execution_id,
+                client_id: client?.id,
+                event_type: event.eventType,
+                event_status: 'success',
+                event_data: {
+                    provider: provider,
+                    message_id: event.messageId,
+                    email: event.email,
+                    timestamp: event.timestamp,
+                    metadata: event.metadata,
+                    recovered_by_email: !foundByMessageId
+                },
                 timestamp: event.timestamp,
-                metadata: event.metadata,
-                recovered_by_email: !foundByMessageId
-            },
-            timestamp: event.timestamp,
-        })
+            })
 
-        if (eventError) {
-            console.error('[DEBUG-v2] Error inserting event:', eventError)
-            throw eventError
+            if (eventError) {
+                console.error('[DEBUG-v2] Error inserting event:', eventError)
+                throw eventError
+            }
         }
 
         // Actualizar status del cliente según el evento
+        // IMPORTANT: Always update client status even for duplicate events to ensure state transitions
         if (client) {
             let newStatus = client.status
             let shouldUpdateMetrics = true
@@ -206,17 +220,19 @@ export async function processEmailEvent(
                 )
             }
 
-            if (shouldUpdateMetrics) {
+            // Only update metrics for non-duplicate events
+            if (shouldUpdateMetrics && !isDuplicateEvent) {
                 await updateReputationMetrics(supabase, client.execution_id, event.eventType)
             }
 
+            // Handle blacklist for bounced/complained emails (even for duplicates)
             if (event.eventType === 'email_bounced' || event.eventType === 'email_complained') {
                 await addToBlacklistFromEvent(supabase, client, event, provider)
             }
         }
 
         console.log(
-            `[DEBUG-v2] Processed ${provider} ${event.eventType} event for ${event.email}`
+            `[DEBUG-v2] Processed ${provider} ${event.eventType} event for ${event.email}${isDuplicateEvent ? ' (duplicate - status updated, metrics skipped)' : ''}`
         )
     } catch (error) {
         console.error('[DEBUG-v2] Error processing email event:', error)

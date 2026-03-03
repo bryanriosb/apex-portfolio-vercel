@@ -28,8 +28,15 @@ export function parseBrevoEvent(body: any): EmailEvent | null {
             case 'unsubscribed':
                 normalizedEventType = 'email_complained'
                 break
-            case 'opened':
             case 'unique_opened':
+                // First opening of the email - should update metrics
+                normalizedEventType = 'email_opened'
+                break
+            case 'opened':
+            case 'loadedbyproxy':
+            case 'proxy_open':
+            case 'unique_proxy_open':
+                // Subsequent openings - should NOT update metrics if already opened
                 normalizedEventType = 'email_opened'
                 break
             case 'click':

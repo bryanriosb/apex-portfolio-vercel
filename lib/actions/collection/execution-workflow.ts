@@ -4,9 +4,7 @@ import { getSupabaseAdminClient } from '@/lib/actions/supabase'
 import { CollectionExecutionInsert } from '@/lib/models/collection'
 import { CollectionClientInsert } from '@/lib/models/collection/client'
 import { BatchStrategyService } from '@/lib/services/collection/batch-strategy-service'
-import { SQSBatchService } from '@/lib/services/collection/sqs-batch-service'
 import { EmailReputationService } from '@/lib/services/collection/email-reputation-service'
-import { getCurrentUser } from '@/lib/services/auth/supabase-auth'
 import { ClientProcessor } from '@/lib/services/collection/client-processor'
 import { fetchThresholdsAction } from '@/lib/actions/collection/notification-threshold'
 import { getBusinessByIdAction } from '@/lib/actions/business'
@@ -14,17 +12,17 @@ import { CollectionService } from '@/lib/services/collection/collection-service'
 
 interface CreateExecutionWorkflowParams {
   executionData: CollectionExecutionInsert
-  clients: any[] // Raw grouped clients from the wizard
+  clients: any[]
   strategyConfig?: {
-    strategyId?: string // ID de la estrategia de la DB
+    strategyId?: string
     strategyType: 'ramp_up' | 'batch' | 'conservative' | 'aggressive'
-    domain: string // Dominio remitente (ej: bore.sas)
-    provider?: string // Proveedor de email (brevo, ses, sendgrid, etc.)
-    sendingIp?: string // IP dedicada de SES (opcional)
-    customBatchSize?: number // Para estrategia batch: tamaño custom
-    maxBatchesPerDay?: number // Para estrategia batch: máximo batches/día
-    customIntervals?: number[] // Intervalos custom entre batches
-    startImmediately?: boolean // Si true, encola inmediatamente; si false, solo crea batches
+    domain: string
+    provider?: string
+    sendingIp?: string
+    customBatchSize?: number
+    maxBatchesPerDay?: number
+    customIntervals?: number[]
+    startImmediately?: boolean
   }
 }
 
@@ -38,15 +36,6 @@ interface WorkflowResult {
   error?: string
 }
 
-/**
- * Workflow principal para crear ejecuciones con sistema de batches inteligente
- * 
- * Características:
- * - Estrategia Ramp-Up: Para nuevos dominios, distribuye envíos en múltiples días
- * - Estrategia Batch: Para dominios establecidos, envíos agresivos con batches grandes
- * - Integración SQS: Encola batches para procesamiento asíncrono
- * - Control de reputación: Verifica límites diarios y métricas de engagement
- */
 export async function createExecutionWithClientsAction({
   executionData,
   clients,
@@ -55,7 +44,6 @@ export async function createExecutionWithClientsAction({
   const supabase = await getSupabaseAdminClient()
 
   try {
-    // Validar configuración de estrategia
     if (!strategyConfig) {
       throw new Error('Strategy configuration is required. Must specify strategyType and domain.')
     }
@@ -66,25 +54,20 @@ export async function createExecutionWithClientsAction({
       throw new Error('Domain is required for reputation tracking and deliverability.')
     }
 
-    // Determine template ID (fallback logic) - using business_id directly now
-    let emailTemplateId = executionData.email_template_id;
+    // Determine template ID (fallback logic)
+    let emailTemplateId = executionData.email_template_id
 
     if (!emailTemplateId) {
-      // If no template provided, try to find the lowest threshold template
       try {
-        // Use business_id directly for thresholds
-        const thresholdsResponse = await fetchThresholdsAction(executionData.business_id);
+        const thresholdsResponse = await fetchThresholdsAction(executionData.business_id)
         if (thresholdsResponse.data.length > 0) {
-          // fetchThresholdsAction returns sorted by days_from ASC, so first one is lowest
-          const lowestThreshold = thresholdsResponse.data[0];
+          const lowestThreshold = thresholdsResponse.data[0]
           if (lowestThreshold.email_template_id) {
-            emailTemplateId = lowestThreshold.email_template_id;
-            console.log(`Using lowest threshold template as fallback: ${emailTemplateId} (Threshold: ${lowestThreshold.name})`);
+            emailTemplateId = lowestThreshold.email_template_id
           }
         }
       } catch (err) {
-        console.error('Error fetching fallback template from thresholds:', err);
-        // Continue without template (will fail later if not handled)
+        console.error('Error fetching fallback template from thresholds:', err)
       }
     }
 
@@ -93,7 +76,7 @@ export async function createExecutionWithClientsAction({
       .from('collection_executions')
       .insert({
         ...executionData,
-        email_template_id: emailTemplateId, // Use the resolved template ID
+        email_template_id: emailTemplateId,
         status: 'pending',
         total_clients: clients.length,
       })
@@ -104,67 +87,45 @@ export async function createExecutionWithClientsAction({
       throw new Error(`Error creating execution: ${execError?.message}`)
     }
 
-    // 2. Process clients with thresholds and prepare data for insertion
-    const processedClients = await ClientProcessor.processClientsWithThresholds(
-      {
-        clients,
-        business_id: executionData.business_id,
-        execution_id: execution.id,
-      }
-    )
+    // 2. Process clients with thresholds
+    const processedClients = await ClientProcessor.processClientsWithThresholds({
+      clients,
+      business_id: executionData.business_id,
+      execution_id: execution.id,
+    })
 
-    const clientsToInsert: CollectionClientInsert[] = processedClients.map(
-      (processed) => ({
-        execution_id: processed.execution_id!,
-        customer_id: processed.customer_id,
-        invoices: processed.invoices,
-        status: processed.status as CollectionClientInsert['status'],
-        email_template_id: processed.email_template_id,
-        threshold_id: processed.threshold_id,
-        custom_data: processed.custom_data,
-      })
-    )
+    const clientsToInsert: CollectionClientInsert[] = processedClients.map((processed) => ({
+      execution_id: processed.execution_id!,
+      customer_id: processed.customer_id,
+      invoices: processed.invoices,
+      status: processed.status as CollectionClientInsert['status'],
+      email_template_id: processed.email_template_id,
+      threshold_id: processed.threshold_id,
+      custom_data: processed.custom_data,
+    }))
 
-    console.log(`Creating execution with ${clientsToInsert.length} clients`)
-
-    // Debug: log first client data
-    if (clientsToInsert.length > 0) {
-      console.log('[ExecutionWorkflow] First client to insert:', {
-        email_template_id: clientsToInsert[0].email_template_id,
-        threshold_id: clientsToInsert[0].threshold_id,
-        custom_data_days_overdue: clientsToInsert[0].custom_data?.days_overdue,
-        custom_data_total_days: clientsToInsert[0].custom_data?.total_days_overdue,
-      })
-    }
-
-    // 3. Insert Clients (Batch)
+    // 3. Insert Clients
     const { data: insertedClients, error: clientsError } = await supabase
       .from('collection_clients')
       .insert(clientsToInsert)
       .select()
 
     if (clientsError) {
-      // Rollback: delete execution
-      await supabase
-        .from('collection_executions')
-        .delete()
-        .eq('id', execution.id)
+      await supabase.from('collection_executions').delete().eq('id', execution.id)
       throw new Error(`Error inserting clients: ${clientsError.message}`)
     }
 
     console.log(`Successfully inserted ${insertedClients?.length} clients`)
 
-    // 4. Crear o obtener perfil de reputación para el dominio
-    const reputationProfile = await EmailReputationService.getOrCreateReputationProfile(
+    // 4. Create or get reputation profile
+    await EmailReputationService.getOrCreateReputationProfile(
       executionData.business_id,
       domain,
-      strategyConfig.provider || 'brevo', // Default a Brevo si no se especifica
+      strategyConfig.provider || 'brevo',
       strategyConfig.sendingIp
     )
 
-    console.log(`Reputation profile: ${reputationProfile.domain} - Day ${reputationProfile.current_warmup_day} - Limit ${reputationProfile.daily_sending_limit}`)
-
-    // 5. Crear batches según estrategia
+    // 5. Create batches (timezone is now populated automatically in createBatches)
     const batches = await BatchStrategyService.createBatches(
       insertedClients || [],
       execution.id,
@@ -172,7 +133,7 @@ export async function createExecutionWithClientsAction({
       strategyType,
       domain,
       {
-        strategyId: strategyId,
+        strategyId,
         customBatchSize: strategyConfig.customBatchSize,
         maxBatchesPerDay: strategyConfig.maxBatchesPerDay,
         customIntervals: strategyConfig.customIntervals,
@@ -180,74 +141,30 @@ export async function createExecutionWithClientsAction({
       }
     )
 
-    console.log(`Created ${batches.length} batches with strategy: ${strategyType} (ID: ${strategyId || 'default'})`)
+    console.log(`Created ${batches.length} batches with strategy: ${strategyType}`)
 
-    // 6. Encolar batches en SQS (si se solicita inicio inmediato o está programado)
-    let queueResult = null
-
+    // 6. Immediate mode: invoke Lambda directly — no SQS
     if (executionData.execution_mode === 'immediate' || strategyConfig.startImmediately) {
-      // Encolar todos los batches pendientes
-      queueResult = await SQSBatchService.enqueueBatches(
-        batches,
-        executionData.business_id,
-        {
-          delaySeconds: 0,
-          maxConcurrent: strategyType === 'batch' || strategyType === 'aggressive' ? 5 : 1,
-        }
-      )
-
-      console.log(`Queued ${queueResult.queuedCount} batches to SQS`)
-
-      if (queueResult.failedCount > 0) {
-        console.warn(`Failed to queue ${queueResult.failedCount} batches`)
-      }
-
-      // Invocar worker inmediatamente (ahora que ya están en SQS)
-      await CollectionService.startImmediateExecution(execution.id)
-
-      // Actualizar estado de ejecución
       await supabase
         .from('collection_executions')
-        .update({
-          status: 'processing',
-          started_at: new Date().toISOString(),
-        })
+        .update({ status: 'processing', started_at: new Date().toISOString() })
         .eq('id', execution.id)
 
+      await CollectionService.startImmediateExecution(execution.id)
+
     } else if (executionData.execution_mode === 'scheduled' && executionData.scheduled_at) {
-      // Para ejecuciones programadas:
-      // 1. Encolar todos los batches en SQS (con sus respectivos scheduled_for)
-      queueResult = await SQSBatchService.enqueueBatches(
-        batches,
-        executionData.business_id,
-        {
-          delaySeconds: 0,
-          maxConcurrent: strategyType === 'batch' || strategyType === 'aggressive' ? 5 : 1,
-        }
-      )
-
-      console.log(`Queued ${queueResult.queuedCount} batches to SQS for scheduled execution`)
-
-      // 2. Crear regla en EventBridge Scheduler para disparar el worker a la hora programada
+      // Scheduled mode: create EventBridge One-time schedule for first batch
       try {
         const scheduledDate = new Date(executionData.scheduled_at!)
-
-        console.log(`[ExecutionWorkflow] Scheduling execution ${execution.id} for ${executionData.scheduled_at}`)
-
-        // Fetch business timezone
         const business = await getBusinessByIdAction(executionData.business_id)
         const businessTimezone = business?.timezone || 'America/Bogota'
 
-        // El worker se despertará en esa fecha y buscará qué batches procesar en SQS
         const { ruleName } = await CollectionService.scheduleExecution(
           execution.id,
           scheduledDate,
           businessTimezone
         )
 
-        console.log(`[ExecutionWorkflow] Successfully created EventBridge schedule: ${ruleName}`)
-
-        // Actualizar ejecución con información de programación
         await supabase
           .from('collection_executions')
           .update({
@@ -257,41 +174,32 @@ export async function createExecutionWithClientsAction({
           })
           .eq('id', execution.id)
 
+        console.log(`Successfully created EventBridge schedule: ${ruleName}`)
       } catch (scheduleError: any) {
-        console.error('[ExecutionWorkflow] Failed to schedule execution:', scheduleError)
-
-        // Rollback: Delete the execution since we couldn't schedule it
-        await supabase
-          .from('collection_executions')
-          .delete()
-          .eq('id', execution.id)
-
+        console.error('Failed to schedule execution:', scheduleError)
+        await supabase.from('collection_executions').delete().eq('id', execution.id)
         throw new Error(`Failed to schedule execution in EventBridge: ${scheduleError.message}`)
       }
     }
 
-    // 7. Calcular tiempo estimado de finalización
     const lastBatch = batches[batches.length - 1]
-    const estimatedCompletionTime = lastBatch?.scheduled_for
+    const estimatedCompletionTime = lastBatch?.scheduled_for ?? null
 
-    // 8. Retornar resultado
     let message: string
     if (executionData.execution_mode === 'scheduled' && executionData.scheduled_at) {
-      message = `Successfully created scheduled execution with ${batches.length} batches using ${strategyType} strategy. EventBridge schedule created for ${executionData.scheduled_at}.`
+      message = `Ejecución programada creada con ${batches.length} batches (${strategyType}). EventBridge configurado para ${executionData.scheduled_at}.`
     } else {
-      message = `Successfully created execution with ${batches.length} batches using ${strategyType} strategy. Processing started with first batch.`
+      message = `Ejecución creada con ${batches.length} batches (${strategyType}). Procesamiento iniciado.`
     }
 
-    const result: WorkflowResult = {
+    return {
       success: true,
       executionId: execution.id,
       batchesCreated: batches.length,
       totalClients: clients.length,
-      estimatedCompletionTime: estimatedCompletionTime,
-      message: message,
+      estimatedCompletionTime,
+      message,
     }
-
-    return result
 
   } catch (error: any) {
     console.error('Workflow Error:', error)
@@ -302,39 +210,6 @@ export async function createExecutionWithClientsAction({
   }
 }
 
-/**
- * Reintenta encolar batches fallidos de una ejecución
- */
-export async function retryFailedBatchesAction(
-  executionId: string
-): Promise<{ success: boolean; retried: number; succeeded: number; failed: number; message?: string }> {
-  const supabase = await getSupabaseAdminClient()
-
-  try {
-    const result = await SQSBatchService.retryFailedBatches(executionId)
-
-    return {
-      success: true,
-      retried: result.retried,
-      succeeded: result.succeeded,
-      failed: result.failed,
-      message: `Retried ${result.retried} batches: ${result.succeeded} succeeded, ${result.failed} failed`,
-    }
-  } catch (error: any) {
-    console.error('Retry Error:', error)
-    return {
-      success: false,
-      retried: 0,
-      succeeded: 0,
-      failed: 0,
-      message: error.message,
-    }
-  }
-}
-
-/**
- * Obtiene el progreso de una ejecución incluyendo métricas de batches
- */
 export async function getExecutionProgressAction(
   executionId: string
 ): Promise<{
@@ -347,34 +222,21 @@ export async function getExecutionProgressAction(
     processedClients: number
     completionPercentage: number
     estimatedCompletionTime?: string
-    queueStats?: {
-      totalQueued: number
-      totalInFlight: number
-      totalProcessed: number
-      totalFailed: number
-    }
   }
   error?: string
 }> {
-  const supabase = await getSupabaseAdminClient()
-
   try {
     const progress = await BatchStrategyService.getExecutionProgress(executionId)
-    const queueStats = await SQSBatchService.getQueueStats(executionId)
 
     return {
       success: true,
       progress: {
         ...progress,
         estimatedCompletionTime: progress.estimatedCompletionTime?.toISOString() || undefined,
-        queueStats,
       },
     }
   } catch (error: any) {
     console.error('Progress Error:', error)
-    return {
-      success: false,
-      error: error.message,
-    }
+    return { success: false, error: error.message }
   }
 }

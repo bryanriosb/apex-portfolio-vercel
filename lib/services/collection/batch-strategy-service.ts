@@ -165,7 +165,15 @@ export class BatchStrategyService {
         domain
       )
 
-    // 2. Obtener estrategia
+    // 2. Obtener timezone del negocio (necesario para EventBridge scheduling)
+    const { data: businessData } = await supabase
+      .from('businesses')
+      .select('timezone')
+      .eq('id', businessId)
+      .single()
+    const businessTimezone = businessData?.timezone || 'America/Bogota'
+
+    // 3. Obtener estrategia
     let strategy: DeliveryStrategy
 
     if (options?.strategyId) {
@@ -215,13 +223,13 @@ export class BatchStrategyService {
       }
     }
 
-    // 3. Verificar cuota disponible según reputación
+    // 4. Verificar cuota disponible según reputación
     const quotaInfo = await EmailReputationService.getRemainingDailyQuota(
       reputationProfile.id,
       options?.startDate || new Date()
     )
 
-    // 4. Seleccionar algoritmo según estrategia
+    // 5. Seleccionar algoritmo según estrategia
     let batches: ExecutionBatchInsert[] = []
 
     switch (strategy.strategy_type) {
@@ -233,6 +241,7 @@ export class BatchStrategyService {
           strategy,
           reputationProfile,
           quotaInfo,
+          businessTimezone,
           options?.startDate
         )
         break
@@ -243,6 +252,7 @@ export class BatchStrategyService {
           clients,
           executionId,
           strategy,
+          businessTimezone,
           options
         )
         break
@@ -251,7 +261,7 @@ export class BatchStrategyService {
         throw new Error(`Unknown strategy type: ${strategy.strategy_type}`)
     }
 
-    // 5. Persistir batches en BD
+    // 6. Persistir batches en BD
     if (batches.length === 0) {
       return []
     }
@@ -281,6 +291,7 @@ export class BatchStrategyService {
       daily_sending_limit: number
     },
     quotaInfo: { canSend: boolean; remaining: number; dailyLimit: number },
+    timezone: string,
     startDate?: Date
   ): ExecutionBatchInsert[] {
     const batches: ExecutionBatchInsert[] = []
@@ -290,16 +301,13 @@ export class BatchStrategyService {
     const totalClients = clients.length
     const intervalMinutes = strategy.batch_interval_minutes || 60
 
-    // Calcular límites según el día de warm-up actual
     const warmupDay = reputationProfile.current_warmup_day
     let dailyLimit =
       quotaInfo.remaining > 0
         ? Math.min(quotaInfo.remaining, quotaInfo.dailyLimit)
         : this.getRampUpLimitForDay(warmupDay, strategy)
 
-    // Crear batches distribuidos en días
     while (clientIndex < totalClients) {
-      // Determinar cuántos emails podemos enviar hoy
       const batchesToday = batches.filter((b) => {
         if (!b.scheduled_for) return false
         const batchDate = new Date(b.scheduled_for)
@@ -310,27 +318,22 @@ export class BatchStrategyService {
       const remainingToday = dailyLimit - sentToday
 
       if (remainingToday <= 0) {
-        // Pasar al siguiente día
         currentDay = new Date(currentDay)
         currentDay.setDate(currentDay.getDate() + 1)
-        // El siguiente día tendrá un límite diferente según el progreso
         const nextDayWarmup = warmupDay + Math.floor(batches.length / 2) + 1
         dailyLimit = this.getRampUpLimitForDay(nextDayWarmup, strategy)
         continue
       }
 
-      // Calcular tamaño de este batch
       const batchSize = Math.min(
         strategy.batch_size || 50,
         remainingToday,
         totalClients - clientIndex
       )
 
-      // Seleccionar clientes para este batch
       const batchClients = clients.slice(clientIndex, clientIndex + batchSize)
       const clientIds = batchClients.map((c) => c.id)
 
-      // Calcular hora de envío respetando preferencias
       const baseScheduledTime = this.calculateSendTime(
         currentDay,
         strategy.preferred_send_hour_start || 9,
@@ -338,7 +341,6 @@ export class BatchStrategyService {
         strategy.avoid_weekends !== false
       )
 
-      // Aplicar intervalo si hay más de un batch en el mismo día
       const intervalOffset = batchesToday.length * intervalMinutes
       const scheduledTime = new Date(
         baseScheduledTime.getTime() + intervalOffset * 60000
@@ -353,12 +355,12 @@ export class BatchStrategyService {
         total_clients: batchClients.length,
         client_ids: clientIds,
         scheduled_for: scheduledTime.toISOString(),
+        timezone,
       })
 
       clientIndex += batchSize
       batchNumber++
 
-      // Si llenamos el día, pasar al siguiente
       if (clientIndex < totalClients && batchSize >= remainingToday) {
         currentDay = new Date(currentDay)
         currentDay.setDate(currentDay.getDate() + 1)
@@ -390,6 +392,7 @@ export class BatchStrategyService {
     clients: CollectionClient[],
     executionId: string,
     strategy: DeliveryStrategy,
+    timezone: string,
     options?: {
       customBatchSize?: number
       customIntervals?: number[]
@@ -409,19 +412,16 @@ export class BatchStrategyService {
       const remainingClients = totalClients - clientIndex
       const currentBatchSize = Math.min(batchSize, remainingClients)
 
-      // Seleccionar clientes para este batch
       const batchClients = clients.slice(
         clientIndex,
         clientIndex + currentBatchSize
       )
       const clientIds = batchClients.map((c) => c.id)
 
-      // Calcular intervalo
       const interval =
         options?.customIntervals?.[batchNumber - 1] ??
         (batchNumber === 1 ? 0 : intervalMinutes)
 
-      // Avanzar el tiempo para este batch
       if (interval > 0) {
         currentTime = new Date(currentTime.getTime() + interval * 60000)
       }
@@ -435,6 +435,7 @@ export class BatchStrategyService {
         total_clients: batchClients.length,
         client_ids: clientIds,
         scheduled_for: currentTime.toISOString(),
+        timezone,
       })
 
       clientIndex += currentBatchSize

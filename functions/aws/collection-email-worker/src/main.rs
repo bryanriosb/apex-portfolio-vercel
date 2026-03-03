@@ -8,9 +8,9 @@ use regex::Regex;
 use rusty_money::{Money, iso};
 use css_inline::{CSSInliner, InlineOptions};
 use aws_config::BehaviorVersion;
-use aws_sdk_sqs::Client as SqsClient;
 use aws_sdk_scheduler::{Client as SchedulerClient, types::{Target, FlexibleTimeWindow, FlexibleTimeWindowMode, ActionAfterCompletion}};
 use chrono::{DateTime, Utc, Timelike, Datelike};
+use chrono_tz::Tz;
 
 mod models;
 mod supabase;
@@ -18,14 +18,10 @@ mod ses;
 mod email_provider;
 mod factory;
 mod providers;
-mod distributed_lock;
 mod control_tower;
 
-use models::{SqsEvent, BatchMessage, SqsMessage};
 use supabase::SupabaseService;
 use email_provider::{EmailProvider, EmailMessage};
-use std::collections::HashSet;
-use distributed_lock::SupabaseLock;
 
 use control_tower::ExecutionLogger;
 
@@ -211,312 +207,217 @@ fn wrap_with_styles(html_body: &str) -> String {
     )
 }
 
-async fn handle_future_batch(
-    sqs_client: &SqsClient,
-    queue_url: &str,
-    receipt_handle: &str,
-    scheduled_for: &str,
-    logger: &ExecutionLogger,
-    batch_msg: &BatchMessage,
-) -> Result<bool, Box<dyn Error + Send + Sync>> {
-    let scheduled_time = DateTime::parse_from_rfc3339(scheduled_for)?.with_timezone(&Utc);
-    let now = Utc::now();
-    
-    if scheduled_time > now {
-        let delay_seconds = (scheduled_time - now).num_seconds();
-        
-        // SQS visibility timeout limit is 12 hours (43200 seconds)
-        let visibility_timeout = if delay_seconds > 43200 {
-            43200
-        } else {
-            delay_seconds as i32
-        };
-
-        if visibility_timeout > 0 {
-            info!(
-                "Batch {} scheduled for future ({}). Hiding for {} seconds.", 
-                batch_msg.batch_id, 
-                scheduled_for, 
-                visibility_timeout
-            );
-
-            sqs_client
-                .change_message_visibility()
-                .queue_url(queue_url)
-                .receipt_handle(receipt_handle)
-                .visibility_timeout(visibility_timeout)
-                .send()
-                .await?;
-
-            logger.log_event(
-                &batch_msg.execution_id, 
-                Some(&batch_msg.batch_id), 
-                "DEFERRED", 
-                Some(serde_json::json!({
-                    "delay_seconds": visibility_timeout,
-                    "scheduled_for": scheduled_for
-                }))
-            ).await?;
-
-            return Ok(true); // Handled as future batch
-        }
-    }
-    
-    Ok(false) // Ready to process
-}
-
 async fn func(event: LambdaEvent<Value>) -> Result<Value, lambda_runtime::Error> {
     let (payload, _context) = event.into_parts();
     let worker_id = uuid::Uuid::new_v4().to_string();
     
     info!("Worker {} started with payload: {:?}", worker_id, payload);
 
-    // AWS Clients
     let config = aws_config::load_defaults(BehaviorVersion::latest()).await;
-    let sqs_client = SqsClient::new(&config);
     let scheduler_client = SchedulerClient::new(&config);
-    
-    // Services
+
     let supabase = SupabaseService::new();
     let provider = factory::create_email_provider().await;
-    let lock = SupabaseLock::new(
-        std::env::var("SUPABASE_URL").unwrap_or_default(),
-        std::env::var("SUPABASE_SECRET_KEY").unwrap_or_default(),
-        worker_id.clone()
-    );
 
-    // Control Tower Logger
     let logger = ExecutionLogger::new(
         std::env::var("SUPABASE_URL").unwrap_or_default(),
         std::env::var("SUPABASE_SECRET_KEY").unwrap_or_default(),
         worker_id.clone()
     );
 
-    let queue_url = std::env::var("SQS_BATCH_QUEUE_URL").unwrap_or_default();
-    
-    let mut total_processed = 0;
-    let mut total_failed = 0;
-
-    // Check if this is a direct action or an SQS event
     let action = payload.get("action").and_then(|v| v.as_str()).unwrap_or("none");
-    
-    if action == "wake_up" || action == "start_execution" {
-        info!("Action '{}' received. Polling SQS manually.", action);
-        let result = process_sqs_manually(&sqs_client, &supabase, provider.as_ref(), &logger, &queue_url, &worker_id).await?;
-        total_processed = result.0;
-        total_failed = result.1;
-    } else if action == "process_execution" {
-        // Direct execution mode: process pending clients from DB without SQS
-        if let Some(exec_id) = payload.get("execution_id").and_then(|v| v.as_str()) {
-            info!("Processing execution directly: {}", exec_id);
-            match process_execution(exec_id).await {
-                Ok(_) => {
-                    info!("Successfully processed execution: {}", exec_id);
-                    total_processed = 1;
-                }
+    let execution_id = payload.get("execution_id").and_then(|v| v.as_str());
+
+    let mut processed = 0i32;
+    let mut failed = 0i32;
+
+    match (action, execution_id) {
+        ("wake_up", Some(exec_id)) | ("start_execution", Some(exec_id)) => {
+            info!("Action '{}' for execution {}", action, exec_id);
+            match process_execution_from_db(
+                exec_id,
+                &supabase,
+                provider.as_ref(),
+                &scheduler_client,
+                &logger,
+            ).await {
+                Ok(count) => processed = count,
                 Err(e) => {
-                    error!("Failed to process execution {}: {}", exec_id, e);
-                    total_failed = 1;
+                    error!("process_execution_from_db failed for {}: {}", exec_id, e);
+                    failed = 1;
                 }
             }
-        } else {
-            error!("process_execution action requires execution_id");
-            total_failed = 1;
         }
-    } else if let Some(records) = payload.get("Records") {
-        info!("SQS Records received. Processing batch event.");
-        if let Ok(sqs_event) = serde_json::from_value::<SqsEvent>(payload.clone()) {
-            let result = process_sqs_records(sqs_event.records, &sqs_client, &supabase, provider.as_ref(), &logger, &queue_url, &worker_id).await?;
-            total_processed = result.0;
-            total_failed = result.1;
-        } else {
-            error!("Failed to parse SQS event records");
+        _ => {
+            warn!("Unexpected action '{}' or missing execution_id. Payload: {:?}", action, payload);
         }
-    } else {
-        warn!("Unexpected event format. Payload: {:?}", payload);
     }
 
-    // Always attempt to manage scheduling at the end, even if we processed nothing
-    if let Err(e) = manage_scheduling(&supabase, &lock, &worker_id, &scheduler_client).await {
-        error!("Failed to manage scheduling: {}", e);
-    }
-
-    Ok(serde_json::json!({
+    Ok(json!({
         "status": "completed",
         "worker_id": worker_id,
-        "processed": total_processed,
-        "failed": total_failed
+        "processed": processed,
+        "failed": failed
     }))
 }
 
-async fn process_sqs_manually(
-    sqs_client: &SqsClient,
+/// Main orchestrator: claim the next due batch, process it, schedule the next one.
+async fn process_execution_from_db(
+    execution_id: &str,
     supabase: &SupabaseService,
     provider: &dyn EmailProvider,
-    logger: &ExecutionLogger,
-    queue_url: &str,
-    worker_id: &str,
-) -> Result<(i32, i32), Box<dyn Error + Send + Sync>> {
-    // Poll SQS (max 10 messages)
-    let response = sqs_client.receive_message()
-        .queue_url(queue_url)
-        .max_number_of_messages(10)
-        .wait_time_seconds(5)
-        .visibility_timeout(300)
-        .send()
-        .await?;
-
-    let messages = response.messages.unwrap_or_default();
-    info!("Pulled {} messages from SQS", messages.len());
-
-    let records: Vec<SqsMessage> = messages.into_iter().map(|m| SqsMessage {
-        message_id: m.message_id,
-        receipt_handle: m.receipt_handle,
-        body: m.body,
-    }).collect();
-
-    process_sqs_records(records, sqs_client, supabase, provider, logger, queue_url, worker_id).await
-}
-
-async fn process_sqs_records(
-    records: Vec<SqsMessage>,
-    sqs_client: &SqsClient,
-    supabase: &SupabaseService,
-    provider: &dyn EmailProvider,
-    logger: &ExecutionLogger,
-    queue_url: &str,
-    _worker_id: &str,
-) -> Result<(i32, i32), Box<dyn Error + Send + Sync>> {
-    let mut processed_count = 0;
-    let mut failed_count = 0;
-
-    for sqs_message in records {
-        if let Some(body) = &sqs_message.body {
-            if let Some(batch_msg) = BatchMessage::from_body(body) {
-                let receipt_handle = sqs_message.receipt_handle.as_deref().unwrap_or_default();
-                
-                // Handle scheduled batches (Iterative Visibility)
-                if let Some(scheduled_for) = &batch_msg.scheduled_for {
-                    match handle_future_batch(sqs_client, queue_url, receipt_handle, scheduled_for, logger, &batch_msg).await {
-                        Ok(is_future) => {
-                            if is_future {
-                                continue;
-                            }
-                        }
-                        Err(e) => {
-                            error!("Error in handle_future_batch for {}: {}", batch_msg.batch_id, e);
-                        }
-                    }
-                }
-
-                // Log PICKED_UP
-                let _ = logger.log_event(&batch_msg.execution_id, Some(&batch_msg.batch_id), "PICKED_UP", None).await;
-
-                // Processing logic (with retries and circuit breaker)
-                // [Omit the rest for brevity as I'll move it to process_single_batch]
-                match process_batch(supabase, provider, &batch_msg).await {
-                    Ok(_) => {
-                        processed_count += 1;
-                        let _ = sqs_client.delete_message().queue_url(queue_url).receipt_handle(receipt_handle).send().await;
-                        let _ = logger.log_event(&batch_msg.execution_id, Some(&batch_msg.batch_id), "COMPLETED", None).await;
-                    }
-                    Err(e) => {
-                        failed_count += 1;
-                        error!("Failed to process batch {}: {}", batch_msg.batch_id, e);
-                        let _ = logger.log_event(&batch_msg.execution_id, Some(&batch_msg.batch_id), "FAILED", Some(json!({ "error": e.to_string() }))).await;
-                    }
-                }
-            }
-        }
-    }
-
-    Ok((processed_count, failed_count))
-}
-
-async fn manage_scheduling(
-    supabase: &SupabaseService,
-    lock: &SupabaseLock,
-    worker_id: &str,
     scheduler_client: &SchedulerClient,
-) -> Result<(), Box<dyn Error + Send + Sync>> {
-    // 1. Try to acquire lock
-    // TTL of 5 minutes as per documentation
-    if !lock.try_acquire(300).await? {
-        info!("ManageScheduling: Another worker has the lock. Skipping.");
-        return Ok(());
+    logger: &ExecutionLogger,
+) -> Result<i32, Box<dyn Error + Send + Sync>> {
+    // Verify execution is still active
+    let execution = supabase.get_execution(execution_id).await?;
+    if execution.status == "completed" || execution.status == "failed" {
+        info!("Execution {} already finished, skipping", execution_id);
+        return Ok(0);
     }
 
-    info!("ManageScheduling: Lock acquired. Checking for next execution.");
+    // Find the first pending batch with scheduled_for <= now
+    let pending_batches = supabase.get_pending_batches_for_execution(execution_id).await?;
+    let now = Utc::now();
 
-    // 2. Find the earliest pending batch time across ALL campaigns
-    let next_time = match supabase.get_earliest_pending_batch_time().await {
-        Ok(time) => time,
-        Err(e) => {
-            error!("ManageScheduling: Failed to fetch next batch time: {}", e);
-            let _ = lock.release().await;
-            return Err(e);
+    let due_batch = pending_batches.into_iter().find(|b| {
+        b.scheduled_for.as_deref()
+            .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+            .map(|dt| dt.with_timezone(&Utc) <= now)
+            .unwrap_or(true) // If no scheduled_for, treat as immediately due
+    });
+
+    let batch = match due_batch {
+        Some(b) => b,
+        None => {
+            info!("No due batch found for execution {} right now", execution_id);
+            // Still try to schedule next future batch if any
+            if let Err(e) = schedule_next_batch(execution_id, supabase, scheduler_client).await {
+                error!("Failed to schedule next batch for {}: {}", execution_id, e);
+            }
+            return Ok(0);
         }
     };
 
-    if let Some(scheduled_time) = next_time {
-        info!("ManageScheduling: Next execution scheduled for {}", scheduled_time);
-        
-        // 3. Update EventBridge Scheduler rule
-        if let Err(e) = schedule_eventbridge(scheduler_client, &scheduled_time).await {
-            error!("ManageScheduling: Failed to update EventBridge: {}", e);
-        }
-    } else {
-        info!("ManageScheduling: No pending batches found. Scheduling safety wake-up in 1 hour.");
-        let safety_time = Utc::now() + chrono::Duration::hours(1);
-        let _ = schedule_eventbridge(scheduler_client, &safety_time).await;
+    // Atomically claim the batch (pending -> processing)
+    let claimed = supabase.claim_batch(&batch.id).await?;
+    if !claimed {
+        info!("Batch {} already claimed by another worker, skipping", batch.id);
+        return Ok(0);
     }
 
-    // 4. Release lock
-    let _ = lock.release().await;
-    Ok(())
+    info!("Claimed batch {} for execution {}", batch.id, execution_id);
+    let _ = logger.log_event(execution_id, Some(&batch.id), "PICKED_UP", None).await;
+
+    // Process the batch
+    let business_name = supabase.get_business_name(&execution.business_id).await;
+    let result = process_batch_from_db(
+        supabase,
+        provider,
+        execution_id,
+        &execution.business_id,
+        &batch.id,
+        &batch.client_ids,
+        &business_name,
+        &execution,
+    ).await;
+
+    match result {
+        Ok(count) => {
+            supabase.update_batch_status(&batch.id, "completed").await?;
+            let _ = logger.log_event(execution_id, Some(&batch.id), "COMPLETED", None).await;
+            info!("Batch {} completed ({} emails sent)", batch.id, count);
+
+            // Schedule the next pending batch (if any)
+            if let Err(e) = schedule_next_batch(execution_id, supabase, scheduler_client).await {
+                error!("Failed to schedule next batch for {}: {}", execution_id, e);
+            }
+
+            check_and_complete_execution(supabase, execution_id).await;
+            Ok(count)
+        }
+        Err(e) => {
+            error!("Batch {} failed: {}", batch.id, e);
+            supabase.update_batch_status(&batch.id, "failed").await?;
+            let _ = logger.log_event(execution_id, Some(&batch.id), "FAILED", Some(json!({"error": e.to_string()}))).await;
+
+            // Still try to schedule next batch so execution can continue
+            if let Err(e2) = schedule_next_batch(execution_id, supabase, scheduler_client).await {
+                error!("Failed to schedule next batch after failure for {}: {}", execution_id, e2);
+            }
+
+            Err(e)
+        }
+    }
 }
 
-async fn schedule_eventbridge(
-    client: &SchedulerClient,
-    scheduled_time: &DateTime<Utc>,
+/// Schedule an EventBridge One-time schedule for the next pending batch of an execution.
+/// The cron expression is built in the batch's local timezone — matching how the TypeScript
+/// side uses `Intl.DateTimeFormat` to convert UTC → local before extracting time fields.
+async fn schedule_next_batch(
+    execution_id: &str,
+    supabase: &SupabaseService,
+    scheduler_client: &SchedulerClient,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let rule_name = std::env::var("EVENTBRIDGE_RULE_NAME").unwrap_or_else(|_| "collection-email-scheduler".to_string());
+    let next_batch = supabase.get_next_pending_batch(execution_id).await?;
+
+    let Some(batch) = next_batch else {
+        info!("No future pending batches for execution {}. Nothing to schedule.", execution_id);
+        return Ok(());
+    };
+
+    let scheduled_for = batch.scheduled_for.as_deref().unwrap_or_default();
+    let timezone_str = batch.timezone.as_deref().unwrap_or("America/Bogota");
+
+    // Parse the stored UTC timestamp
+    let utc_time: DateTime<Utc> = DateTime::parse_from_rfc3339(scheduled_for)?
+        .with_timezone(&Utc);
+
+    // EventBridge minimum is 1 minute in the future
+    let utc_time = if utc_time <= Utc::now() + chrono::Duration::minutes(1) {
+        Utc::now() + chrono::Duration::minutes(2)
+    } else {
+        utc_time
+    };
+
+    // ─── KEY FIX ────────────────────────────────────────────────────────────────
+    // Convert UTC → local timezone BEFORE extracting cron fields.
+    // ScheduleExpressionTimezone tells EventBridge how to interpret the cron.
+    // So cron fields MUST be in that timezone — exactly what TypeScript does with
+    // Intl.DateTimeFormat({ timeZone: timezone }).
+    // ────────────────────────────────────────────────────────────────────────────
+    let tz: Tz = timezone_str.parse().unwrap_or(chrono_tz::America::Bogota);
+    let local_time = utc_time.with_timezone(&tz);
+
+    let cron_expr = format!(
+        "cron({} {} {} {} ? {})",
+        local_time.minute(),  // local minute
+        local_time.hour(),    // local hour
+        local_time.day(),     // local day
+        local_time.month(),   // local month
+        local_time.year()     // local year
+    );
+
+    let schedule_name = format!("batch-{}", batch.id);
     let lambda_arn = std::env::var("LAMBDA_EMAIL_WORKER_ARN").expect("LAMBDA_EMAIL_WORKER_ARN must be set");
     let role_arn = std::env::var("EVENTBRIDGE_SCHEDULER_ROLE_ARN").expect("EVENTBRIDGE_SCHEDULER_ROLE_ARN must be set");
 
-    // Format cron: cron(minutes hours day-of-month month day-of-week year)
-    let cron_expr = format!(
-        "cron({} {} {} {} ? {})",
-        scheduled_time.minute(),
-        scheduled_time.hour(),
-        scheduled_time.day(),
-        scheduled_time.month(),
-        scheduled_time.year()
+    info!(
+        "Creating EventBridge schedule '{}' for batch {} | UTC: {} | local ({}): {} | cron: {}",
+        schedule_name, batch.id, utc_time.to_rfc3339(), timezone_str, local_time.to_rfc3339(), cron_expr
     );
 
-    info!("Updating EventBridge schedule '{}' to '{}'", rule_name, cron_expr);
-
-    // Note: We use create_schedule and handle ConflictException by deleting and recreating, 
-    // or just assume we can recreate if we use a specific name and it's set to delete after completion.
-    // Actually, EventBridge Scheduler 'create_schedule' fails if it exists.
-    // THE BEST WAY: Create it, and if it fails, delete and create, or just use put_rule (if it were EventBridge Rules).
-    // For Scheduler, we can try to delete it first.
-    
-    let _ = client.delete_schedule()
-        .name(&rule_name)
-        .group_name("default")
-        .send()
-        .await;
-
-    client.create_schedule()
-        .name(&rule_name)
+    let result = scheduler_client.create_schedule()
+        .name(&schedule_name)
         .schedule_expression(&cron_expr)
+        .schedule_expression_timezone(timezone_str)  // EventBridge interprets cron in this tz
         .target(
             Target::builder()
-                .arn(lambda_arn)
-                .role_arn(role_arn)
-                .input(serde_json::to_string(&serde_json::json!({
+                .arn(&lambda_arn)
+                .role_arn(&role_arn)
+                .input(serde_json::to_string(&json!({
                     "action": "wake_up",
+                    "execution_id": execution_id,
                     "source": "eventbridge_scheduler"
                 }))?)
                 .build()?
@@ -528,40 +429,188 @@ async fn schedule_eventbridge(
         )
         .action_after_completion(ActionAfterCompletion::Delete)
         .send()
-        .await?;
+        .await;
 
-    Ok(())
+    match result {
+        Ok(_) => {
+            info!("EventBridge schedule '{}' created successfully", schedule_name);
+            Ok(())
+        }
+        Err(e) => {
+            let err_str = e.to_string();
+            if err_str.contains("ConflictException") || err_str.contains("already exists") {
+                info!("Schedule '{}' already exists (another worker created it)", schedule_name);
+                Ok(())
+            } else {
+                Err(Box::new(e.into_service_error()))
+            }
+        }
+    }
 }
 
-async fn process_batch(
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_currency() {
+        assert_eq!(format_currency(1500000.0), "1.500.000");
+    }
+
+    #[test]
+    fn test_preprocess_bare_td() {
+        // Basic: no p-wrapper, no extra cells
+        let input = "<tr><td>{{#each invoices}}</td></tr>";
+        assert_eq!(preprocess_tiptap_template(input), "{{#each invoices}}");
+    }
+
+    #[test]
+    fn test_preprocess_bare_td_empty_siblings() {
+        // Legacy snippet: 4 bare empty <td></td> siblings
+        let input = "<tr><td style=\"color:gray\">{{#each invoices}}</td><td></td><td></td><td></td><td></td></tr>";
+        assert_eq!(preprocess_tiptap_template(input), "{{#each invoices}}");
+    }
+
+    #[test]
+    fn test_preprocess_p_wrapper_inside_td() {
+        // TipTap wraps content in <p>; empty siblings become <td><p></p></td>
+        let input = "<tr><td style=\"color:gray\"><p>{{#each invoices}}</p></td><td><p></p></td><td><p></p></td><td><p></p></td><td><p></p></td></tr>";
+        assert_eq!(preprocess_tiptap_template(input), "{{#each invoices}}");
+    }
+
+    #[test]
+    fn test_preprocess_end_helper_with_p_wrapper() {
+        // Same pattern for closing {{/each}}
+        let input = "<tr><td style=\"color:gray\"><p>{{/each}}</p></td><td><p></p></td><td><p></p></td></tr>";
+        assert_eq!(preprocess_tiptap_template(input), "{{/each}}");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // EventBridge timezone cron tests
+    //
+    // Core property: cron fields MUST reflect the LOCAL time in the target timezone.
+    // ScheduleExpressionTimezone tells EventBridge how to interpret the cron, so the
+    // fields in the cron expression must already be in that timezone — NOT UTC.
+    //
+    // This mirrors how TypeScript does it:
+    //   new Intl.DateTimeFormat({ timeZone }).formatToParts(utcDate)
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /// Helper to parse a UTC RFC3339 string into DateTime<Utc>
+    fn utc(s: &str) -> DateTime<Utc> {
+        DateTime::parse_from_rfc3339(s)
+            .unwrap()
+            .with_timezone(&Utc)
+    }
+
+    #[test]
+    fn test_bogota_is_utc_minus_5() {
+        // America/Bogota = UTC-5 (no DST)
+        // UTC 15:30 → Bogotá 10:30 same day
+        let t = utc("2026-03-15T15:30:00Z");
+        let (cron, local) = build_eventbridge_cron(&t, "America/Bogota");
+
+        assert_eq!(cron, "cron(30 10 15 3 ? 2026)",
+            "Bogotá is UTC-5: 15:30 UTC should become 10:30 local. Got local={}", local);
+        assert!(local.contains("10:30"), "Local time should be 10:30, got: {}", local);
+    }
+
+    #[test]
+    fn test_bogota_midnight_boundary() {
+        // UTC 02:00 on March 16 → Bogotá 21:00 on March 15 (day changes!)
+        let t = utc("2026-03-16T02:00:00Z");
+        let (cron, local) = build_eventbridge_cron(&t, "America/Bogota");
+
+        assert_eq!(cron, "cron(0 21 15 3 ? 2026)",
+            "UTC 02:00 March 16 = Bogotá 21:00 March 15. Got local={}", local);
+    }
+
+    #[test]
+    fn test_new_york_dst_utc_minus_4() {
+        // America/New_York in summer (EDT = UTC-4)
+        // UTC 20:00 July 1 → New York 16:00
+        let t = utc("2026-07-01T20:00:00Z");
+        let (cron, local) = build_eventbridge_cron(&t, "America/New_York");
+
+        assert_eq!(cron, "cron(0 16 1 7 ? 2026)",
+            "EDT is UTC-4: 20:00 UTC = 16:00 New York. Got local={}", local);
+    }
+
+    #[test]
+    fn test_madrid_cet_utc_plus_1() {
+        // Europe/Madrid in winter (CET = UTC+1)
+        // UTC 09:00 Jan 10 → Madrid 10:00
+        let t = utc("2026-01-10T09:00:00Z");
+        let (cron, local) = build_eventbridge_cron(&t, "Europe/Madrid");
+
+        assert_eq!(cron, "cron(0 10 10 1 ? 2026)",
+            "CET is UTC+1: 09:00 UTC = 10:00 Madrid. Got local={}", local);
+    }
+
+    #[test]
+    fn test_invalid_timezone_falls_back_to_bogota() {
+        // An invalid TZ string should silently fall back to America/Bogota (UTC-5)
+        // UTC 15:00 → Bogotá 10:00
+        let t = utc("2026-06-01T15:00:00Z");
+        let (cron, _) = build_eventbridge_cron(&t, "Not/A_Valid_Timezone");
+
+        assert_eq!(cron, "cron(0 10 1 6 ? 2026)",
+            "Fallback to Bogota (UTC-5): 15:00 UTC = 10:00 local");
+    }
+
+    #[test]
+    fn test_utc_vs_local_cron_differ_when_offset_nonzero() {
+        // Prove by example that UTC-based cron != local cron for any non-UTC timezone.
+        // If someone accidentally uses UTC fields with ScheduleExpressionTimezone=Bogota,
+        // EventBridge would fire 5 hours LATE.
+        let t = utc("2026-03-15T15:30:00Z");
+        let (local_cron, _) = build_eventbridge_cron(&t, "America/Bogota");
+        let utc_cron = format!(
+            "cron({} {} {} {} ? {})",
+            t.minute(), t.hour(), t.day(), t.month(), t.year()
+        );
+
+        assert_ne!(local_cron, utc_cron,
+            "UTC cron and local cron must differ for non-UTC timezones: {} vs {}", local_cron, utc_cron);
+        assert_eq!(utc_cron,  "cron(30 15 15 3 ? 2026)"); // The WRONG value that would be sent
+        assert_eq!(local_cron, "cron(30 10 15 3 ? 2026)"); // The CORRECT local value
+    }
+}
+
+/// Convert a UTC datetime to a local cron expression for EventBridge Scheduler.
+/// Must produce the same result as the TypeScript:
+///   new Intl.DateTimeFormat({ timeZone, ... }).formatToParts(date)
+/// Returns (cron_expr, local_datetime_string) for logging/testing.
+pub fn build_eventbridge_cron(utc: &DateTime<Utc>, timezone_str: &str) -> (String, String) {
+    let tz: Tz = timezone_str.parse().unwrap_or(chrono_tz::America::Bogota);
+    let local = utc.with_timezone(&tz);
+    let cron = format!(
+        "cron({} {} {} {} ? {})",
+        local.minute(), local.hour(), local.day(), local.month(), local.year()
+    );
+    (cron, local.to_rfc3339())
+}
+
+async fn process_batch_from_db(
     supabase: &SupabaseService,
     provider: &dyn EmailProvider,
-    batch_msg: &BatchMessage,
-) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let execution = supabase.get_execution(&batch_msg.execution_id).await?;
-    let business_name = supabase.get_business_name(&batch_msg.business_id).await;
-    
-    if execution.status == "completed" || execution.status == "failed" {
-        info!("Execution {} already finished, skipping batch", batch_msg.execution_id);
-        return Ok(());
-    }
-    
-    // Get clients in this batch
-    let clients = supabase.get_clients_by_ids(&batch_msg.client_ids).await?;
-    
+    execution_id: &str,
+    business_id: &str,
+    batch_id: &str,
+    client_ids: &[String],
+    business_name: &str,
+    execution: &models::CollectionExecution,
+) -> Result<i32, Box<dyn Error + Send + Sync>> {
+    let clients = supabase.get_clients_by_ids(client_ids).await?;
+
     let attachments = if let Some(ids) = &execution.attachment_ids {
         supabase.get_attachments(ids).await.unwrap_or_default()
     } else {
         vec![]
     };
 
-    // Get blacklisted emails for this business
-    let blacklisted_emails = supabase.get_blacklisted_emails(&batch_msg.business_id).await.unwrap_or_else(|e| {
-        log::error!("Failed to fetch blacklist for business {}: {}", batch_msg.business_id, e);
-        HashSet::new()
-    });
-
     let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "pro".to_string()) == "dev";
+    let mut sent_count = 0i32;
 
     for (index, client) in clients.into_iter().enumerate() {
         if is_dev && index > 0 {
@@ -574,46 +623,15 @@ async fn process_batch(
             continue;
         }
 
-        // Filter out blacklisted emails
-        let filtered_emails: Vec<String> = emails
-            .into_iter()
-            .filter(|email| {
-                let email_lower = email.to_lowercase();
-                let is_blacklisted = blacklisted_emails.contains(&email_lower);
-                if is_blacklisted {
-                    log::warn!("Skipping blacklisted email {} for client {}", email, client.id);
-                }
-                !is_blacklisted
-            })
-            .collect();
-
-        if filtered_emails.is_empty() {
-            log::warn!("All emails for client {} are blacklisted, marking as failed", client.id);
-            let error_data = serde_json::json!({
-                "error": "All emails are blacklisted",
-                "error_type": "blacklisted_emails"
-            });
-            let _ = supabase.update_client_status(&client.id, "failed", Some(error_data)).await;
-            continue;
-        }
-
-        let emails = filtered_emails;
-
         let template_id = if let Some(client_template) = &client.email_template_id {
-            info!("Using client-specific template {} for client {}", client_template, client.id);
             client_template.clone()
         } else if let Some(exec_template) = &execution.email_template_id {
-            info!("Using fallback execution template {} for client {}", exec_template, client.id);
             exec_template.clone()
         } else {
-            error!("No template configured for client {} in execution {}", client.id, batch_msg.execution_id);
-
-            let error_data = serde_json::json!({
-                "error": "No email template configured",
-                "error_type": "missing_template"
-            });
-            let _ = supabase.update_client_status(&client.id, "failed", Some(error_data)).await;
-
+            error!("No template for client {} in execution {}", client.id, execution_id);
+            let _ = supabase.update_client_status(&client.id, "failed", Some(json!({
+                "error": "No email template configured"
+            }))).await;
             continue;
         };
 
@@ -621,57 +639,55 @@ async fn process_batch(
             Ok(t) => t,
             Err(e) => {
                 error!("Failed to fetch template {} for client {}: {}", template_id, client.id, e);
-
-                let error_data = serde_json::json!({
-                    "error": format!("Failed to fetch template: {}", e),
-                    "template_id": template_id,
-                    "error_type": "template_fetch_failed"
-                });
-                let _ = supabase.update_client_status(&client.id, "failed", Some(error_data)).await;
+                let _ = supabase.update_client_status(&client.id, "failed", Some(json!({
+                    "error": format!("Failed to fetch template: {}", e)
+                }))).await;
                 continue;
             }
         };
 
-        let result = send_client_email(supabase, provider, &template, &client, &emails, &attachments, &batch_msg.execution_id, &business_name).await;
+        // Send with retry: max 5 attempts, 5s between each
+        let mut last_err: Option<String> = None;
+        let mut success = false;
 
-        match result {
-            Ok(message_id) => {
-                let mut new_custom_data = client.custom_data.clone().unwrap_or(serde_json::json!({}));
-                if let Some(obj) = new_custom_data.as_object_mut() {
-                    obj.insert("message_id".to_string(), serde_json::Value::String(message_id));
-                    obj.insert("email_sent_at".to_string(), serde_json::Value::String(chrono::Utc::now().to_rfc3339()));
-                    obj.insert("template_id".to_string(), serde_json::Value::String(template_id.clone()));
-                    if let Some(threshold_id) = &client.threshold_id {
-                        obj.insert("threshold_id".to_string(), serde_json::Value::String(threshold_id.clone()));
+        for attempt in 1u8..=5 {
+            match send_client_email(supabase, provider, &template, &client, &emails, &attachments, execution_id, business_name).await {
+                Ok(message_id) => {
+                    let mut custom_data = client.custom_data.clone().unwrap_or(json!({}));
+                    if let Some(obj) = custom_data.as_object_mut() {
+                        obj.insert("message_id".into(), json!(message_id));
+                        obj.insert("email_sent_at".into(), json!(Utc::now().to_rfc3339()));
+                        obj.insert("template_id".into(), json!(&template_id));
+                        if let Some(tid) = &client.threshold_id {
+                            obj.insert("threshold_id".into(), json!(tid));
+                        }
+                    }
+                    let _ = supabase.update_client_status(&client.id, "accepted", Some(custom_data)).await;
+                    sent_count += 1;
+                    success = true;
+                    break;
+                }
+                Err(e) => {
+                    last_err = Some(e.to_string());
+                    if attempt < 5 {
+                        warn!("Attempt {}/5 failed for client {}: {}. Retrying in 5s...", attempt, client.id, e);
+                        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                     }
                 }
-                if let Err(err) = supabase.update_client_status(&client.id, "accepted", Some(new_custom_data)).await {
-                    log::error!("CRITICAL: Failed to update client {} to 'accepted' status in DB: {}", client.id, err);
-                } else {
-                    log::info!("Successfully updated client {} to 'accepted' status in DB (waiting for webhook confirmation)", client.id);
-                }
-            }
-            Err(e) => {
-                let mut new_custom_data = client.custom_data.clone().unwrap_or(serde_json::json!({}));
-                if let Some(obj) = new_custom_data.as_object_mut() {
-                    obj.insert("error".to_string(), serde_json::Value::String(e.to_string()));
-                    obj.insert("template_id".to_string(), serde_json::Value::String(template_id.clone()));
-                }
-                if let Err(err) = supabase.update_client_status(&client.id, "failed", Some(new_custom_data)).await {
-                    log::error!("Failed to update client {} to 'failed' status in DB: {}", client.id, err);
-                }
-                log::error!("Failed to send email to client {}: {}", client.id, e);
             }
         }
+
+        if !success {
+            let err_msg = last_err.unwrap_or_else(|| "Unknown error".to_string());
+            error!("All 5 attempts failed for client {}: {}", client.id, err_msg);
+            let _ = supabase.update_client_status(&client.id, "failed", Some(json!({
+                "error": err_msg,
+                "template_id": &template_id
+            }))).await;
+        }
     }
-    
-    // Update batch status to completed
-    supabase.update_batch_status(&batch_msg.batch_id, "completed").await?;
 
-    // Check if all batches are completed and update execution status
-    check_and_complete_execution(supabase, &batch_msg.execution_id).await;
-
-    Ok(())
+    Ok(sent_count)
 }
 
 async fn check_and_complete_execution(supabase: &SupabaseService, execution_id: &str) {
@@ -696,134 +712,6 @@ async fn check_and_complete_execution(supabase: &SupabaseService, execution_id: 
             error!("Failed to check batches for execution {}: {}", execution_id, e);
         }
     }
-}
-
-async fn process_execution(execution_id: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let supabase = SupabaseService::new();
-    let provider = factory::create_email_provider().await;
-    
-    let execution = supabase.get_execution(execution_id).await?;
-    let business_name = supabase.get_business_name(&execution.business_id).await;
-    
-    if execution.status == "completed" || execution.status == "failed" {
-        return Ok(());
-    }
-    
-    let attachments = if let Some(ids) = &execution.attachment_ids {
-        supabase.get_attachments(ids).await.unwrap_or_default()
-    } else {
-        vec![]
-    };
-
-    // Get blacklisted emails for this business
-    let blacklisted_emails = supabase.get_blacklisted_emails(&execution.business_id).await.unwrap_or_else(|e| {
-        log::error!("Failed to fetch blacklist for business {}: {}", execution.business_id, e);
-        HashSet::new()
-    });
-
-    let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "pro".to_string()) == "dev";
-
-    let clients = supabase.get_pending_clients(execution_id).await?;
-
-    for (index, client) in clients.into_iter().enumerate() {
-        if is_dev && index > 0 {
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-        }
-
-        let emails = client.emails();
-        if emails.is_empty() {
-            warn!("Client {} has no emails, skipping", client.id);
-            continue;
-        }
-
-        // Filter out blacklisted emails
-        let filtered_emails: Vec<String> = emails
-            .into_iter()
-            .filter(|email| {
-                let email_lower = email.to_lowercase();
-                let is_blacklisted = blacklisted_emails.contains(&email_lower);
-                if is_blacklisted {
-                    log::warn!("Skipping blacklisted email {} for client {}", email, client.id);
-                }
-                !is_blacklisted
-            })
-            .collect();
-
-        if filtered_emails.is_empty() {
-            log::warn!("All emails for client {} are blacklisted, marking as failed", client.id);
-            let error_data = serde_json::json!({
-                "error": "All emails are blacklisted",
-                "error_type": "blacklisted_emails"
-            });
-            let _ = supabase.update_client_status(&client.id, "failed", Some(error_data)).await;
-            continue;
-        }
-
-        let emails = filtered_emails;
-
-        let template_id = if let Some(client_template) = &client.email_template_id {
-            info!("Using client-specific template {} for client {}", client_template, client.id);
-            client_template.clone()
-        } else if let Some(exec_template) = &execution.email_template_id {
-            info!("Using fallback execution template {} for client {}", exec_template, client.id);
-            exec_template.clone()
-        } else {
-            error!("No template configured for client {} in execution {}", client.id, execution_id);
-
-            let error_data = serde_json::json!({
-                "error": "No email template configured",
-                "error_type": "missing_template"
-            });
-            let _ = supabase.update_client_status(&client.id, "failed", Some(error_data)).await;
-
-            continue;
-        };
-
-        let template = match supabase.get_template(&template_id).await {
-            Ok(t) => t,
-            Err(e) => {
-                error!("Failed to fetch template {} for client {}: {}", template_id, client.id, e);
-
-                let error_data = serde_json::json!({
-                    "error": format!("Failed to fetch template: {}", e),
-                    "template_id": template_id,
-                    "error_type": "template_fetch_failed"
-                });
-                let _ = supabase.update_client_status(&client.id, "failed", Some(error_data)).await;
-                continue;
-            }
-        };
-
-        let result = send_client_email(&supabase, provider.as_ref(), &template, &client, &emails, &attachments, execution_id, &business_name).await;
-
-        match result {
-            Ok(message_id) => {
-                let mut new_custom_data = client.custom_data.clone().unwrap_or(serde_json::json!({}));
-                if let Some(obj) = new_custom_data.as_object_mut() {
-                    obj.insert("message_id".to_string(), serde_json::Value::String(message_id));
-                    obj.insert("email_sent_at".to_string(), serde_json::Value::String(chrono::Utc::now().to_rfc3339()));
-                    obj.insert("template_id".to_string(), serde_json::Value::String(template_id));
-                    if let Some(threshold_id) = &client.threshold_id {
-                        obj.insert("threshold_id".to_string(), serde_json::Value::String(threshold_id.clone()));
-                    }
-                }
-                let _ = supabase.update_client_status(&client.id, "accepted", Some(new_custom_data)).await;
-            }
-            Err(e) => {
-                let mut new_custom_data = client.custom_data.clone().unwrap_or(serde_json::json!({}));
-                if let Some(obj) = new_custom_data.as_object_mut() {
-                    obj.insert("error".to_string(), serde_json::Value::String(e.to_string()));
-                    obj.insert("template_id".to_string(), serde_json::Value::String(template_id));
-                }
-                let _ = supabase.update_client_status(&client.id, "failed", Some(new_custom_data)).await;
-            }
-        }
-    }
-
-    // Check if all batches are completed and update execution status
-    check_and_complete_execution(&supabase, execution_id).await;
-
-    Ok(())
 }
 
 async fn send_client_email(
@@ -898,42 +786,4 @@ async fn send_client_email(
     let result = provider.send_email(email_message).await?;
     
     Ok(result.message_id)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_format_currency() {
-        assert_eq!(format_currency(1500000.0), "1.500.000");
-    }
-
-    #[test]
-    fn test_preprocess_bare_td() {
-        // Basic: no p-wrapper, no extra cells
-        let input = "<tr><td>{{#each invoices}}</td></tr>";
-        assert_eq!(preprocess_tiptap_template(input), "{{#each invoices}}");
-    }
-
-    #[test]
-    fn test_preprocess_bare_td_empty_siblings() {
-        // Legacy snippet: 4 bare empty <td></td> siblings
-        let input = "<tr><td style=\"color:gray\">{{#each invoices}}</td><td></td><td></td><td></td><td></td></tr>";
-        assert_eq!(preprocess_tiptap_template(input), "{{#each invoices}}");
-    }
-
-    #[test]
-    fn test_preprocess_p_wrapper_inside_td() {
-        // TipTap wraps content in <p>; empty siblings become <td><p></p></td>
-        let input = "<tr><td style=\"color:gray\"><p>{{#each invoices}}</p></td><td><p></p></td><td><p></p></td><td><p></p></td><td><p></p></td></tr>";
-        assert_eq!(preprocess_tiptap_template(input), "{{#each invoices}}");
-    }
-
-    #[test]
-    fn test_preprocess_end_helper_with_p_wrapper() {
-        // Same pattern for closing {{/each}}
-        let input = "<tr><td style=\"color:gray\"><p>{{/each}}</p></td><td><p></p></td><td><p></p></td></tr>";
-        assert_eq!(preprocess_tiptap_template(input), "{{/each}}");
-    }
 }

@@ -2,7 +2,7 @@
 
 /**
  * Acción server para verificar que los message_ids estén correctamente guardados
- * Solo verifica, no modifica (ya que usamos solo custom_data->>message_id)
+ * Solo verifica, no modifica (ya que usamos solo custom_data->>'message_id')
  */
 
 import { getSupabaseAdminClient } from '@/lib/actions/supabase'
@@ -20,7 +20,7 @@ export async function checkMessageIdStorage(): Promise<{
     const { count: totalWithMessageId, error: countError } = await supabase
       .from('collection_clients')
       .select('*', { count: 'exact', head: true })
-      .not('custom_data->>message_id', 'is', null)
+      .not("custom_data->>'message_id'", 'is', null)
 
     if (countError) {
       console.error('Error counting clients:', countError)
@@ -30,9 +30,9 @@ export async function checkMessageIdStorage(): Promise<{
     // Contar message_ids sin brackets (formato incorrecto)
     const { data: invalidFormats, error: invalidError } = await supabase
       .from('collection_clients')
-      .select('id, custom_data->>message_id')
-      .not('custom_data->>message_id', 'is', null)
-      .not('custom_data->>message_id', 'like', '<%')
+      .select("id, custom_data->>'message_id'")
+      .not("custom_data->>'message_id'", 'is', null)
+      .not("custom_data->>'message_id'", 'like', '<%')
 
     if (invalidError) {
       console.error('Error checking formats:', invalidError)

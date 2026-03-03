@@ -1,7 +1,7 @@
 use reqwest::Client;
 use serde_json::json;
 use std::error::Error;
-use crate::models::{CollectionClient, CollectionExecution, EmailTemplate, Attachment};
+use crate::models::{CollectionClient, CollectionExecution, EmailTemplate, Attachment, ExecutionBatch};
 use std::env;
 
 pub struct SupabaseService {
@@ -259,6 +259,79 @@ impl SupabaseService {
         Ok(batches)
     }
 
+    pub async fn get_pending_batches_for_execution(&self, execution_id: &str) -> Result<Vec<ExecutionBatch>, Box<dyn Error + Send + Sync>> {
+        let url = format!(
+            "{}/rest/v1/execution_batches?execution_id=eq.{}&status=eq.pending&order=scheduled_for.asc&select=*",
+            self.base_url, execution_id
+        );
+
+        let response = self.client.get(&url)
+            .header("apikey", &self.api_key)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to fetch pending batches: {}", response.status()).into());
+        }
+
+        let batches: Vec<ExecutionBatch> = response.json().await?;
+        Ok(batches)
+    }
+
+    /// Atomically claim a batch by transitioning pending -> processing.
+    /// Returns true if this worker won the claim (0 rows affected = another worker got it).
+    pub async fn claim_batch(&self, batch_id: &str) -> Result<bool, Box<dyn Error + Send + Sync>> {
+        let url = format!(
+            "{}/rest/v1/execution_batches?id=eq.{}&status=eq.pending",
+            self.base_url, batch_id
+        );
+
+        let body = json!({
+            "status": "processing",
+            "processed_at": chrono::Utc::now().to_rfc3339()
+        });
+
+        let response = self.client.patch(&url)
+            .header("apikey", &self.api_key)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .header("Prefer", "return=representation")
+            .json(&body)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to claim batch: {}", response.status()).into());
+        }
+
+        // Supabase returns the updated rows; if empty, someone else claimed it
+        let updated: Vec<serde_json::Value> = response.json().await?;
+        Ok(!updated.is_empty())
+    }
+
+    /// Get the next pending batch for scheduling (scheduled_for in the future, status=pending).
+    pub async fn get_next_pending_batch(&self, execution_id: &str) -> Result<Option<ExecutionBatch>, Box<dyn Error + Send + Sync>> {
+        let now = chrono::Utc::now().to_rfc3339();
+        let url = format!(
+            "{}/rest/v1/execution_batches?execution_id=eq.{}&status=eq.pending&scheduled_for=gt.{}&order=scheduled_for.asc&limit=1&select=*",
+            self.base_url, execution_id, now
+        );
+
+        let response = self.client.get(&url)
+            .header("apikey", &self.api_key)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to fetch next pending batch: {}", response.status()).into());
+        }
+
+        let batches: Vec<ExecutionBatch> = response.json().await?;
+        Ok(batches.into_iter().next())
+    }
+
     pub async fn update_execution_status(&self, execution_id: &str, status: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
         let url = format!("{}/rest/v1/collection_executions?id=eq.{}", self.base_url, execution_id);
         
@@ -282,119 +355,6 @@ impl SupabaseService {
 
         log::info!("Updated execution {} to status {}", execution_id, status);
         Ok(())
-    }
-
-    pub async fn get_batch_retry_count(&self, batch_id: &str) -> Result<i32, Box<dyn Error + Send + Sync>> {
-        let url = format!("{}/rest/v1/batch_queue_messages?batch_id=eq.{}&select=retry_count", self.base_url, batch_id);
-        
-        let response = self.client.get(&url)
-            .header("apikey", &self.api_key)
-            .header("Authorization", format!("Bearer {}", self.api_key))
-            .send()
-            .await?;
-
-        if !response.status().is_success() {
-            return Err(format!("Failed to fetch retry count: {}", response.status()).into());
-        }
-
-        let messages: Vec<serde_json::Value> = response.json().await?;
-        let count = messages.first()
-            .and_then(|m| m.get("retry_count"))
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0) as i32;
-        
-        Ok(count)
-    }
-
-    pub async fn increment_batch_retry_count(&self, batch_id: &str) -> Result<i32, Box<dyn Error + Send + Sync>> {
-        let current = self.get_batch_retry_count(batch_id).await?;
-        let new_count = current + 1;
-
-        let url = format!("{}/rest/v1/batch_queue_messages?batch_id=eq.{}", self.base_url, batch_id);
-        
-        let body = json!({ "retry_count": new_count });
-
-        let response = self.client.patch(&url)
-            .header("apikey", &self.api_key)
-            .header("Authorization", format!("Bearer {}", self.api_key))
-            .header("Content-Type", "application/json")
-            .header("Prefer", "return=minimal")
-            .json(&body)
-            .send()
-            .await?;
-
-        if !response.status().is_success() {
-            return Err(format!("Failed to increment retry count: {}", response.status()).into());
-        }
-
-        log::info!("Incremented retry count for batch {} to {}", batch_id, new_count);
-        Ok(new_count)
-    }
-
-    pub async fn mark_batch_as_dlq(&self, batch_id: &str, error_message: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
-        // Update batch_queue_messages status to dlq
-        let url = format!("{}/rest/v1/batch_queue_messages?batch_id=eq.{}", self.base_url, batch_id);
-        
-        let body = json!({
-            "status": "dlq",
-            "error_message": error_message,
-            "dlq_at": chrono::Utc::now().to_rfc3339()
-        });
-
-        let response = self.client.patch(&url)
-            .header("apikey", &self.api_key)
-            .header("Authorization", format!("Bearer {}", self.api_key))
-            .header("Content-Type", "application/json")
-            .header("Prefer", "return=minimal")
-            .json(&body)
-            .send()
-            .await?;
-
-        if !response.status().is_success() {
-            return Err(format!("Failed to mark batch as DLQ: {}", response.status()).into());
-        }
-
-        // Also update execution_batches status
-        let batch_url = format!("{}/rest/v1/execution_batches?id=eq.{}", self.base_url, batch_id);
-        let batch_body = json!({
-            "status": "dlq",
-            "error_message": error_message
-        });
-
-        let _ = self.client.patch(&batch_url)
-            .header("apikey", &self.api_key)
-            .header("Authorization", format!("Bearer {}", self.api_key))
-            .header("Content-Type", "application/json")
-            .header("Prefer", "return=minimal")
-            .json(&batch_body)
-            .send()
-            .await;
-
-        log::warn!("Batch {} moved to DLQ: {}", batch_id, error_message);
-        Ok(())
-    }
-
-    pub async fn get_blacklisted_emails(&self, business_id: &str) -> Result<std::collections::HashSet<String>, Box<dyn Error + Send + Sync>> {
-        let url = format!("{}/rest/v1/email_blacklist?business_id=eq.{}&select=email", self.base_url, business_id);
-        
-        let response = self.client.get(&url)
-            .header("apikey", &self.api_key)
-            .header("Authorization", format!("Bearer {}", self.api_key))
-            .send()
-            .await?;
-
-        if !response.status().is_success() {
-            return Err(format!("Failed to fetch blacklist: {}", response.status()).into());
-        }
-
-        let blacklist: Vec<serde_json::Value> = response.json().await?;
-        let emails: std::collections::HashSet<String> = blacklist
-            .into_iter()
-            .filter_map(|item| item.get("email").and_then(|v| v.as_str()).map(|s| s.to_lowercase()))
-            .collect();
-
-        log::info!("Fetched {} blacklisted emails for business {}", emails.len(), business_id);
-        Ok(emails)
     }
 
     pub async fn get_earliest_pending_batch_time(&self) -> Result<Option<chrono::DateTime<chrono::Utc>>, Box<dyn Error + Send + Sync>> {

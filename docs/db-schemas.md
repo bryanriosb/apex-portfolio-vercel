@@ -5,7 +5,7 @@
 **Database:** PostgreSQL (Supabase)  
 **Project:** Apex Portfolio - Collection System  
 **Generated:** February 2026  
-**Last Validated:** February 26, 2026  
+**Last Validated:** March 3, 2026  
 
 ## Table of Contents
 
@@ -15,13 +15,14 @@
 4. [Subscription & Billing Tables](#4-subscription--billing-tables)
 5. [Notification & Feedback Tables](#5-notification--feedback-tables)
 6. [System Configuration Tables](#6-system-configuration-tables)
-7. [Custom Types (Enums)](#7-custom-types-enums)
-8. [Database Functions & RPC](#8-database-functions--rpc)
-9. [Triggers](#9-triggers)
-10. [Views](#10-views)
-11. [RLS Policies](#11-rls-policies)
-12. [Relationships Diagram](#12-relationships-diagram)
-13. [Discrepancias Encontradas](#13-discrepancias-encontradas-feb-2026)
+7. [Machine Learning Tables](#7-machine-learning-tables)
+8. [Custom Types (Enums)](#8-custom-types-enums)
+9. [Database Functions & RPC](#9-database-functions--rpc)
+10. [Triggers](#10-triggers)
+11. [Views](#11-views)
+12. [RLS Policies](#12-rls-policies)
+13. [Relationships Diagram](#13-relationships-diagram)
+14. [Validación de Estado](#14-validación-de-estado)
 
 ---
 
@@ -602,59 +603,6 @@ FOR ALL USING (business_id = (auth.jwt() -> 'app_metadata' ->> 'business_id')::u
 
 ---
 
-### batch_queue_messages
-
-**Purpose:** SQS message tracking for batch processing  
-**Multi-tenant:** Cascade from execution_batches
-
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| id | UUID | NO | gen_random_uuid() | Primary Key |
-| batch_id | UUID | NO | - | FK → execution_batches.id |
-| sqs_queue_url | TEXT | NO | - | SQS queue URL |
-| sqs_message_id | VARCHAR(255) | NO | - | SQS message ID |
-| sqs_receipt_handle | TEXT | YES | NULL | SQS receipt handle |
-| status | VARCHAR(20) | NO | 'queued' | queued/in_flight/processed/failed/dlq |
-| payload | JSONB | YES | NULL | Message payload backup |
-| sent_at | TIMESTAMPTZ | NO | NOW() | When sent to SQS |
-| received_at | TIMESTAMPTZ | YES | NULL | When Lambda received |
-| processed_at | TIMESTAMPTZ | YES | NULL | When Lambda finished |
-| visible_at | TIMESTAMPTZ | YES | NULL | Visibility timeout |
-| receive_count | INTEGER | NO | 0 | Times received |
-| max_receives | INTEGER | NO | 3 | Max receives before DLQ |
-| error_message | TEXT | YES | NULL | Last error |
-| created_at | TIMESTAMPTZ | NO | NOW() | - |
-| updated_at | TIMESTAMPTZ | NO | NOW() | - |
-
-**Indexes:**
-
-- PRIMARY KEY (id)
-- UNIQUE (sqs_message_id, sqs_queue_url)
-- INDEX (batch_id)
-- INDEX (status)
-- INDEX (sqs_message_id)
-- INDEX (visible_at) WHERE status = 'in_flight'
-
----
-
-### scheduler_locks
-
-**Purpose:** Distributed locking for email scheduler  
-**Multi-tenant:** Service role only
-
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| id | TEXT | NO | 'email_scheduler_lock' | Primary Key (single row) |
-| locked_by | TEXT | NO | - | Worker ID holding lock |
-| locked_at | TIMESTAMPTZ | NO | NOW() | When lock acquired |
-| expires_at | TIMESTAMPTZ | YES | NULL | When lock expires |
-
-**Constraints:**
-
-- CHECK (id = 'email_scheduler_lock') - Ensures single row
-
----
-
 ### execution_audit_logs
 
 **Purpose:** Control tower audit trail  
@@ -993,41 +941,160 @@ FOR ALL USING (business_id = (auth.jwt() -> 'app_metadata' ->> 'business_id')::u
 
 ---
 
-### users_profile
+## 7. Machine Learning Tables
 
-**Purpose:** Extended user profile information  
-**Multi-tenant:** Yes (user_id)
+### ml_model_configs
+
+**Purpose:** Configuration and metadata for ML models  
+**Multi-tenant:** No (global models)
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
 | id | UUID | NO | gen_random_uuid() | Primary Key |
-| user_id | UUID | NO | - | FK → auth.users.id |
-| role | VARCHAR(50) | NO | 'user' | User role |
-| profile_picture_url | TEXT | YES | NULL | Profile image URL |
-| date_of_birth | DATE | YES | NULL | Date of birth |
-| gender | VARCHAR(20) | YES | NULL | MALE/FEMALE/OTHER/PREFER_NOT_TO_SAY |
-| language_preference | VARCHAR(10) | NO | 'es' | Language code |
-| country | VARCHAR(2) | YES | NULL | Country code |
-| state | VARCHAR(100) | YES | NULL | State/province |
-| city | VARCHAR(100) | YES | NULL | City |
-| identification_type | VARCHAR(50) | YES | NULL | ID type (CC/CE/PA/NIT) |
-| identification_number | VARCHAR(50) | YES | NULL | ID number |
-| prefers_newsletter_email | BOOLEAN | NO | FALSE | Opt-in newsletter |
-| prefers_promo_push | BOOLEAN | NO | FALSE | Opt-in push promos |
-| prefers_promo_sms | BOOLEAN | NO | FALSE | Opt-in SMS promos |
-| prefers_account_updates_email | BOOLEAN | NO | TRUE | Account update emails |
-| fcm_token | TEXT | YES | NULL | Firebase token |
-| created_at | TIMESTAMPTZ | NO | NOW() | - |
+| model_name | VARCHAR(255) | NO | - | Model identifier name |
+| model_type | VARCHAR(100) | NO | - | Type: classification/regression/etc |
+| model_version | VARCHAR(50) | NO | - | Semantic version |
+| is_active | BOOLEAN | NO | TRUE | Whether model is active |
+| is_default | BOOLEAN | NO | FALSE | Default model for type |
+| features_used | JSONB | YES | NULL | List of features used |
+| hyperparameters | JSONB | YES | NULL | Model hyperparameters |
+| training_accuracy | NUMERIC(5,4) | YES | NULL | Training set accuracy |
+| validation_accuracy | NUMERIC(5,4) | YES | NULL | Validation accuracy |
+| auc_roc | NUMERIC(5,4) | YES | NULL | AUC-ROC score |
+| f1_score | NUMERIC(5,4) | YES | NULL | F1 score |
+| training_data_size | INTEGER | YES | NULL | Number of training samples |
+| training_duration_seconds | INTEGER | YES | NULL | Training time |
+| training_completed_at | TIMESTAMPTZ | YES | NULL | When training finished |
+| created_by | UUID | YES | NULL | User who trained model |
+| created_at | TIMESTAMPTZ | NO | NOW() | Creation timestamp |
+| updated_at | TIMESTAMPTZ | NO | NOW() | Last update timestamp |
 
 **Indexes:**
 
 - PRIMARY KEY (id)
-- UNIQUE (user_id)
-- INDEX (user_id)
+- INDEX (model_type, is_active)
+- INDEX (model_name, model_version)
 
 ---
 
-## 7. Custom Types (Enums)
+### campaign_predictions
+
+**Purpose:** ML predictions for collection campaign performance  
+**Multi-tenant:** Yes (business_id)
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | UUID | NO | gen_random_uuid() | Primary Key |
+| business_id | UUID | NO | - | FK → businesses.id |
+| model_name | VARCHAR(255) | NO | - | Model used for prediction |
+| model_version | VARCHAR(50) | NO | - | Model version |
+| prediction_type | VARCHAR(50) | NO | - | Type: open_rate/delivery_rate/etc |
+| prediction_for_date | DATE | NO | - | Date prediction applies to |
+| predicted_open_rate | NUMERIC(5,2) | YES | NULL | Predicted open rate % |
+| predicted_delivery_rate | NUMERIC(5,2) | YES | NULL | Predicted delivery rate % |
+| predicted_response_rate | NUMERIC(5,2) | YES | NULL | Predicted response rate % |
+| confidence_score | NUMERIC(3,2) | YES | NULL | Confidence 0-1 |
+| recommended_day_of_week | INTEGER | YES | NULL | Best day (0=Sunday) |
+| recommended_hour_start | INTEGER | YES | NULL | Best start hour |
+| recommended_hour_end | INTEGER | YES | NULL | Best end hour |
+| recommended_segments | JSONB | YES | NULL | Recommended customer segments |
+| recommended_strategy | VARCHAR(50) | YES | NULL | Strategy recommendation |
+| feature_importance | JSONB | YES | NULL | Feature importance scores |
+| actual_open_rate | NUMERIC(5,2) | YES | NULL | Measured open rate |
+| actual_response_rate | NUMERIC(5,2) | YES | NULL | Measured response rate |
+| prediction_accuracy | NUMERIC(5,2) | YES | NULL | Actual vs predicted accuracy |
+| calculated_at | TIMESTAMPTZ | NO | NOW() | When prediction was made |
+| expires_at | TIMESTAMPTZ | YES | NULL | Prediction expiration |
+| created_at | TIMESTAMPTZ | NO | NOW() | Creation timestamp |
+| updated_at | TIMESTAMPTZ | NO | NOW() | Last update timestamp |
+
+**Indexes:**
+
+- PRIMARY KEY (id)
+- INDEX (business_id)
+- INDEX (prediction_for_date)
+- INDEX (calculated_at)
+
+---
+
+### customer_engagement_patterns
+
+**Purpose:** ML-analyzed engagement patterns per customer  
+**Multi-tenant:** Yes (business_id + customer_id)
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | UUID | NO | gen_random_uuid() | Primary Key |
+| business_id | UUID | NO | - | FK → businesses.id |
+| customer_id | UUID | NO | - | FK → business_customers.id |
+| model_version | VARCHAR(50) | NO | - | Model version used |
+| customer_segment | VARCHAR(100) | YES | NULL | ML-assigned segment |
+| engagement_score | NUMERIC(5,2) | YES | NULL | Overall engagement 0-100 |
+| open_rate | NUMERIC(5,2) | YES | NULL | Historical open rate % |
+| click_rate | NUMERIC(5,2) | YES | NULL | Historical click rate % |
+| churn_risk_score | NUMERIC(5,2) | YES | NULL | Churn probability 0-100 |
+| payment_propensity_score | NUMERIC(5,2) | YES | NULL | Payment likelihood 0-100 |
+| days_to_payment_avg | INTEGER | YES | NULL | Avg days to pay |
+| timezone | VARCHAR(100) | YES | NULL | Detected timezone |
+| best_hour_patterns | JSONB | YES | NULL | Best hours by day |
+| best_day_patterns | JSONB | YES | NULL | Best days of week |
+| total_emails_received | INTEGER | NO | 0 | Total emails sent |
+| total_emails_opened | INTEGER | NO | 0 | Total opens |
+| total_emails_clicked | INTEGER | NO | 0 | Total clicks |
+| total_emails_bounced | INTEGER | NO | 0 | Total bounces |
+| analysis_window_start | DATE | YES | NULL | Data window start |
+| analysis_window_end | DATE | YES | NULL | Data window end |
+| calculated_at | TIMESTAMPTZ | NO | NOW() | When calculated |
+| updated_at | TIMESTAMPTZ | NO | NOW() | Last update timestamp |
+
+**Indexes:**
+
+- PRIMARY KEY (id)
+- UNIQUE (business_id, customer_id)
+- INDEX (business_id)
+- INDEX (customer_segment)
+- INDEX (engagement_score)
+
+---
+
+### temporal_performance_metrics
+
+**Purpose:** Time-based performance analysis for ML  
+**Multi-tenant:** Yes (business_id)
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | UUID | NO | gen_random_uuid() | Primary Key |
+| business_id | UUID | NO | - | FK → businesses.id |
+| hour_of_day | INTEGER | NO | - | Hour (0-23) |
+| day_of_week | INTEGER | NO | - | Day (0=Sunday, 6=Saturday) |
+| open_rate | NUMERIC(5,2) | YES | NULL | Open rate % for this slot |
+| click_rate | NUMERIC(5,2) | YES | NULL | Click rate % |
+| delivery_rate | NUMERIC(5,2) | YES | NULL | Delivery rate % |
+| bounce_rate | NUMERIC(5,2) | YES | NULL | Bounce rate % |
+| effectiveness_score | NUMERIC(5,2) | YES | NULL | Composite score |
+| total_sent | INTEGER | NO | 0 | Total emails sent |
+| total_opened | INTEGER | NO | 0 | Total opened |
+| total_clicked | INTEGER | NO | 0 | Total clicked |
+| total_delivered | INTEGER | NO | 0 | Total delivered |
+| total_bounced | INTEGER | NO | 0 | Total bounced |
+| data_points_count | INTEGER | NO | 0 | Number of data points |
+| last_calculated_at | TIMESTAMPTZ | YES | NULL | Last recalculation |
+| created_at | TIMESTAMPTZ | NO | NOW() | Creation timestamp |
+| updated_at | TIMESTAMPTZ | NO | NOW() | Last update timestamp |
+
+**Indexes:**
+
+- PRIMARY KEY (id)
+- UNIQUE (business_id, hour_of_day, day_of_week)
+- INDEX (business_id)
+- INDEX (effectiveness_score)
+
+---
+
+## 8. Custom Types (Enums)
+
+> **Nota:** Los siguientes son tipos de datos ENUM nativos de PostgreSQL, no tablas. Se utilizan como tipos de columna en las tablas correspondientes.
 
 ### business_type
 
@@ -1082,7 +1149,7 @@ CREATE TYPE notification_source AS ENUM (
 
 ---
 
-## 8. Database Functions & RPC
+## 9. Database Functions & RPC
 
 ### Function Categories
 
@@ -1191,19 +1258,6 @@ SELECT * FROM resolve_attachments_by_rules(
 
 ```sql
 SELECT * FROM resolve_attachments_bulk('execution-uuid');
-```
-
----
-
-### Reconciliation Functions
-
-#### reconcile_execution_metrics(execution_id UUID)
-
-**Returns:** TABLE (metric_name, old_value, new_value, updated)
-**Purpose:** Sync collection_executions metrics from execution_batches
-
-```sql
-SELECT * FROM reconcile_execution_metrics('execution-uuid');
 ```
 
 ---
@@ -1409,7 +1463,7 @@ SELECT ensure_single_default_card('account-uuid', 'card-uuid');
 
 ---
 
-## 9. Triggers
+## 10. Triggers
 
 ### Trigger Categories
 
@@ -1425,7 +1479,6 @@ Applied to all tables with `updated_at` column:
 | email_reputation_profiles | update_reputation_profiles_updated_at |
 | delivery_strategies | update_delivery_strategies_updated_at |
 | execution_batches | update_execution_batches_updated_at |
-| batch_queue_messages | update_batch_queue_messages_updated_at |
 | daily_sending_limits | update_daily_sending_limits_updated_at |
 | notification_thresholds | update_notification_thresholds_updated_at |
 | attachment_rules | update_attachment_rules_updated_at |
@@ -1458,7 +1511,7 @@ INSERT INTO businesses → Trigger fires → create_default_delivery_strategies(
 
 ---
 
-## 10. Views
+## 11. Views
 
 ### email_reputation_summary
 
@@ -1472,56 +1525,6 @@ SELECT * FROM email_reputation_summary;
 
 ---
 
-### execution_batch_progress
-
-**Purpose:** Aggregated batch progress per execution
-
-```sql
-SELECT * FROM execution_batch_progress;
-```
-
-**Columns:**
-
-- execution_id, execution_name, business_id
-- total_batches, pending_batches, queued_batches, processing_batches, completed_batches, failed_batches
-- total_clients, emails_sent, emails_delivered, emails_opened, emails_bounced
-- delivery_rate, open_rate, bounce_rate
-- completion_percentage
-
----
-
-### execution_metrics_consistency_check
-
-**Purpose:** Detect data inconsistencies between executions and batches
-
-```sql
-SELECT * FROM execution_metrics_consistency_check;
-```
-
-**Columns:**
-
-- execution_id, execution_name
-- exec_emails_sent/delivered/opened/bounced (from collection_executions)
-- batch_emails_sent/delivered/opened/bounced (aggregated from batches)
-- diff_* (differences)
-- is_consistent (BOOLEAN)
-
-**Alert:** Run periodically to detect data drift
-
----
-
-### execution_summary
-
-**Purpose:** Collection execution summary with calculated metrics
-
-```sql
-SELECT * FROM execution_summary;
-```
-
-**Columns:** All collection_executions columns + calculated rates and client counts
-
----
-
 ### v_plan_with_modules
 
 **Purpose:** Plans with their modules and permissions
@@ -1532,7 +1535,7 @@ SELECT * FROM v_plan_with_modules;
 
 ---
 
-## 11. RLS Policies
+## 12. RLS Policies
 
 ### email_reputation_profiles
 
@@ -1608,7 +1611,7 @@ FOR UPDATE USING (
 
 ---
 
-## 12. Relationships Diagram
+## 13. Relationships Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -1660,7 +1663,6 @@ collection_executions (1)
     │
     ├──► execution_batches (N) via execution_id
     │       ├──► delivery_strategies (1) via strategy_id
-    │       ├──► batch_queue_messages (N) via batch_id
     │       └──► execution_audit_logs (N) via batch_id
     │
     └──► execution_audit_logs (N) via execution_id
@@ -1684,26 +1686,11 @@ delivery_strategies (1)
 
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                        SCHEDULER & CONTROL                                   │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-scheduler_locks (singleton)
-    ├── Used by: acquire_scheduler_lock(), release_scheduler_lock()
-    └── RLS: Service role only
-
-execution_audit_logs (N)
-    ├── FK: execution_id → collection_executions
-    ├── FK: batch_id → execution_batches
-    └── RLS: Service role write, authenticated read
-
-
-┌─────────────────────────────────────────────────────────────────────────────┐
 │                          USER MANAGEMENT                                     │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 auth.users (Supabase Auth)
-    └──► users_profile (1) via user_id
-            └──► notifications (N) via user_id
+    └──► notifications (N) via user_id (stored in auth.users metadata)
 
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -1730,13 +1717,11 @@ feedback (N) via business_id
 2. System creates collection_clients (imported customers)
    ↓
 3. Scheduler (Lambda) queries pending executions
-   │   └── Uses scheduler_locks for distributed locking
    ↓
 4. Creates execution_batches from clients
    │   └── Respects delivery_strategies limits
    ↓
 5. Enqueues batches to SQS
-   │   └── Creates batch_queue_messages records
    ↓
 6. Lambda Worker consumes from SQS
    │   └── Creates execution_audit_logs
@@ -1805,7 +1790,6 @@ For attachment resolution:
 
 1. **collection_executions.metrics** = SUM(execution_batches.metrics) per execution_id
 2. **email_reputation_profiles.total_***= SUM(daily_sending_limits.*) per reputation_profile_id
-3. Use `execution_metrics_consistency_check` view to detect drift
 
 ### Performance Considerations
 
@@ -1821,27 +1805,45 @@ Enabled for Supabase Realtime:
 - collection_executions
 - collection_clients
 - execution_audit_logs
-- scheduler_locks
 
 ---
 
-## 13. Discrepancias Encontradas (Feb 2026)
+## 14. Validación de Estado (Mar 2026)
 
-### Tablas que NO existen
+### Resumen de Validación
 
-| Tabla | Estado | Notas |
-|-------|--------|-------|
-| users_profile | NO EXISTE | La tabla no existe en la base de datos |
+| Categoría | Estado |
+|-----------|--------|
+| **Tablas Documentadas** | 39 tablas + 2 vistas - Todas existen en BD ✅ |
+| **Funciones RPC** | 22 funciones documentadas - Todas existen ✅ |
+| **Enums** | 4 tipos PostgreSQL - Documentados como tipos de datos ✅ |
 
-### Vistas que NO existen
+### Elementos Eliminados (Mar 2026)
 
-| Vista | Estado | Notas |
-|-------|--------|-------|
-| execution_summary | NO EXISTE | La vista no existe en la base de datos |
+Los siguientes elementos han sido eliminados de la base de datos:
+
+| Elemento | Tipo | Razón |
+|----------|------|-------|
+| **batch_queue_messages** | Tabla | Código muerto - No se usaba en la aplicación |
+| **scheduler_locks** | Tabla | Código muerto - No se usaba en la aplicación |
+| **execution_batch_progress** | Vista | Código muerto - No se consultaba |
+| **execution_metrics_consistency_check** | Vista | Código muerto - No se consultaba |
+| **reconcile_execution_metrics** | Función RPC | Código muerto - No se llamaba |
+
+### Tablas ML Añadidas (Mar 2026)
+
+Las siguientes tablas de Machine Learning han sido documentadas en la sección 7:
+
+| Tabla | Descripción |
+|-------|-------------|
+| ml_model_configs | Configuración y metadata de modelos ML |
+| campaign_predictions | Predicciones de rendimiento de campañas |
+| customer_engagement_patterns | Patrones de engagement por cliente |
+| temporal_performance_metrics | Métricas de rendimiento temporal |
 
 ### Funciones RPC - Estado Actual
 
-Todas las funciones RPC documentadas en sección 8 SÍ existen EXCEPTO:
+Todas las funciones RPC documentadas en sección 9 SÍ existen EXCEPTO:
 
 | Función | Estado | Notas |
 |---------|--------|-------|
@@ -1851,7 +1853,7 @@ Todas las funciones RPC documentadas en sección 8 SÍ existen EXCEPTO:
 
 ### Funciones RPC adicionales no documentadas
 
-Las siguientes funciones existen en la DB pero no están documentadas en sección 8:
+Las siguientes funciones existen en la DB pero no están documentadas en sección 9:
 
 | Función | Categoría |
 |---------|-----------|
@@ -1903,4 +1905,4 @@ Los siguientes tipos enum están documentados pero NO fueron verificados via API
 ---
 
 *Document generated for Apex Portfolio Collection System*
-*Last updated: February 26, 2026*
+*Last updated: March 3, 2026*
