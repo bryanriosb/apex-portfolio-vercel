@@ -143,14 +143,24 @@ export async function createExecutionWithClientsAction({
 
     console.log(`Created ${batches.length} batches with strategy: ${strategyType}`)
 
-    // 6. Immediate mode: invoke Lambda directly — no SQS
+    // 6. Immediate mode: invoke Lambda directly
     if (executionData.execution_mode === 'immediate' || strategyConfig.startImmediately) {
       await supabase
         .from('collection_executions')
         .update({ status: 'processing', started_at: new Date().toISOString() })
         .eq('id', execution.id)
 
-      await CollectionService.startImmediateExecution(execution.id)
+      // Lambda invocation is non-fatal: execution + batches are already created.
+      // If Lambda is unreachable (e.g. dev environment without AWS network access),
+      // the execution stays in 'processing' and can be triggered later.
+      try {
+        await CollectionService.startImmediateExecution(execution.id)
+      } catch (lambdaError: any) {
+        console.warn(
+          `[createExecutionWithClientsAction] Lambda invocation failed (execution ${execution.id} created, trigger it manually if needed):`,
+          lambdaError?.message
+        )
+      }
 
     } else if (executionData.execution_mode === 'scheduled' && executionData.scheduled_at) {
       // Scheduled mode: create EventBridge One-time schedule for first batch

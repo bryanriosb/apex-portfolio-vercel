@@ -215,15 +215,31 @@ impl SupabaseService {
         })
     }
 
-    pub async fn update_client_status(&self, client_id: &str, status: &str, details: Option<serde_json::Value>) -> Result<(), Box<dyn Error + Send + Sync>> {
+    /// Update a client's status and optional custom_data + batch_id in a single PATCH.
+    /// Stamping batch_id here lets the DB trigger (increment_execution_counters) resolve
+    /// the batch instantly without an array scan on execution_batches.client_ids.
+    pub async fn update_client_status(
+        &self,
+        client_id: &str,
+        status: &str,
+        details: Option<serde_json::Value>,
+        batch_id: Option<&str>,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
         let url = format!("{}/rest/v1/collection_clients?id=eq.{}", self.base_url, client_id);
-        
+
         let mut body = json!({ "status": status });
-        
+
         if let Some(d) = details {
              if let Some(obj) = body.as_object_mut() {
                 obj.insert("custom_data".to_string(), d);
              }
+        }
+
+        // Stamp batch_id so the trigger can resolve counters without an array scan
+        if let Some(bid) = batch_id {
+            if let Some(obj) = body.as_object_mut() {
+                obj.insert("batch_id".to_string(), serde_json::Value::String(bid.to_string()));
+            }
         }
 
         let response = self.client.patch(&url)
@@ -312,10 +328,12 @@ impl SupabaseService {
 
     /// Get the next pending batch for scheduling (scheduled_for in the future, status=pending).
     pub async fn get_next_pending_batch(&self, execution_id: &str) -> Result<Option<ExecutionBatch>, Box<dyn Error + Send + Sync>> {
-        let now = chrono::Utc::now().to_rfc3339();
+        // RFC3339 contains '+' and ':' which must be percent-encoded in a URL query param
+        let now_raw = chrono::Utc::now().to_rfc3339();
+        let now_encoded = now_raw.replace('+', "%2B").replace(':', "%3A");
         let url = format!(
             "{}/rest/v1/execution_batches?execution_id=eq.{}&status=eq.pending&scheduled_for=gt.{}&order=scheduled_for.asc&limit=1&select=*",
-            self.base_url, execution_id, now
+            self.base_url, execution_id, now_encoded
         );
 
         let response = self.client.get(&url)
@@ -325,7 +343,9 @@ impl SupabaseService {
             .await?;
 
         if !response.status().is_success() {
-            return Err(format!("Failed to fetch next pending batch: {}", response.status()).into());
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            return Err(format!("Failed to fetch next pending batch: {} — {}", status, body).into());
         }
 
         let batches: Vec<ExecutionBatch> = response.json().await?;
@@ -380,5 +400,40 @@ impl SupabaseService {
         }
         
         Ok(None)
+    }
+
+    /// Update batch-level retry and error fields after processing.
+    /// emails_sent / emails_failed / emails_delivered / emails_opened / emails_bounced
+    /// are all handled by the DB trigger (increment_execution_counters) on
+    /// collection_clients status changes — no duplication needed here.
+    pub async fn update_batch_retry_info(
+        &self,
+        batch_id: &str,
+        retry_count: i32,
+        error_message: Option<&str>,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let url = format!("{}/rest/v1/execution_batches?id=eq.{}", self.base_url, batch_id);
+
+        let body = serde_json::json!({
+            "retry_count":   retry_count,
+            "error_message": error_message,   // null clears previous error
+        });
+
+        let response = self.client.patch(&url)
+            .header("apikey", &self.api_key)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .header("Prefer", "return=minimal")
+            .json(&body)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to update batch retry info for {}: {}", batch_id, response.status()).into());
+        }
+
+        log::info!("Batch {} retry_count={}{}", batch_id, retry_count,
+            error_message.map(|e| format!(" error={}", e)).unwrap_or_default());
+        Ok(())
     }
 }

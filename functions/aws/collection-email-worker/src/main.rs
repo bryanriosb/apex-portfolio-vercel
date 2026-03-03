@@ -197,7 +197,7 @@ fn wrap_with_styles(html_body: &str) -> String {
             </tr>
             <tr>
                 <td style="font-family:sans-serif;vertical-align:top;padding-bottom:10px;padding-top:10px;color:#999999;font-size:12px;text-align:center" valign="top" align="center">
-                <span class="m_58810963162805476apple-link" style="color:#999999;font-size:12px;text-align:center">APEX - es una plataforma de cobro de cartera de BORLS S.A.S © 2026 Todos los derechos reservados | <a href="https://apex.borls.com" style="color:#999999;font-size:12px;text-align:center" target="_blank">https://apex.borls.com</a></span>
+                <span class="m_58810963162805476apple-link" style="color:#999999;font-size:12px;text-align:center">APEX - Plataforma para la gestión inteligente de cobranza, propiedad de BORLS © 2026 Todos los derechos reservados | <a href="https://apex.borls.com" style="color:#999999;font-size:12px;text-align:center" target="_blank">https://apex.borls.com</a></span>
                 </td>
             </tr>
             </tbody>
@@ -595,7 +595,7 @@ async fn process_batch_from_db(
     supabase: &SupabaseService,
     provider: &dyn EmailProvider,
     execution_id: &str,
-    business_id: &str,
+    _business_id: &str,
     batch_id: &str,
     client_ids: &[String],
     business_name: &str,
@@ -611,6 +611,8 @@ async fn process_batch_from_db(
 
     let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "pro".to_string()) == "dev";
     let mut sent_count = 0i32;
+    let mut total_retries = 0i32;  // Aggregate retry attempts across all clients in this batch
+    let mut batch_error: Option<String> = None;
 
     for (index, client) in clients.into_iter().enumerate() {
         if is_dev && index > 0 {
@@ -629,9 +631,10 @@ async fn process_batch_from_db(
             exec_template.clone()
         } else {
             error!("No template for client {} in execution {}", client.id, execution_id);
+            // Pass batch_id so the trigger increments emails_failed on execution_batches too
             let _ = supabase.update_client_status(&client.id, "failed", Some(json!({
                 "error": "No email template configured"
-            }))).await;
+            })), Some(batch_id)).await;
             continue;
         };
 
@@ -641,12 +644,13 @@ async fn process_batch_from_db(
                 error!("Failed to fetch template {} for client {}: {}", template_id, client.id, e);
                 let _ = supabase.update_client_status(&client.id, "failed", Some(json!({
                     "error": format!("Failed to fetch template: {}", e)
-                }))).await;
+                })), Some(batch_id)).await;
                 continue;
             }
         };
 
-        // Send with retry: max 5 attempts, 5s between each
+        // Send with retry: max 5 attempts, 5s between each.
+        // Each failed attempt contributes to total_retries for batch-level tracing.
         let mut last_err: Option<String> = None;
         let mut success = false;
 
@@ -662,13 +666,19 @@ async fn process_batch_from_db(
                             obj.insert("threshold_id".into(), json!(tid));
                         }
                     }
-                    let _ = supabase.update_client_status(&client.id, "accepted", Some(custom_data)).await;
+                    // batch_id stamped here lets the trigger resolve execution_batches faster
+                    // Status 'submitted' = email handed off to provider; webhook 'email_sent'
+                    // will transition to 'accepted' and trigger the emails_sent counter.
+                    let _ = supabase.update_client_status(
+                        &client.id, "submitted", Some(custom_data), Some(batch_id)
+                    ).await;
                     sent_count += 1;
                     success = true;
                     break;
                 }
                 Err(e) => {
                     last_err = Some(e.to_string());
+                    total_retries += 1;  // count every failed attempt
                     if attempt < 5 {
                         warn!("Attempt {}/5 failed for client {}: {}. Retrying in 5s...", attempt, client.id, e);
                         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
@@ -680,11 +690,19 @@ async fn process_batch_from_db(
         if !success {
             let err_msg = last_err.unwrap_or_else(|| "Unknown error".to_string());
             error!("All 5 attempts failed for client {}: {}", client.id, err_msg);
+            // batch_id stamped → trigger increments execution_batches.emails_failed
             let _ = supabase.update_client_status(&client.id, "failed", Some(json!({
-                "error": err_msg,
+                "error": &err_msg,
                 "template_id": &template_id
-            }))).await;
+            })), Some(batch_id)).await;
+            batch_error = Some(err_msg);
         }
+    }
+
+    // Write retry tracing fields; email counters are handled by the DB trigger
+    let error_str = batch_error.as_deref();
+    if let Err(e) = supabase.update_batch_retry_info(batch_id, total_retries, error_str).await {
+        error!("Failed to write batch retry info for {}: {}", batch_id, e);
     }
 
     Ok(sent_count)
