@@ -80,9 +80,9 @@ export async function processEmailEvent(
         // IMPORTANT: email_opened and email_clicked events can occur multiple times (user opens/clicks multiple times)
         // So we only deduplicate other event types
         const canHaveMultipleEvents = event.eventType === 'email_opened' || event.eventType === 'email_clicked'
-
+        
         let isDuplicateEvent = false
-
+        
         if (!canHaveMultipleEvents) {
             const { data: existingEvent, error: checkError } = await supabase
                 .from('collection_events')
@@ -95,14 +95,14 @@ export async function processEmailEvent(
             if (checkError) {
                 console.error('[WEBHOOK] Error checking for existing event:', checkError)
             }
-
+            
             isDuplicateEvent = !!(existingEvent && existingEvent.length > 0)
         }
-
+        
         if (isDuplicateEvent) {
             console.log(`[WEBHOOK] Duplicate event detected for client ${client.id}, type ${event.eventType}, msg ${event.messageId}. Will update client status if needed, but skip metrics.`)
         } else if (canHaveMultipleEvents) {
-            console.log(`[WEBHOOK] Processing ${event.eventType} event for client ${client.id} (can have multiple events per message)`)
+            console.log(`[WEBHOOK] Processing ${event.eventType} event for client ${client.id} (can have multiple events per message)`)    
         } else {
             // Registrar evento en collection_events
             console.log(`[WEBHOOK] Inserting event: type=${event.eventType}, timestamp=${event.timestamp}`)
@@ -136,11 +136,10 @@ export async function processEmailEvent(
 
             switch (event.eventType) {
                 case 'email_sent':
-                    // Lambda sets 'submitted' when the API call succeeds.
-                    // Webhook 'email_sent' confirms the provider actually sent it → 'accepted'.
-                    // This is the event that triggers the DB trigger → emails_sent++
-                    if (client.status === 'submitted' || client.status === 'pending') {
-                        newStatus = 'accepted'
+                    // Worker marca como 'accepted' cuando el proveedor acepta la petición
+                    // El webhook confirma cuando realmente se envía
+                    if (client.status === 'pending' || client.status === 'accepted') {
+                        newStatus = 'sent'
                     }
                     break
                 case 'email_delivered':
@@ -153,7 +152,7 @@ export async function processEmailEvent(
                     newStatus = 'complained'
                     break
                 case 'email_opened':
-                    if (['submitted', 'accepted', 'sent', 'delivered', 'pending'].includes(client.status)) {
+                    if (client.status === 'sent' || client.status === 'delivered' || client.status === 'pending' || client.status === 'accepted') {
                         newStatus = 'opened'
                     } else if (client.status === 'opened') {
                         shouldUpdateMetrics = false
@@ -161,7 +160,7 @@ export async function processEmailEvent(
                     }
                     break
                 case 'email_clicked':
-                    if (['submitted', 'accepted', 'sent', 'delivered', 'pending'].includes(client.status)) {
+                    if (client.status === 'sent' || client.status === 'delivered' || client.status === 'pending' || client.status === 'accepted') {
                         newStatus = 'opened'
                     }
                     break
@@ -272,13 +271,6 @@ async function updateReputationMetrics(
         let profileField: string | null = null
 
         switch (eventType) {
-            case 'email_sent':
-                // Confirmed by provider → increment emails_sent on reputation tables
-                // (DB trigger already handles collection_executions + execution_batches)
-                batchField = null   // trigger handles it
-                dailyField = 'emails_sent'
-                profileField = 'total_emails_sent'
-                break
             case 'email_delivered':
                 batchField = 'emails_delivered'
                 dailyField = 'emails_delivered'

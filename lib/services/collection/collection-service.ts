@@ -53,24 +53,18 @@ export class CollectionService {
         try {
             const command = new InvokeCommand({
                 FunctionName: lambdaArn,
-                InvocationType: 'Event', // Asynchronous — returns 202 immediately
+                InvocationType: 'Event', // Asynchronous invocation
                 Payload: JSON.stringify({
                     execution_id: executionId,
                     action: 'start_execution'
-                }),
+                })
             })
 
-            const response = await getLambdaClient().send(command)
-
-            // InvocationType: 'Event' returns 202 on success
-            if (response.StatusCode && response.StatusCode !== 202) {
-                throw new Error(`Lambda returned unexpected status: ${response.StatusCode}`)
-            }
-
+            await getLambdaClient().send(command)
             return { success: true }
-        } catch (error: any) {
-            console.error('[startImmediateExecution] Error:', error)
-            throw new Error(`Failed to trigger execution worker: ${error?.message ?? error}`)
+        } catch (error) {
+            console.error('Error starting immediate execution:', error)
+            throw new Error('Failed to trigger execution worker')
         }
     }
 
