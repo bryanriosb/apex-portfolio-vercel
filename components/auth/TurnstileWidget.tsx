@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 interface TurnstileWidgetProps {
   onSuccess: (token: string) => void
   onError?: () => void
+  onLoad?: () => void
   className?: string
 }
 
@@ -24,6 +25,7 @@ function isLocalhost(): boolean {
 export function TurnstileWidget({
   onSuccess,
   onError,
+  onLoad,
   className,
 }: TurnstileWidgetProps) {
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
@@ -32,6 +34,8 @@ export function TurnstileWidget({
   useEffect(() => {
     if (isLocalhost()) {
       console.log('[DEV] Bypassing Turnstile widget for localhost')
+      // Llamar onLoad inmediatamente para simular inicio de carga
+      onLoad?.()
       // Llamar onSuccess con un token dummy después de un pequeño delay
       // para simular la carga del widget
       const timer = setTimeout(() => {
@@ -39,7 +43,7 @@ export function TurnstileWidget({
       }, 500)
       return () => clearTimeout(timer)
     }
-  }, [onSuccess])
+  }, [onSuccess, onLoad])
 
   // Si es localhost, no mostrar el widget
   if (isLocalhost()) {
@@ -63,6 +67,7 @@ export function TurnstileWidget({
         siteKey={siteKey}
         onSuccess={onSuccess}
         onError={onError}
+        onLoad={onLoad}
       />
     </div>
   )

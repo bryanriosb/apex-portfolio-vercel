@@ -42,6 +42,7 @@ export default function SignInPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = React.useState(false)
   const [turnstileToken, setTurnstileToken] = React.useState<string>('')
+  const [isTurnstileLoading, setIsTurnstileLoading] = React.useState(true)
 
   const form = useForm<SignInSchemaType>({
     resolver: zodResolver(formSchema),
@@ -145,21 +146,27 @@ export default function SignInPage() {
               />
 
               <TurnstileWidget
-                onSuccess={setTurnstileToken}
+                onSuccess={(token) => {
+                  setTurnstileToken(token)
+                  setIsTurnstileLoading(false)
+                }}
+                onLoad={() => setIsTurnstileLoading(false)}
                 className="flex justify-center"
               />
 
               <Button
                 type="submit"
                 className="w-full gap-2"
-                disabled={isLoading || !turnstileToken}
+                disabled={isLoading || isTurnstileLoading || !turnstileToken}
               >
                 {isLoading ? <Loading className="text-white" /> : <LogIn />}
                 {isLoading 
                   ? 'Iniciando sesión' 
-                  : !turnstileToken 
-                    ? 'Completa la verificación de seguridad' 
-                    : 'Iniciar sesión'}
+                  : isTurnstileLoading
+                    ? 'Preparando seguridad'
+                    : !turnstileToken 
+                      ? 'Completa la verificación de seguridad' 
+                      : 'Iniciar sesión'}
               </Button>
             </form>
           </Form>
