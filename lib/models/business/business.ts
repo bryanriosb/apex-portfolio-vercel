@@ -8,7 +8,7 @@ export interface Business {
   address: string
   city: string
   state: string
-  location: string | null // Geography point
+  location: { lat: number; lng: number } | null
   phone_number: string | null
   nit: string | null
   gallery_cover_image_url: string | null
@@ -29,7 +29,7 @@ export class Business implements Business {
   address: string
   city: string
   state: string
-  location: string | null
+  location: { lat: number; lng: number } | null
   phone_number: string | null
   nit: string | null
   gallery_cover_image_url: string | null

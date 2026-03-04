@@ -11,6 +11,10 @@ export { Step3Content } from './Step3Content'
 // Sidebar component
 export { CampaignInfoSidebar } from './CampaignInfoSidebar'
 
+// Email Limit Indicators
+export { EmailLimitIndicator } from './EmailLimitIndicator'
+export { CompactEmailLimitIndicator } from './CompactEmailLimitIndicator'
+
 // Threshold Preview
 export { ThresholdPreview } from './ThresholdPreview'
 

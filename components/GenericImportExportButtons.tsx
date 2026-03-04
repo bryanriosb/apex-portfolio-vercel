@@ -22,6 +22,7 @@ import {
   X,
   AlertCircle,
   Info,
+  Square,
 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
@@ -32,7 +33,9 @@ interface EntityConfig {
   entityType: 'customers' | 'services' | 'specialists' | 'products' | 'plans'
   displayName: string
   templateDownloadUrl: string
-  importAction: (formData: FormData) => Promise<{ sessionId: string; status: string }>
+  importAction: (
+    formData: FormData
+  ) => Promise<{ sessionId: string; status: string }>
   requiredFields?: string[]
   optionalFields?: string[]
 }
@@ -243,16 +246,17 @@ export function GenericImportExportButtons({
   const handleCancelImport = () => {
     setIsPolling(false)
     isPollingRef.current = false
-    
+
     // Limpiar el progreso de la sesión en el servidor
     if (currentSessionId) {
       // Llamar al endpoint para limpiar la sesión
-      fetch(`/api/import/progress/${currentSessionId}`, { method: 'DELETE' })
-        .catch(() => {
-          // Ignorar errores de cleanup
-        })
+      fetch(`/api/import/progress/${currentSessionId}`, {
+        method: 'DELETE',
+      }).catch(() => {
+        // Ignorar errores de cleanup
+      })
     }
-    
+
     setCurrentSessionId(null)
     setImportProgress(null)
     toast.info('Importación cancelada')
@@ -297,7 +301,8 @@ export function GenericImportExportButtons({
               Importar {config.displayName}
             </DialogTitle>
             <DialogDescription>
-              Sube una plantilla Excel para crear o actualizar {config.displayName.toLowerCase()}.
+              Sube una plantilla Excel para crear o actualizar{' '}
+              {config.displayName.toLowerCase()}.
             </DialogDescription>
           </DialogHeader>
 
@@ -311,14 +316,17 @@ export function GenericImportExportButtons({
                   <div className="text-sm">
                     {config.requiredFields.join(', ')}
                   </div>
-                  {config.optionalFields && config.optionalFields.length > 0 && (
-                    <>
-                      <div className="font-medium mt-2 mb-1">Columnas opcionales:</div>
-                      <div className="text-sm text-blue-700">
-                        {config.optionalFields.join(', ')}
-                      </div>
-                    </>
-                  )}
+                  {config.optionalFields &&
+                    config.optionalFields.length > 0 && (
+                      <>
+                        <div className="font-medium mt-2 mb-1">
+                          Columnas opcionales:
+                        </div>
+                        <div className="text-sm text-blue-700">
+                          {config.optionalFields.join(', ')}
+                        </div>
+                      </>
+                    )}
                 </AlertDescription>
               </Alert>
             )}
@@ -329,7 +337,7 @@ export function GenericImportExportButtons({
               >
                 {selectedFile ? (
                   <div className="text-sm font-medium flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
+                    <CheckCircle className="h-5 w-5 text-primary" />
                     <span>
                       Archivo: {selectedFile.name} (
                       {(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
@@ -377,9 +385,9 @@ export function GenericImportExportButtons({
                       variant="ghost"
                       size="sm"
                       onClick={handleCancelImport}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="text-muted-foreground"
                     >
-                      <X className="h-4 w-4 mr-1" />
+                      <Square className="h-4 w-4 mr-1 fill-red-500" />
                       Cancelar importación
                     </Button>
                   )}
@@ -405,14 +413,18 @@ export function GenericImportExportButtons({
 
               <Button
                 onClick={handleImport}
-                disabled={!selectedFile || !!currentSessionId || (importProgress && importProgress.status === 'completed')}
+                disabled={
+                  !selectedFile ||
+                  !!currentSessionId ||
+                  (importProgress && importProgress.status === 'completed')
+                }
               >
                 {!!currentSessionId ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Importando...
                   </>
-                ) : (importProgress && importProgress.status === 'completed') ? (
+                ) : importProgress && importProgress.status === 'completed' ? (
                   `Importación Finalizada`
                 ) : (
                   `Importar ${config.displayName}`

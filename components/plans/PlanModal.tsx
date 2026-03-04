@@ -65,6 +65,8 @@ const formSchema = z.object({
     max_services: z.number().nullable(),
     max_customers: z.number().nullable(),
     max_storage_mb: z.number().nullable(),
+    // Límite de emails (null = ilimitado, 0 = bloqueado)
+    max_emails: z.number().nullable(),
     // Configuraciones adicionales
     has_custom_branding: z.boolean(),
     has_priority_support: z.boolean(),
@@ -88,6 +90,8 @@ const defaultFeatures: PlanFeatures = {
   max_services: null,
   max_customers: null,
   max_storage_mb: null,
+  // Límite de emails (null = ilimitado, 0 = bloqueado)
+  max_emails: null,
   // Configuraciones adicionales
   has_custom_branding: false,
   has_priority_support: false,

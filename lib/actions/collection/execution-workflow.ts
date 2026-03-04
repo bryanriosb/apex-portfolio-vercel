@@ -9,6 +9,8 @@ import { ClientProcessor } from '@/lib/services/collection/client-processor'
 import { fetchThresholdsAction } from '@/lib/actions/collection/notification-threshold'
 import { getBusinessByIdAction } from '@/lib/actions/business'
 import { CollectionService } from '@/lib/services/collection/collection-service'
+import EmailLimitService from '@/lib/services/plan/email-limit-service'
+import { getBusinessAccountByIdAction } from '@/lib/actions/business-account'
 
 interface CreateExecutionWorkflowParams {
   executionData: CollectionExecutionInsert
@@ -68,6 +70,27 @@ export async function createExecutionWithClientsAction({
         }
       } catch (err) {
         console.error('Error fetching fallback template from thresholds:', err)
+      }
+    }
+
+    // Validate email limits before creating execution
+    const business = await getBusinessByIdAction(executionData.business_id)
+    if (!business?.business_account_id) {
+      throw new Error('Business account not found')
+    }
+
+    const { data: businessAccount, error: accountError } = await getBusinessAccountByIdAction(business.business_account_id)
+    if (!businessAccount || accountError) {
+      throw new Error('Business account not found')
+    }
+
+    const emailLimitService = new EmailLimitService()
+    const limitCheck = await emailLimitService.validateLimit(businessAccount, clients.length)
+
+    if (!limitCheck.canSend) {
+      return {
+        success: false,
+        error: limitCheck.errorMessage || 'Email limit exceeded',
       }
     }
 
@@ -174,7 +197,6 @@ export async function createExecutionWithClientsAction({
           ? new Date(firstBatch.scheduled_for)
           : new Date(executionData.scheduled_at!)
         
-        const business = await getBusinessByIdAction(executionData.business_id)
         const businessTimezone = business?.timezone || 'America/Bogota'
 
         const { ruleName } = await CollectionService.scheduleExecution(

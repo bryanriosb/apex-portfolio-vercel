@@ -116,9 +116,6 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!activeBusiness?.id) return
 
-    console.log('session', session);
-
-
     loadData()
 
     setRecentLoading(true)

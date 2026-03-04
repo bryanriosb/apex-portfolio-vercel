@@ -11,12 +11,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Pencil, Trash2, Users, Eye, Clock } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, Users, Eye, Clock, Mail } from 'lucide-react'
 import BusinessAccountService from '@/lib/services/business-account/business-account-service'
 import { BUSINESS_ACCOUNTS_COLUMNS } from '@/lib/models/business-account/const/data-table/business-accounts-columns'
 import { BusinessAccountModal } from '@/components/business-accounts/BusinessAccountModal'
 import { BusinessAccountDetailModal } from '@/components/business-accounts/BusinessAccountDetailModal'
 import { TrialAssignmentModal } from '@/components/trial'
+import { EmailLimitManagerModal } from '@/components/business-accounts/EmailLimitManagerModal'
 import { useRef, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import type {
@@ -55,6 +56,8 @@ export default function BusinessAccountsPage() {
     id: string
     name: string
   } | null>(null)
+  const [emailLimitModalOpen, setEmailLimitModalOpen] = useState(false)
+  const [selectedAccountForEmailLimit, setSelectedAccountForEmailLimit] = useState<BusinessAccount | null>(null)
 
   const searchConfig: SearchConfig = useMemo(
     () => ({
@@ -96,6 +99,11 @@ export default function BusinessAccountsPage() {
       name: account.company_name,
     })
     setTrialModalOpen(true)
+  }
+
+  const handleManageEmailLimit = (account: BusinessAccount) => {
+    setSelectedAccountForEmailLimit(account)
+    setEmailLimitModalOpen(true)
   }
 
   const handleDeleteAccount = (accountId: string) => {
@@ -233,6 +241,14 @@ export default function BusinessAccountsPage() {
                       Período de Prueba
                     </DropdownMenuItem>
                   )}
+                  {canEditFull && (
+                    <DropdownMenuItem
+                      onClick={() => handleManageEmailLimit(account)}
+                    >
+                      <Mail className="mr-2 h-4 w-4" />
+                      Límite de Emails
+                    </DropdownMenuItem>
+                  )}
                   {canDelete && (
                     <>
                       <DropdownMenuSeparator />
@@ -326,6 +342,13 @@ export default function BusinessAccountsPage() {
           onSuccess={() => dataTableRef.current?.refreshData()}
         />
       )}
+
+      <EmailLimitManagerModal
+        open={emailLimitModalOpen}
+        onOpenChange={setEmailLimitModalOpen}
+        account={selectedAccountForEmailLimit}
+        onSuccess={() => dataTableRef.current?.refreshData()}
+      />
     </div>
   )
 }

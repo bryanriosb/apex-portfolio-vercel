@@ -24,6 +24,7 @@ import { filterBlacklistedEmailsAction } from '@/lib/actions/blacklist'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import { CampaignInfoSidebar } from './CampaignInfoSidebar'
 import { FileData, TEMPLATE_DATA, GroupedClient } from './types'
+import { CompactEmailLimitIndicator } from './CompactEmailLimitIndicator'
 
 interface Step1ContentProps {
   fileData: FileData | null
@@ -403,13 +404,18 @@ export function Step1Content({
           className="hidden"
         />
 
-        {/* Download Template Button */}
-        <div className="flex justify-end">
+        {/* Email Limit Indicator & Download Template */}
+        <div className="flex items-center justify-between">
+          {activeBusiness?.business_account_id && (
+            <CompactEmailLimitIndicator 
+              businessAccountId={activeBusiness.business_account_id} 
+            />
+          )}
           <Button
             variant="outline"
             size="sm"
             onClick={downloadTemplate}
-            className="gap-2"
+            className="gap-2 shrink-0"
           >
             <Download className="h-4 w-4" />
             Descargar Plantilla
@@ -637,7 +643,7 @@ export function Step1Content({
       </div>
 
       {/* Sidebar - Campaign Info */}
-      <div className="lg:col-span-1">
+      <div className="lg:col-span-1 space-y-4">
         <CampaignInfoSidebar
           campaignName={campaignName}
           campaignDescription={campaignDescription}

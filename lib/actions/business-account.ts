@@ -532,3 +532,186 @@ export async function createMemberWithAccountAction(data: {
     return { success: false, error: error.message }
   }
 }
+
+/**
+ * Actualiza el límite de emails personalizado para una cuenta de negocio.
+ * El valor se almacena en settings.max_emails_override
+ * 
+ * @param accountId - ID de la cuenta de negocio
+ * @param maxEmails - Límite de emails (null para usar el del plan, 0 para bloquear, número para límite específico)
+ * @returns Resultado de la operación
+ */
+export async function updateAccountEmailLimitAction(
+  accountId: string,
+  maxEmails: number | null
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const client = await getSupabaseAdminClient()
+
+    // Obtener la cuenta actual
+    const { data: account, error: fetchError } = await client
+      .from('business_accounts')
+      .select('settings')
+      .eq('id', accountId)
+      .single()
+
+    if (fetchError || !account) {
+      return { success: false, error: 'Cuenta no encontrada' }
+    }
+
+    // Actualizar settings con el override
+    const currentSettings = account.settings || {}
+    const newSettings = {
+      ...currentSettings,
+      max_emails_override: maxEmails,
+    }
+
+    const { error: updateError } = await client
+      .from('business_accounts')
+      .update({ settings: newSettings })
+      .eq('id', accountId)
+
+    if (updateError) {
+      return { success: false, error: updateError.message }
+    }
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error updating account email limit:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Obtiene el límite de emails efectivo para una cuenta de negocio.
+ * Prioridad: settings.max_emails_override > plan.features.max_emails
+ * 
+ * @param account - Cuenta de negocio con settings y plan
+ * @returns El límite de emails efectivo (null = ilimitado, 0 = bloqueado, número = límite)
+ */
+export async function getEffectiveEmailLimitAction(
+  account: BusinessAccount
+): Promise<number | null> {
+  // Primero verificar si hay un override en settings
+  const settings = account.settings as Record<string, unknown> | null
+  const override = settings?.max_emails_override
+  
+  if (override !== undefined && (typeof override === 'number' || override === null)) {
+    return override as number | null
+  }
+
+  // Si no hay override, retornar null para que el servicio use el plan
+  return null
+}
+
+export interface AccountEmailLimitInfo {
+  maxEmails: number | null
+  emailsSent: number
+  emailsRemaining: number | null
+  hasReachedLimit: boolean
+  isOverridden: boolean
+  periodStart: Date
+  periodEnd: Date
+}
+
+/**
+ * Obtiene información completa del límite de emails para una cuenta.
+ * Incluye el límite efectivo, emails enviados y restantes.
+ * 
+ * @param accountId - ID de la cuenta de negocio
+ * @returns Información completa del límite de emails
+ */
+export async function getAccountEmailLimitInfoAction(
+  accountId: string
+): Promise<{ data: AccountEmailLimitInfo | null; error?: string }> {
+  try {
+    const client = await getSupabaseAdminClient()
+
+    // Obtener la cuenta con su plan
+    const { data: account, error: accountError } = await client
+      .from('business_accounts')
+      .select(`
+        *,
+        plan:plans(features)
+      `)
+      .eq('id', accountId)
+      .single()
+
+    if (accountError) {
+      console.error('Error fetching account:', accountError)
+      return { data: null, error: `Error al obtener cuenta: ${accountError.message}` }
+    }
+
+    if (!account) {
+      return { data: null, error: 'Cuenta no encontrada' }
+    }
+
+    console.log('Account loaded:', { id: account.id, plan_id: account.plan_id })
+
+    // Verificar si hay override
+    const settings = account.settings as Record<string, unknown> | null
+    const override = settings?.max_emails_override
+    const isOverridden = override !== undefined && (typeof override === 'number' || override === null)
+    
+    console.log('Settings check:', { settings, override, isOverridden })
+    
+    // Obtener el límite efectivo
+    let maxEmails: number | null
+    if (isOverridden) {
+      maxEmails = override as number | null
+    } else {
+      maxEmails = account.plan?.features?.max_emails ?? null
+    }
+
+    console.log('Max emails determined:', maxEmails)
+
+    // Si no hay límite, retornar información básica
+    if (maxEmails === null) {
+      return {
+        data: {
+          maxEmails: null,
+          emailsSent: 0,
+          emailsRemaining: null,
+          hasReachedLimit: false,
+          isOverridden,
+          periodStart: new Date(0),
+          periodEnd: new Date(),
+        }
+      }
+    }
+
+    // Calcular período y contar emails
+    const businessAccount = account as BusinessAccount
+    
+    console.log('Importing email-limit module...')
+    // Importar dinámicamente las funciones del módulo email-limit
+    const emailLimitModule = await import('@/lib/actions/collection/email-limit')
+    
+    console.log('Getting email period...')
+    const { start, end } = await emailLimitModule.getEmailPeriodForAccount(businessAccount)
+    console.log('Period calculated:', { start, end })
+    
+    console.log('Counting emails sent...')
+    const { emailsSent } = await emailLimitModule.countEmailsSentAction(accountId, start, end)
+    console.log('Emails counted:', emailsSent)
+
+    const emailsRemaining = maxEmails === null ? null : Math.max(0, maxEmails - emailsSent)
+    const hasReachedLimit = emailsRemaining !== null && emailsRemaining === 0
+
+    return {
+      data: {
+        maxEmails,
+        emailsSent,
+        emailsRemaining,
+        hasReachedLimit,
+        isOverridden,
+        periodStart: start,
+        periodEnd: end,
+      }
+    }
+  } catch (error: any) {
+    console.error('Error getting account email limit info:', error)
+    console.error('Stack trace:', error.stack)
+    return { data: null, error: error.message || 'Error desconocido al obtener información del límite' }
+  }
+}

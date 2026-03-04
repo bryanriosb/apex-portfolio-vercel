@@ -164,7 +164,8 @@ export function BusinessDetailModal({
                     <p className="text-sm">{fullAddress}</p>
                     {business.location && (
                       <p className="text-xs text-muted-foreground">
-                        Coordenadas: {business.location}
+                        Coordenadas: {business.location.lat},{' '}
+                        {business.location.lng}
                       </p>
                     )}
                   </div>
@@ -175,56 +176,6 @@ export function BusinessDetailModal({
                 )}
               </div>
             </div>
-
-            <Separator />
-
-            {/* Calificaciones */}
-            <div>
-              <h4 className="font-medium mb-3 flex items-center gap-2">
-                <Star className="h-4 w-4" />
-                Calificaciones
-              </h4>
-              <div className="rounded-lg border p-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-1 text-2xl font-bold">
-                      <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
-                      {business.avg_rating.toFixed(1)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Calificación promedio
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-1 text-2xl font-bold">
-                      <MessageSquare className="h-5 w-5 text-muted-foreground" />
-                      {business.review_count}
-                    </div>
-                    <div className="text-xs text-muted-foreground">Reseñas</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Imágenes */}
-            {business.gallery_cover_image_url && (
-              <>
-                <Separator />
-                <div>
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <Image className="h-4 w-4" />
-                    Imagen de Portada
-                  </h4>
-                  <div className="rounded-lg border overflow-hidden">
-                    <img
-                      src={business.gallery_cover_image_url}
-                      alt={`Portada de ${business.name}`}
-                      className="w-full h-48 object-cover"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
 
             <Separator />
 

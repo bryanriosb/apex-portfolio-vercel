@@ -32,6 +32,12 @@ export interface PlanFeatures {
   max_services: number | null
   max_customers: number | null
   max_storage_mb: number | null
+  // Límite de emails por plan
+  // null = ilimitado, 0 = bloqueado, number = límite
+  // Para trial: 10 emails totales durante el período de prueba
+  // Para free: 0 emails (requiere upgrade)
+  // Para planes pagos: null (ilimitado) o número específico
+  max_emails: number | null
   // Configuraciones adicionales (no son módulos)
   has_custom_branding: boolean
   has_priority_support: boolean
@@ -142,6 +148,8 @@ export const DEFAULT_PLAN_FEATURES: PlanFeatures = {
   max_services: null,
   max_customers: null,
   max_storage_mb: null,
+  // Límite de emails (null = ilimitado, 0 = bloqueado)
+  max_emails: null,
   // Configuraciones adicionales
   has_custom_branding: false,
   has_priority_support: false,

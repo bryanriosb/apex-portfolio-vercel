@@ -27,6 +27,7 @@ import {
   Clock,
   AlertTriangle,
   Loader2,
+  MailIcon,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -366,6 +367,53 @@ export function BusinessAccountDetailModal({
               </div>
             </div>
 
+            {/* Límite de Emails */}
+            <Separator />
+            <div>
+              <h4 className="font-medium mb-3 flex items-center gap-2">
+                <MailIcon className="h-4 w-4" />
+                Límite de Emails
+              </h4>
+              <div className="rounded-lg border p-4">
+                {(() => {
+                  const settings = account.settings as Record<string, unknown> | null
+                  const emailOverride = settings?.max_emails_override
+                  const hasOverride = emailOverride !== undefined && (typeof emailOverride === 'number' || emailOverride === null)
+                  
+                  if (hasOverride) {
+                    return (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">Personalizado</Badge>
+                        </div>
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Límite configurado: </span>
+                          <span className="font-medium">
+                            {emailOverride === null 
+                              ? 'Ilimitado' 
+                              : emailOverride === 0 
+                                ? 'Bloqueado (0)' 
+                                : `${emailOverride} emails`}
+                          </span>
+                        </p>
+                      </div>
+                    )
+                  }
+                  
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">Según Plan</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Esta cuenta usa el límite definido en su plan de suscripción
+                      </p>
+                    </div>
+                  )
+                })()}
+              </div>
+            </div>
+
             {/* Configuración Personalizada */}
             {account.settings && Object.keys(account.settings).length > 0 && (
               <>
@@ -377,7 +425,9 @@ export function BusinessAccountDetailModal({
                   </h4>
                   <div className="rounded-lg border p-4">
                     <div className="grid grid-cols-2 gap-3">
-                      {Object.entries(account.settings).map(([key, value]) => (
+                      {Object.entries(account.settings)
+                        .filter(([key]) => key !== 'max_emails_override')
+                        .map(([key, value]) => (
                         <div key={key} className="flex justify-between text-sm">
                           <span className="text-muted-foreground">{key}:</span>
                           <span className="font-medium">{String(value)}</span>
