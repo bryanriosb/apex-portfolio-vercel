@@ -6,7 +6,7 @@ import {
   deleteBusinessAction,
   deleteBusinessesAction,
 } from '@/lib/actions/business'
-import type { Business, BusinessInsert } from '@/lib/models/business/business'
+import type { Business, BusinessInsert, BusinessUpdate } from '@/lib/models/business/business'
 
 export interface BusinessListResponse {
   data: Business[]
@@ -64,7 +64,7 @@ export default class BusinessService {
    * Actualiza un negocio
    */
   async updateItem(
-    data: Business | Partial<Business>
+    data: BusinessUpdate & { id: string }
   ): Promise<{ success: boolean; data?: Business; error?: string }> {
     try {
       if (!data.id) {

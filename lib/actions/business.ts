@@ -11,6 +11,7 @@ import {
 import type {
   Business,
   BusinessInsert,
+  BusinessUpdate,
   BusinessWithAccount,
 } from '@/lib/models/business/business'
 import { getSupabaseClient } from './supabase'
@@ -188,7 +189,7 @@ export async function createBusinessAction(
  */
 export async function updateBusinessAction(
   id: string,
-  data: Partial<Business>
+  data: BusinessUpdate
 ): Promise<{ success: boolean; data?: Business; error?: string }> {
   try {
     const business = await updateRecord<Business>('businesses', id, data)
