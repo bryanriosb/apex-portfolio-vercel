@@ -126,6 +126,7 @@ export async function createExecutionWithClientsAction({
     )
 
     // 5. Create batches (timezone is now populated automatically in createBatches)
+    const isImmediate = executionData.execution_mode === 'immediate' || strategyConfig.startImmediately
     const batches = await BatchStrategyService.createBatches(
       insertedClients || [],
       execution.id,
@@ -138,13 +139,25 @@ export async function createExecutionWithClientsAction({
         maxBatchesPerDay: strategyConfig.maxBatchesPerDay,
         customIntervals: strategyConfig.customIntervals,
         startDate: new Date(),
+        isImmediate,  // <-- Pasar flag para ejecuciones inmediatas
       }
     )
 
     console.log(`Created ${batches.length} batches with strategy: ${strategyType}`)
 
+    // 5.5 Assign batch_id to clients for metric tracking
+    if (insertedClients && insertedClients.length > 0 && batches.length > 0) {
+      await BatchStrategyService.assignClientsToBatches(insertedClients, batches)
+    }
+
+    // Verificar si el primer batch tiene scheduled_for en el futuro
+    const firstBatch = batches[0]
+    const isScheduledForFuture = firstBatch?.scheduled_for 
+      ? new Date(firstBatch.scheduled_for) > new Date()
+      : false
+
     // 6. Immediate mode: invoke Lambda directly — no SQS
-    if (executionData.execution_mode === 'immediate' || strategyConfig.startImmediately) {
+    if ((executionData.execution_mode === 'immediate' || strategyConfig.startImmediately) && !isScheduledForFuture) {
       await supabase
         .from('collection_executions')
         .update({ status: 'processing', started_at: new Date().toISOString() })
@@ -152,10 +165,15 @@ export async function createExecutionWithClientsAction({
 
       await CollectionService.startImmediateExecution(execution.id)
 
-    } else if (executionData.execution_mode === 'scheduled' && executionData.scheduled_at) {
+    } else if (executionData.execution_mode === 'scheduled' || isScheduledForFuture) {
       // Scheduled mode: create EventBridge One-time schedule for first batch
       try {
-        const scheduledDate = new Date(executionData.scheduled_at!)
+        // Si es inmediata pero fuera de horario, usar el scheduled_for del primer batch
+        // Si es scheduled, usar la fecha programada
+        const scheduledDate = isScheduledForFuture && firstBatch?.scheduled_for
+          ? new Date(firstBatch.scheduled_for)
+          : new Date(executionData.scheduled_at!)
+        
         const business = await getBusinessByIdAction(executionData.business_id)
         const businessTimezone = business?.timezone || 'America/Bogota'
 
@@ -169,12 +187,12 @@ export async function createExecutionWithClientsAction({
           .from('collection_executions')
           .update({
             status: 'pending',
-            scheduled_at: executionData.scheduled_at,
+            scheduled_at: scheduledDate.toISOString(),
             eventbridge_rule_name: ruleName,
           })
           .eq('id', execution.id)
 
-        console.log(`Successfully created EventBridge schedule: ${ruleName}`)
+        console.log(`Successfully created EventBridge schedule: ${ruleName} for ${scheduledDate.toISOString()}`)
       } catch (scheduleError: any) {
         console.error('Failed to schedule execution:', scheduleError)
         await supabase.from('collection_executions').delete().eq('id', execution.id)
@@ -186,7 +204,9 @@ export async function createExecutionWithClientsAction({
     const estimatedCompletionTime = lastBatch?.scheduled_for ?? null
 
     let message: string
-    if (executionData.execution_mode === 'scheduled' && executionData.scheduled_at) {
+    if (isScheduledForFuture) {
+      message = `Ejecución creada con ${batches.length} batches (${strategyType}). Está fuera del horario permitido, se ejecutará el ${firstBatch?.scheduled_for}.`
+    } else if (executionData.execution_mode === 'scheduled' && executionData.scheduled_at) {
       message = `Ejecución programada creada con ${batches.length} batches (${strategyType}). EventBridge configurado para ${executionData.scheduled_at}.`
     } else {
       message = `Ejecución creada con ${batches.length} batches (${strategyType}). Procesamiento iniciado.`

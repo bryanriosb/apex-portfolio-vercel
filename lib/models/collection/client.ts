@@ -17,8 +17,7 @@ export interface CollectionClient {
     id: string
     execution_id: string
     customer_id?: string | null
-
-
+    batch_id?: string | null
 
     // Debt data
     invoices?: any[] | null
@@ -60,6 +59,7 @@ export interface CollectionClient {
 export interface CollectionClientInsert {
     execution_id: string
     customer_id?: string | null
+    batch_id?: string | null
     invoices?: any[] | null
     custom_data?: Record<string, any>
     status?: ClientStatus
@@ -69,6 +69,7 @@ export interface CollectionClientInsert {
 
 export interface CollectionClientUpdate {
     status?: ClientStatus
+    batch_id?: string | null
     email_sent_at?: string | null
     email_delivered_at?: string | null
     email_opened_at?: string | null

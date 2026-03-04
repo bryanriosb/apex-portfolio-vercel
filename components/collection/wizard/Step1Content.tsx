@@ -370,25 +370,25 @@ export function Step1Content({
   // Calculate counts for display
   const foundCount = fileData
     ? Array.from(fileData.groupedClients.values()).filter(
-        (c) => c.status === 'found'
-      ).length
+      (c) => c.status === 'found'
+    ).length
     : 0
   const notFoundCount = fileData
     ? Array.from(fileData.groupedClients.values()).filter(
-        (c) => c.status === 'not_found'
-      ).length
+      (c) => c.status === 'not_found'
+    ).length
     : 0
   const discardedCount = fileData
     ? Array.from(fileData.groupedClients.values()).filter(
-        (c) => c.status === 'blacklisted'
-      ).length
+      (c) => c.status === 'blacklisted'
+    ).length
     : 0
   const withFilteredEmails = fileData
     ? Array.from(fileData.groupedClients.values()).filter(
-        (c) =>
-          c.status !== 'blacklisted' &&
-          (c.emailValidation?.blacklistedEmails?.length ?? 0) > 0
-      ).length
+      (c) =>
+        c.status !== 'blacklisted' &&
+        (c.emailValidation?.blacklistedEmails?.length ?? 0) > 0
+    ).length
     : 0
 
   return (
@@ -486,7 +486,7 @@ export function Step1Content({
                   fileInputRef.current?.click()
                 }}
               >
-                Examinar archivos
+                Examinar
               </Button>
             </div>
           )}
@@ -569,9 +569,8 @@ export function Step1Content({
                     .map((client, idx) => (
                       <tr
                         key={idx}
-                        className={`border-b ${
-                          client.status === 'blacklisted' ? 'bg-red-50/50' : ''
-                        }`}
+                        className={`border-b ${client.status === 'blacklisted' ? 'bg-red-50/50' : ''
+                          }`}
                       >
                         <td className="p-2 font-mono text-xs">{client.nit}</td>
                         <td className="p-2">

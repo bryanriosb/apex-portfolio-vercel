@@ -206,4 +206,7 @@ export interface DatabaseStrategy {
   min_delivery_rate_threshold: number
   max_bounce_rate_threshold: number
   max_complaint_rate_threshold: number
+  preferred_send_hour_start?: number
+  preferred_send_hour_end?: number
+  avoid_weekends?: boolean
 }

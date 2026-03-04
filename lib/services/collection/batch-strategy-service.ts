@@ -154,6 +154,7 @@ export class BatchStrategyService {
       maxBatchesPerDay?: number
       customIntervals?: number[]
       startDate?: Date
+      isImmediate?: boolean  // <-- NUEVO: para ejecuciones inmediatas
     }
   ): Promise<ExecutionBatch[]> {
     const supabase = await getSupabaseAdminClient()
@@ -242,7 +243,8 @@ export class BatchStrategyService {
           reputationProfile,
           quotaInfo,
           businessTimezone,
-          options?.startDate
+          options?.startDate,
+          options?.isImmediate
         )
         break
 
@@ -292,7 +294,8 @@ export class BatchStrategyService {
     },
     quotaInfo: { canSend: boolean; remaining: number; dailyLimit: number },
     timezone: string,
-    startDate?: Date
+    startDate?: Date,
+    isImmediate?: boolean
   ): ExecutionBatchInsert[] {
     const batches: ExecutionBatchInsert[] = []
     let clientIndex = 0
@@ -334,13 +337,19 @@ export class BatchStrategyService {
       const batchClients = clients.slice(clientIndex, clientIndex + batchSize)
       const clientIds = batchClients.map((c) => c.id)
 
+      // Calcular tiempo base usando la nueva lógica de horarios
+      const baseTime = isImmediate 
+        ? new Date() 
+        : currentDay
+      
       const baseScheduledTime = this.calculateSendTime(
-        currentDay,
-        strategy.preferred_send_hour_start || 9,
-        strategy.preferred_send_hour_end || 17,
-        strategy.avoid_weekends !== false
+        baseTime,
+        strategy,
+        timezone,
+        isImmediate
       )
-
+      
+      // Aplicar offset de intervalo para batches subsiguientes
       const intervalOffset = batchesToday.length * intervalMinutes
       const scheduledTime = new Date(
         baseScheduledTime.getTime() + intervalOffset * 60000
@@ -397,6 +406,7 @@ export class BatchStrategyService {
       customBatchSize?: number
       customIntervals?: number[]
       startDate?: Date
+      isImmediate?: boolean
     }
   ): ExecutionBatchInsert[] {
     const batches: ExecutionBatchInsert[] = []
@@ -407,6 +417,7 @@ export class BatchStrategyService {
     let clientIndex = 0
     let batchNumber = 1
     let currentTime = new Date(options?.startDate || new Date())
+    const isImmediate = options?.isImmediate
 
     while (clientIndex < totalClients) {
       const remainingClients = totalClients - clientIndex
@@ -418,12 +429,30 @@ export class BatchStrategyService {
       )
       const clientIds = batchClients.map((c) => c.id)
 
+      // Calcular tiempo base usando la nueva lógica de horarios
       const interval =
         options?.customIntervals?.[batchNumber - 1] ??
         (batchNumber === 1 ? 0 : intervalMinutes)
 
-      if (interval > 0) {
-        currentTime = new Date(currentTime.getTime() + interval * 60000)
+      const baseTime = isImmediate 
+        ? new Date() 
+        : currentTime
+      
+      const baseScheduledTime = this.calculateSendTime(
+        baseTime,
+        strategy,
+        timezone,
+        isImmediate
+      )
+      
+      // Aplicar offset de intervalo
+      const scheduledTime = new Date(
+        baseScheduledTime.getTime() + interval * 60000
+      )
+      
+      // Actualizar currentTime para la siguiente iteración (solo modo no inmediato)
+      if (!isImmediate) {
+        currentTime = scheduledTime
       }
 
       batches.push({
@@ -434,7 +463,7 @@ export class BatchStrategyService {
         status: 'pending',
         total_clients: batchClients.length,
         client_ids: clientIds,
-        scheduled_for: currentTime.toISOString(),
+        scheduled_for: scheduledTime.toISOString(),
         timezone,
       })
 
@@ -446,38 +475,80 @@ export class BatchStrategyService {
   }
 
   /**
-   * Calcula la hora óptima de envío respetando preferencias
+   * Calcula la hora óptima de envío respetando preferencias de horario
+   * Para ejecuciones inmediatas: si está dentro del rango envía ahora, si no programa para el inicio del rango
+   * Para ejecuciones programadas: ajusta la hora al rango permitido
    */
   private static calculateSendTime(
-    date: Date,
-    startHour: number,
-    endHour: number,
-    avoidWeekends: boolean
+    baseDate: Date,
+    strategy: DeliveryStrategy,
+    timezone: string,
+    isImmediate: boolean = false
   ): Date {
-    let sendTime = new Date(date)
+    const startHour = strategy.preferred_send_hour_start ?? 9
+    const endHour = strategy.preferred_send_hour_end ?? 17
+    const avoidWeekends = strategy.avoid_weekends ?? true
 
-    // Si es fin de semana y debemos evitarlo, mover a lunes
-    if (avoidWeekends) {
-      const dayOfWeek = sendTime.getDay()
-      if (dayOfWeek === 0) {
-        // Domingo
-        sendTime.setDate(sendTime.getDate() + 1)
-      } else if (dayOfWeek === 6) {
-        // Sábado
-        sendTime.setDate(sendTime.getDate() + 2)
+    // Convertir a hora local del negocio
+    const localDate = new Date(
+      baseDate.toLocaleString('en-US', { timeZone: timezone })
+    )
+    const localHour = localDate.getHours()
+
+    if (isImmediate) {
+      // Para ejecuciones inmediatas
+      if (localHour >= startHour && localHour <= endHour) {
+        // Estamos dentro del rango, enviar ahora
+        return baseDate
+      } else if (localHour < startHour) {
+        // Es antes del inicio, programar para hoy a la hora de inicio
+        const scheduledTime = new Date(baseDate)
+        scheduledTime.setHours(startHour, 0, 0, 0)
+        return scheduledTime
+      } else {
+        // Es después del fin, programar para mañana a la hora de inicio
+        const scheduledTime = new Date(baseDate)
+        scheduledTime.setDate(scheduledTime.getDate() + 1)
+        scheduledTime.setHours(startHour, 0, 0, 0)
+
+        // Verificar si cae en fin de semana
+        if (avoidWeekends) {
+          const dayOfWeek = scheduledTime.getDay()
+          if (dayOfWeek === 0) {
+            // Domingo, mover a lunes
+            scheduledTime.setDate(scheduledTime.getDate() + 1)
+          } else if (dayOfWeek === 6) {
+            // Sábado, mover a lunes
+            scheduledTime.setDate(scheduledTime.getDate() + 2)
+          }
+        }
+        return scheduledTime
       }
-    }
+    } else {
+      // Para ejecuciones programadas, ajustar al rango
+      const scheduledTime = new Date(baseDate)
 
-    // Establecer hora dentro del rango preferido
-    const currentHour = sendTime.getHours()
-    if (currentHour < startHour) {
-      sendTime.setHours(startHour, 0, 0, 0)
-    } else if (currentHour > endHour) {
-      sendTime.setHours(startHour, 0, 0, 0)
-      sendTime.setDate(sendTime.getDate() + 1)
-    }
+      // Si es fin de semana y debemos evitarlo, mover a lunes
+      if (avoidWeekends) {
+        const dayOfWeek = scheduledTime.getDay()
+        if (dayOfWeek === 0) {
+          scheduledTime.setDate(scheduledTime.getDate() + 1)
+        } else if (dayOfWeek === 6) {
+          scheduledTime.setDate(scheduledTime.getDate() + 2)
+        }
+      }
 
-    return sendTime
+      // Ajustar hora al rango permitido
+      const hour = scheduledTime.getHours()
+      if (hour < startHour) {
+        scheduledTime.setHours(startHour, 0, 0, 0)
+      } else if (hour > endHour) {
+        scheduledTime.setHours(startHour, 0, 0, 0)
+        scheduledTime.setDate(scheduledTime.getDate() + 1)
+      }
+
+      return scheduledTime
+    }
   }
 
   /**
@@ -549,6 +620,67 @@ export class BatchStrategyService {
     if (error) {
       throw new Error(`Error updating batch status: ${error.message}`)
     }
+  }
+
+  /**
+   * Asigna batch_id a los collection_clients basándose en los batches creados.
+   * Debe llamarse después de crear los batches y antes de iniciar el procesamiento.
+   */
+  static async assignClientsToBatches(
+    clients: CollectionClient[],
+    batches: ExecutionBatch[]
+  ): Promise<void> {
+    const supabase = await getSupabaseAdminClient()
+
+    // Crear un mapa de client_id -> batch_id
+    const clientToBatchMap = new Map<string, string>()
+
+    for (const batch of batches) {
+      for (const clientId of batch.client_ids) {
+        clientToBatchMap.set(clientId, batch.id)
+      }
+    }
+
+    // Agrupar clients por batch_id para hacer updates masivos
+    const batchToClientsMap = new Map<string, string[]>()
+    for (const client of clients) {
+      const batchId = clientToBatchMap.get(client.id)
+      if (batchId) {
+        if (!batchToClientsMap.has(batchId)) {
+          batchToClientsMap.set(batchId, [])
+        }
+        batchToClientsMap.get(batchId)!.push(client.id)
+      }
+    }
+
+    if (batchToClientsMap.size === 0) {
+      console.log('[BatchStrategyService] No clients to assign to batches')
+      return
+    }
+
+    // Realizar updates masivos por batch_id usando rpc para evitar el problema de upsert
+    let totalAssigned = 0
+    for (const [batchId, clientIds] of batchToClientsMap.entries()) {
+      // Procesar en lotes de 100 para evitar queries muy grandes
+      const BATCH_SIZE = 100
+      for (let i = 0; i < clientIds.length; i += BATCH_SIZE) {
+        const batchClientIds = clientIds.slice(i, i + BATCH_SIZE)
+        
+        const { error } = await supabase
+          .from('collection_clients')
+          .update({ batch_id: batchId })
+          .in('id', batchClientIds)
+
+        if (error) {
+          console.error(`[BatchStrategyService] Error assigning batch_id ${batchId} to clients:`, error)
+          throw new Error(`Error assigning clients to batches: ${error.message}`)
+        }
+        
+        totalAssigned += batchClientIds.length
+      }
+    }
+
+    console.log(`[BatchStrategyService] Assigned batch_id to ${totalAssigned} clients across ${batches.length} batches`)
   }
 
   /**

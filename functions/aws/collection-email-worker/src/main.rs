@@ -211,7 +211,18 @@ async fn func(event: LambdaEvent<Value>) -> Result<Value, lambda_runtime::Error>
     let (payload, _context) = event.into_parts();
     let worker_id = uuid::Uuid::new_v4().to_string();
     
-    info!("Worker {} started with payload: {:?}", worker_id, payload);
+    // Log environment configuration
+    let email_provider = std::env::var("EMAIL_PROVIDER").unwrap_or_else(|_| "ses (default)".to_string());
+    let lambda_arn = std::env::var("LAMBDA_EMAIL_WORKER_ARN").unwrap_or_else(|_| "NOT SET".to_string());
+    let supabase_url = std::env::var("SUPABASE_URL").map(|_| "SET".to_string()).unwrap_or_else(|_| "NOT SET".to_string());
+    
+    info!("========================================");
+    info!("Worker {} started", worker_id);
+    info!("EMAIL_PROVIDER: {}", email_provider);
+    info!("LAMBDA_EMAIL_WORKER_ARN: {}", lambda_arn);
+    info!("SUPABASE_URL: {}", supabase_url);
+    info!("Payload: {:?}", payload);
+    info!("========================================");
 
     let config = aws_config::load_defaults(BehaviorVersion::latest()).await;
     let scheduler_client = SchedulerClient::new(&config);
@@ -269,28 +280,50 @@ async fn process_execution_from_db(
     scheduler_client: &SchedulerClient,
     logger: &ExecutionLogger,
 ) -> Result<i32, Box<dyn Error + Send + Sync>> {
+    info!("[process_execution_from_db] Starting execution_id={}", execution_id);
+    
     // Verify execution is still active
     let execution = supabase.get_execution(execution_id).await?;
+    info!("[process_execution_from_db] Fetched execution: id={}, status={}, business_id={}", 
+          execution.id, execution.status, execution.business_id);
+    
     if execution.status == "completed" || execution.status == "failed" {
-        info!("Execution {} already finished, skipping", execution_id);
+        info!("Execution {} already finished (status={}), skipping", execution_id, execution.status);
         return Ok(0);
     }
 
     // Find the first pending batch with scheduled_for <= now
     let pending_batches = supabase.get_pending_batches_for_execution(execution_id).await?;
+    info!("[process_execution_from_db] Found {} pending batches for execution {}", 
+          pending_batches.len(), execution_id);
+    
     let now = Utc::now();
 
+    // Log all pending batches for debugging
+    for (i, batch) in pending_batches.iter().enumerate() {
+        info!("[process_execution_from_db] Pending batch {}: id={}, batch_number={}, scheduled_for={:?}, status={}, client_ids_count={}",
+              i, batch.id, batch.batch_number, batch.scheduled_for, batch.status, batch.client_ids.len());
+    }
+    
     let due_batch = pending_batches.into_iter().find(|b| {
-        b.scheduled_for.as_deref()
+        let is_due = b.scheduled_for.as_deref()
             .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
-            .map(|dt| dt.with_timezone(&Utc) <= now)
-            .unwrap_or(true) // If no scheduled_for, treat as immediately due
+            .map(|dt| dt.with_timezone(&Utc) <= (now + chrono::Duration::minutes(2)))
+            .unwrap_or(true); // If no scheduled_for, treat as immediately due
+        
+        info!("[process_execution_from_db] Checking batch {}: scheduled_for={:?}, is_due={}", 
+              b.id, b.scheduled_for, is_due);
+        is_due
     });
 
     let batch = match due_batch {
-        Some(b) => b,
+        Some(b) => {
+            info!("[process_execution_from_db] Selected due batch: id={}, batch_number={}, client_ids_count={}",
+                  b.id, b.batch_number, b.client_ids.len());
+            b
+        }
         None => {
-            info!("No due batch found for execution {} right now", execution_id);
+            info!("No due batch found for execution {} right now (now={})", execution_id, now.to_rfc3339());
             // Still try to schedule next future batch if any
             if let Err(e) = schedule_next_batch(execution_id, supabase, scheduler_client).await {
                 error!("Failed to schedule next batch for {}: {}", execution_id, e);
@@ -300,13 +333,14 @@ async fn process_execution_from_db(
     };
 
     // Atomically claim the batch (pending -> processing)
+    info!("[process_execution_from_db] Attempting to claim batch {}", batch.id);
     let claimed = supabase.claim_batch(&batch.id).await?;
     if !claimed {
         info!("Batch {} already claimed by another worker, skipping", batch.id);
         return Ok(0);
     }
 
-    info!("Claimed batch {} for execution {}", batch.id, execution_id);
+    info!("[process_execution_from_db] Successfully claimed batch {} for execution {}", batch.id, execution_id);
     let _ = logger.log_event(execution_id, Some(&batch.id), "PICKED_UP", None).await;
 
     // Process the batch
@@ -601,7 +635,15 @@ async fn process_batch_from_db(
     business_name: &str,
     execution: &models::CollectionExecution,
 ) -> Result<i32, Box<dyn Error + Send + Sync>> {
+    info!("[process_batch_from_db] Starting batch_id={} with {} client_ids", batch_id, client_ids.len());
+    
+    if client_ids.is_empty() {
+        warn!("[process_batch_from_db] No client_ids provided for batch {}, returning 0", batch_id);
+        return Ok(0);
+    }
+    
     let clients = supabase.get_clients_by_ids(client_ids).await?;
+    info!("[process_batch_from_db] Fetched {} clients from Supabase", clients.len());
 
     let attachments = if let Some(ids) = &execution.attachment_ids {
         supabase.get_attachments(ids).await.unwrap_or_default()
@@ -612,14 +654,21 @@ async fn process_batch_from_db(
     let is_dev = std::env::var("APP_ENV").unwrap_or_else(|_| "pro".to_string()) == "dev";
     let mut sent_count = 0i32;
 
+    let total_clients = clients.len();
+    info!("[process_batch_from_db] Processing {} clients for batch {}", total_clients, batch_id);
+
     for (index, client) in clients.into_iter().enumerate() {
+        info!("[process_batch_from_db] Processing client {}/{}: id={}", index + 1, total_clients, client.id);
+        
         if is_dev && index > 0 {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
 
         let emails = client.emails();
+        info!("[process_batch_from_db] Client {} has {} emails: {:?}", client.id, emails.len(), emails);
+        
         if emails.is_empty() {
-            warn!("Client {} has no emails, skipping", client.id);
+            warn!("[process_batch_from_db] Client {} has no emails, skipping", client.id);
             continue;
         }
 
@@ -650,9 +699,12 @@ async fn process_batch_from_db(
         let mut last_err: Option<String> = None;
         let mut success = false;
 
+        info!("[process_batch_from_db] Sending email to client {} (attempt 1/5)", client.id);
+
         for attempt in 1u8..=5 {
             match send_client_email(supabase, provider, &template, &client, &emails, &attachments, execution_id, business_name).await {
                 Ok(message_id) => {
+                    info!("[process_batch_from_db] Email sent successfully to client {}: message_id={}", client.id, message_id);
                     let mut custom_data = client.custom_data.clone().unwrap_or(json!({}));
                     if let Some(obj) = custom_data.as_object_mut() {
                         obj.insert("message_id".into(), json!(message_id));
@@ -670,8 +722,10 @@ async fn process_batch_from_db(
                 Err(e) => {
                     last_err = Some(e.to_string());
                     if attempt < 5 {
-                        warn!("Attempt {}/5 failed for client {}: {}. Retrying in 5s...", attempt, client.id, e);
+                        warn!("[process_batch_from_db] Attempt {}/5 failed for client {}: {}. Retrying in 5s...", attempt, client.id, e);
                         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                    } else {
+                        error!("[process_batch_from_db] All 5 attempts failed for client {}: {}", client.id, e);
                     }
                 }
             }
@@ -724,6 +778,9 @@ async fn send_client_email(
     execution_id: &str,
     business_name: &str,
 ) -> Result<String, Box<dyn Error + Send + Sync>> {
+    info!("[send_client_email] Preparing email for client {}: emails={:?}, template={}", 
+          client.id, emails, template.id);
+    
     let mut template_data = client.custom_data.clone().unwrap_or(serde_json::json!({}));
     
     if let Some(invoices) = &client.invoices {
@@ -783,7 +840,12 @@ async fn send_client_email(
         message_id: None,
     };
     
+    info!("[send_client_email] Sending email via provider to {:?}", emails);
+    
     let result = provider.send_email(email_message).await?;
+    
+    info!("[send_client_email] Email sent successfully: message_id={}, provider={}", 
+          result.message_id, result.provider);
     
     Ok(result.message_id)
 }

@@ -12,18 +12,25 @@ use crate::providers::{SesProvider, BrevoProvider};
 /// - "brevo": Brevo (anteriormente SendinBlue)
 pub async fn create_email_provider() -> Arc<dyn EmailProvider> {
     let provider_type = std::env::var("EMAIL_PROVIDER")
-        .unwrap_or_else(|_| "ses".to_string())
+        .unwrap_or_else(|_| {
+            info!("EMAIL_PROVIDER not set, defaulting to 'ses'");
+            "ses".to_string()
+        })
         .to_lowercase();
 
-    info!("Creating email provider: {}", provider_type);
+    info!("Creating email provider: '{}'", provider_type);
 
     match provider_type.as_str() {
         "brevo" => {
             info!("Using Brevo email provider");
             Arc::new(BrevoProvider::new())
         }
-        "ses" | _ => {
-            info!("Using AWS SES email provider (default)");
+        "ses" => {
+            info!("Using AWS SES email provider (explicit)");
+            Arc::new(SesProvider::new().await)
+        }
+        _ => {
+            info!("Using AWS SES email provider (default, unknown value: '{}')", provider_type);
             Arc::new(SesProvider::new().await)
         }
     }

@@ -118,7 +118,7 @@ pub async fn create_email_provider() -> Arc<dyn EmailProvider> {
 
 ```json
 {
-  "sender": {"name": "Manager", "email": "manager@borls.com"},
+  "sender": {"name": "Manager", "email": "notify@borls.com"},
   "to": [{"email": "client@example.com"}],
   "subject": "Recordatorio de pago",
   "htmlContent": "<html>...</html>",

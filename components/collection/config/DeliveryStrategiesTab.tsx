@@ -133,6 +133,8 @@ interface StrategyFormData {
   pause_on_complaint: boolean
   respect_timezone: boolean
   avoid_weekends: boolean
+  preferred_send_hour_start: number
+  preferred_send_hour_end: number
 }
 
 export function DeliveryStrategiesTab() {
@@ -156,6 +158,8 @@ export function DeliveryStrategiesTab() {
     pause_on_complaint: false,
     respect_timezone: true,
     avoid_weekends: false,
+    preferred_send_hour_start: 9,
+    preferred_send_hour_end: 17,
   })
 
   const loadStrategies = useCallback(async () => {
@@ -194,6 +198,8 @@ export function DeliveryStrategiesTab() {
       pause_on_complaint: false,
       respect_timezone: true,
       avoid_weekends: false,
+      preferred_send_hour_start: 9,
+      preferred_send_hour_end: 17,
     })
     setDialogOpen(true)
   }
@@ -215,6 +221,8 @@ export function DeliveryStrategiesTab() {
       pause_on_complaint: strategy.pause_on_complaint,
       respect_timezone: strategy.respect_timezone,
       avoid_weekends: strategy.avoid_weekends,
+      preferred_send_hour_start: strategy.preferred_send_hour_start || 9,
+      preferred_send_hour_end: strategy.preferred_send_hour_end || 17,
     })
     setDialogOpen(true)
   }
@@ -240,6 +248,8 @@ export function DeliveryStrategiesTab() {
         pause_on_complaint: formData.pause_on_complaint,
         respect_timezone: formData.respect_timezone,
         avoid_weekends: formData.avoid_weekends,
+        preferred_send_hour_start: formData.preferred_send_hour_start,
+        preferred_send_hour_end: formData.preferred_send_hour_end,
         rampup_day_1_limit: defaultStrategyConfig[formData.strategy_type].rampup_day_1_limit || 50,
         rampup_day_2_limit: defaultStrategyConfig[formData.strategy_type].rampup_day_2_limit || 100,
         rampup_day_3_5_limit: defaultStrategyConfig[formData.strategy_type].rampup_day_3_5_limit || 200,
@@ -641,6 +651,50 @@ export function DeliveryStrategiesTab() {
                   />
                 </div>
               </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium mb-4">Horario de Envío</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="hour_start">Hora de Inicio</Label>
+                  <Input
+                    id="hour_start"
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={formData.preferred_send_hour_start}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        preferred_send_hour_start: parseInt(e.target.value) || 9,
+                      })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">Hora inicial permitida (0-23)</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="hour_end">Hora de Fin</Label>
+                  <Input
+                    id="hour_end"
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={formData.preferred_send_hour_end}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        preferred_send_hour_end: parseInt(e.target.value) || 17,
+                      })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">Hora final permitida (0-23)</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Si una ejecución inmediata se crea fuera de este rango, se programará para el inicio del rango
+              </p>
             </div>
 
             <div className="border-t pt-4">

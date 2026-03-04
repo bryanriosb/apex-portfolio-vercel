@@ -83,6 +83,7 @@ Haga clic aquí para cancelar su suscripción: [enlace_unsubscribe]
 ### Verificación de Listas
 
 Antes de cada ejecución de envío:
+
 - Eliminación de **duplicados**
 - Validación de **formato de email**
 - Filtrado de direcciones **conocidas como inválidas**
@@ -119,7 +120,7 @@ Pie del Email:
 
 Hemos implementado una infraestructura completa de monitoreo usando **AWS SNS** para procesar eventos de SES:
 
-#### SNS Topics Configurados:
+#### SNS Topics Configurados
 
 1. **`borls-ses-bounces`**
    - Recibe eventos de tipo `bounce`
@@ -249,13 +250,14 @@ Valor: v=DMARC1; p=quarantine; pct=100; rua=mailto:dmarc-reports@borls.com
 ```
 
 **Política:** Cuarentena para emails que fallan autenticación
-**Reporte:** Informes agregados enviados a dmarc-reports@borls.com
+**Reporte:** Informes agregados enviados a <dmarc-reports@borls.com>
 
 ### Configuration Set de SES
 
 **Nombre:** `borls-collection-config`
 
 **Event Destinations Configurados:**
+
 - ✅ **Delivery:** SNS Topic `borls-ses-deliveries`
 - ✅ **Bounce:** SNS Topic `borls-ses-bounces`
 - ✅ **Complaint:** SNS Topic `borls-ses-complaints`
@@ -291,6 +293,7 @@ Valor: v=DMARC1; p=quarantine; pct=100; rua=mailto:dmarc-reports@borls.com
 ### Template System
 
 Utilizamos **TipTap Editor + Handlebars** para templates:
+
 - Plantillas personalizables por empresa
 - Variables dinámicas para personalización
 - HTML optimizado para email clients
@@ -356,9 +359,9 @@ Nos comprometemos a:
 
 ## Información de Contacto
 
-- **Cuenta AWS:** cllctnai@gmail.com
-- **Email de contacto:** manager@borls.com
-- **Sitio web:** https://borls.com
+- **Cuenta AWS:** <cllctnai@gmail.com>
+- **Email de contacto:** <notify@borls.com>
+- **Sitio web:** <https://borls.com>
 - **Documentación técnica:** [Enlace a docs del proyecto]
 
 ---
@@ -372,8 +375,8 @@ Atentamente,
 **Bryan**
 **CTO / Desarrollador Principal**
 **Borls Collections Management System**
-Email: manager@borls.com
-Sitio: https://borls.com
+Email: <notify@borls.com>
+Sitio: <https://borls.com>
 
 ---
 

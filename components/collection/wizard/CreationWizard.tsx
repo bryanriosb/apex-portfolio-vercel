@@ -84,10 +84,6 @@ export function CreationWizard() {
   >(undefined)
   const [senderDomain, setSenderDomain] = useState('')
   const [availableDomains, setAvailableDomains] = useState<string[]>([])
-  const [customBatchSize, setCustomBatchSize] = useState<number | undefined>(
-    undefined
-  )
-  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
 
   // Validation State
   const [isDataLoaded, setIsDataLoaded] = useState(false)
@@ -275,7 +271,6 @@ export function CreationWizard() {
         strategyType: selectedStrategy?.strategy_type || 'batch',
         domain: senderDomain || 'bore.com',
         startImmediately: executionMode === 'immediate',
-        ...(customBatchSize && { customBatchSize }),
       }
 
       const result = await createExecutionWithClientsAction({
@@ -604,10 +599,6 @@ export function CreationWizard() {
               templates={templates}
               senderDomain={senderDomain}
               onDomainChange={setSenderDomain}
-              showAdvancedOptions={showAdvancedOptions}
-              onAdvancedOptionsChange={setShowAdvancedOptions}
-              customBatchSize={customBatchSize}
-              onCustomBatchSizeChange={setCustomBatchSize}
               availableDomains={availableDomains}
             />
           )}

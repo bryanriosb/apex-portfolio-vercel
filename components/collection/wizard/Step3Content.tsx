@@ -11,10 +11,10 @@ import {
   TrendingUp,
   Mail,
   Shield,
-  Settings,
   Info,
   Database,
   AlertTriangle,
+  Timer,
 } from 'lucide-react'
 import {
   Select,
@@ -45,10 +45,6 @@ interface Step3ContentProps {
   templates: CollectionTemplate[]
   senderDomain: string
   onDomainChange: (domain: string) => void
-  showAdvancedOptions: boolean
-  onAdvancedOptionsChange: (show: boolean) => void
-  customBatchSize: number | undefined
-  onCustomBatchSizeChange: (size: number | undefined) => void
   availableDomains: string[]
 }
 
@@ -68,10 +64,6 @@ export function Step3Content({
   templates,
   senderDomain,
   onDomainChange,
-  showAdvancedOptions,
-  onAdvancedOptionsChange,
-  customBatchSize,
-  onCustomBatchSizeChange,
   availableDomains,
 }: Step3ContentProps) {
   const { activeBusiness } = useActiveBusinessStore()
@@ -255,6 +247,28 @@ export function Step3Content({
               </div>
             </div>
           )}
+
+          {/* Nota sobre horarios de envío */}
+          {executionMode === 'immediate' && selectedStrategy && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200">
+              <div className="flex items-start gap-2">
+                <Timer className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-blue-900">
+                    Horario de Envío
+                  </p>
+                  <p className="text-xs text-blue-800">
+                    La estrategia seleccionada permite envíos entre las{' '}
+                    <strong>
+                      {selectedStrategy.preferred_send_hour_start || 9}:00 - {selectedStrategy.preferred_send_hour_end || 17}:00
+                    </strong>
+                    . Si inicias fuera de este rango, el envío se programará
+                    automáticamente para el inicio del horario permitido.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -350,73 +364,6 @@ export function Step3Content({
           )}
         </CardContent>
       </Card>
-
-      {/* Advanced Options */}
-      <Card>
-        <div
-          className="p-4 flex flex-row items-center justify-between cursor-pointer hover:bg-muted/50 transition-colors"
-          onClick={() => onAdvancedOptionsChange(!showAdvancedOptions)}
-        >
-          <div className="space-y-0.5">
-            <Label className="text-sm font-medium flex items-center gap-2 cursor-pointer">
-              <Settings className="h-4 w-4" />
-              Opciones Avanzadas
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              Configuraciones adicionales de envío (tamaño de lote, etc.)
-            </p>
-          </div>
-          <input
-            type="checkbox"
-            checked={showAdvancedOptions}
-            onChange={(e) => onAdvancedOptionsChange(e.target.checked)}
-            className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-
-        {showAdvancedOptions && (
-          <CardContent className="pt-0 pb-4 animate-in fade-in slide-in-from-top-2 border-t mt-4">
-            <div className="space-y-2 mt-4">
-              <Label htmlFor="customBatchSize">
-                Tamaño de Lote Personalizado
-              </Label>
-              <Input
-                id="customBatchSize"
-                type="number"
-                min={1}
-                max={1000}
-                placeholder="Ej: 50"
-                value={customBatchSize || ''}
-                onChange={(e) => {
-                  const value = e.target.value
-                  onCustomBatchSizeChange(
-                    value ? parseInt(value, 10) : undefined
-                  )
-                }}
-                className="max-w-[200px]"
-              />
-              <p className="text-xs text-muted-foreground">
-                Número de correos por lote. Dejar vacío para usar el valor por
-                defecto de la estrategia.
-              </p>
-            </div>
-          </CardContent>
-        )}
-      </Card>
-
-      {/* Summary */}
-      <div className="bg-muted/30 border p-4">
-        <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
-          Resumen de Ejecución
-        </h4>
-        <p className="text-sm text-muted-foreground">
-          {executionMode === 'immediate'
-            ? `Se crearán ${validClients} registros de cobro y el envío comenzará inmediatamente usando la estrategia "${selectedStrategy?.name || 'Por Defecto'}".`
-            : `Se crearán ${validClients} registros y el envío se programará para el ${scheduledDate ? scheduledDate.toLocaleDateString() : '...'} a las ${scheduledTime} usando la estrategia "${selectedStrategy?.name || 'Por Defecto'}".`}{' '}
-          Los clientes no encontrados se omitirán.
-        </p>
-      </div>
     </div>
   )
 }
