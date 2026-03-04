@@ -63,6 +63,7 @@ export class RealtimeDashboardService {
                     event: '*',
                     schema: 'public',
                     table: 'collection_executions',
+                    filter: `business_id=eq.${businessId}`,
                 },
                 (payload) => onExecutionChange(payload)
             )
@@ -81,6 +82,7 @@ export class RealtimeDashboardService {
                     event: '*',
                     schema: 'public',
                     table: 'email_reputation_profiles',
+                    filter: `business_id=eq.${businessId}`,
                 },
                 (payload) => onReputationChange(payload)
             )

@@ -26,7 +26,7 @@ BEGIN
         SELECT id INTO v_batch_id
         FROM execution_batches
         WHERE execution_id = NEW.execution_id
-          AND client_ids @> ARRAY[NEW.id::text]
+          AND NEW.id = ANY(client_ids)
         LIMIT 1;
     END IF;
 

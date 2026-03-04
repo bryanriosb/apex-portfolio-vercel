@@ -450,11 +450,18 @@ CREATE TRIGGER update_collection_config_updated_at
   BEFORE UPDATE ON collection_config
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Auto-calculate metrics in collection_executions
+-- DEPRECATED: Metrics calculation now handled by centralized trigger
+-- See: 20260304_increment_execution_counters_trigger.sql
+-- This function and trigger are kept as comments to prevent re-creation
+-- and to maintain migration history. The centralized trigger handles:
+-- - Counter increments (emails_sent, emails_delivered, emails_opened, emails_bounced)
+-- - Batch-level metrics updates
+-- - Rate calculations (open_rate, bounce_rate, delivery_rate)
+-- - Auto-completion of batches
+/*
 CREATE OR REPLACE FUNCTION calculate_execution_metrics()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Recalculate metrics when client status changes
   UPDATE collection_executions
   SET 
     open_rate = CASE 
@@ -474,7 +481,6 @@ BEGIN
     END,
     updated_at = NOW()
   WHERE id = NEW.execution_id;
-  
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -482,42 +488,29 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER update_metrics_on_client_change
   AFTER UPDATE OF status ON collection_clients
   FOR EACH ROW EXECUTE FUNCTION calculate_execution_metrics();
+*/
 
--- Auto-increment counters on collection_executions
+-- DEPRECATED: Counter increment now handled by centralized trigger
+-- See: 20260304_increment_execution_counters_trigger.sql
+/*
 CREATE OR REPLACE FUNCTION increment_execution_counters()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Increment appropriate counter based on status change
   IF NEW.status = 'sent' AND (OLD.status IS NULL OR OLD.status != 'sent') THEN
-    UPDATE collection_executions 
-    SET emails_sent = emails_sent + 1
-    WHERE id = NEW.execution_id;
+    UPDATE collection_executions SET emails_sent = emails_sent + 1 WHERE id = NEW.execution_id;
   END IF;
-  
   IF NEW.status = 'delivered' AND (OLD.status IS NULL OR OLD.status != 'delivered') THEN
-    UPDATE collection_executions 
-    SET emails_delivered = emails_delivered + 1
-    WHERE id = NEW.execution_id;
+    UPDATE collection_executions SET emails_delivered = emails_delivered + 1 WHERE id = NEW.execution_id;
   END IF;
-  
   IF NEW.status = 'opened' AND (OLD.status IS NULL OR OLD.status != 'opened') THEN
-    UPDATE collection_executions 
-    SET emails_opened = emails_opened + 1
-    WHERE id = NEW.execution_id;
+    UPDATE collection_executions SET emails_opened = emails_opened + 1 WHERE id = NEW.execution_id;
   END IF;
-  
   IF NEW.status = 'bounced' AND (OLD.status IS NULL OR OLD.status != 'bounced') THEN
-    UPDATE collection_executions 
-    SET emails_bounced = emails_bounced + 1
-    WHERE id = NEW.execution_id;
+    UPDATE collection_executions SET emails_bounced = emails_bounced + 1 WHERE id = NEW.execution_id;
   END IF;
-  
   IF NEW.fallback_sent_at IS NOT NULL AND (OLD.fallback_sent_at IS NULL) THEN
-    UPDATE collection_executions 
-    SET fallback_sent = fallback_sent + 1
-    WHERE id = NEW.execution_id;
+    UPDATE collection_executions SET fallback_sent = fallback_sent + 1 WHERE id = NEW.execution_id;
   END IF;
-  
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -525,6 +518,7 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER increment_counters_on_client_update
   AFTER UPDATE ON collection_clients
   FOR EACH ROW EXECUTE FUNCTION increment_execution_counters();
+*/
 
 -- =====================================================
 -- COMMENTS FOR DOCUMENTATION

@@ -136,9 +136,9 @@ export async function processEmailEvent(
 
             switch (event.eventType) {
                 case 'email_sent':
-                    // Worker marca como 'accepted' cuando el proveedor acepta la petición
-                    // El webhook confirma cuando realmente se envía
-                    if (client.status === 'pending' || client.status === 'accepted') {
+                    // Always update to 'sent' when webhook confirms email was sent
+                    // This ensures emails_sent counter is always incremented
+                    if (client.status !== 'sent') {
                         newStatus = 'sent'
                     }
                     break
