@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { EmailReputationProfile } from '@/lib/models/collection/email-reputation'
 import { cn } from '@/lib/utils'
+import { AnimatedNumber, AnimatedPercentage } from '@/components/ui/animated-number'
 
 interface ReputationOverviewProps {
   profiles: EmailReputationProfile[]
@@ -66,7 +67,7 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
         </div>
         {!loading && (
           <span className="text-sm text-muted-foreground shrink-0">
-            {profiles.length} dominio{profiles.length !== 1 ? 's' : ''} configurado{profiles.length !== 1 ? 's' : ''}
+            <AnimatedNumber value={profiles.length} /> dominio{profiles.length !== 1 ? 's' : ''} configurado{profiles.length !== 1 ? 's' : ''}
           </span>
         )}
       </div>
@@ -132,7 +133,7 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                         ) : (
                           <Badge variant="secondary">
                             <Clock className="w-3 h-3 mr-1" />
-                            En calentamiento (Día {profile.current_warmup_day})
+                            En calentamiento (Día <AnimatedNumber value={profile.current_warmup_day} />)
                           </Badge>
                         )}
                         {profile.has_reputation_issues && (
@@ -152,10 +153,10 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                   </div>
                   <div className="text-right shrink-0">
                     <div className="text-sm font-medium">
-                      {profile.total_emails_sent.toLocaleString()} enviados
+                      <AnimatedNumber value={profile.total_emails_sent} /> enviados
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {profile.daily_sending_limit.toLocaleString()}/día límite
+                      <AnimatedNumber value={profile.daily_sending_limit} />/día límite
                     </div>
                   </div>
                 </div>
@@ -171,7 +172,7 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                         Entregados
                       </span>
                       <span className={cn('font-medium', getRateColor(Math.min(100, profile.delivery_rate), 'good'))}>
-                        {Math.min(100, profile.delivery_rate).toFixed(1)}%
+                        <AnimatedPercentage value={Math.min(100, profile.delivery_rate)} decimals={1} />
                       </span>
                     </div>
                     <Progress
@@ -189,7 +190,7 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                         Apertura
                       </span>
                       <span className={cn('font-medium', getRateColor(Math.min(100, profile.open_rate), 'good'))}>
-                        {Math.min(100, profile.open_rate).toFixed(1)}%
+                        <AnimatedPercentage value={Math.min(100, profile.open_rate)} decimals={1} />
                       </span>
                     </div>
                     <Progress
@@ -207,7 +208,7 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                         Rebotes
                       </span>
                       <span className={cn('font-medium', getRateColor(profile.bounce_rate, 'bad'))}>
-                        {profile.bounce_rate.toFixed(1)}%
+                        <AnimatedPercentage value={profile.bounce_rate} decimals={1} />
                       </span>
                     </div>
                     <Progress
@@ -225,7 +226,7 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                         Quejas
                       </span>
                       <span className={cn('font-medium', getRateColor(profile.complaint_rate, 'bad'))}>
-                        {profile.complaint_rate.toFixed(2)}%
+                        <AnimatedPercentage value={profile.complaint_rate} decimals={2} />
                       </span>
                     </div>
                     <Progress
@@ -241,25 +242,25 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-4 border-t">
                   <div>
                     <div className="text-2xl font-semibold">
-                      {profile.total_emails_delivered.toLocaleString()}
+                      <AnimatedNumber value={profile.total_emails_delivered} />
                     </div>
                     <div className="text-xs text-muted-foreground">Entregados</div>
                   </div>
                   <div>
                     <div className="text-2xl font-semibold">
-                      {profile.total_emails_opened.toLocaleString()}
+                      <AnimatedNumber value={profile.total_emails_opened} />
                     </div>
                     <div className="text-xs text-muted-foreground">Abiertos</div>
                   </div>
                   <div>
                     <div className="text-2xl font-semibold text-red-600">
-                      {profile.total_emails_bounced.toLocaleString()}
+                      <AnimatedNumber value={profile.total_emails_bounced} />
                     </div>
                     <div className="text-xs text-muted-foreground">Rebotes</div>
                   </div>
                   <div>
                     <div className="text-2xl font-semibold text-amber-600">
-                      {profile.total_complaints.toLocaleString()}
+                      <AnimatedNumber value={profile.total_complaints} />
                     </div>
                     <div className="text-xs text-muted-foreground">Quejas</div>
                   </div>

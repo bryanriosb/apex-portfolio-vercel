@@ -310,12 +310,13 @@ impl SupabaseService {
         Ok(!updated.is_empty())
     }
 
-    /// Get the next pending batch for scheduling (scheduled_for in the future, status=pending).
+    /// Get the next pending batch for scheduling, ordered by batch_number.
+    /// This ensures sequential processing and handles cases where scheduled_for
+    /// might be in the past due to immediate execution strategies.
     pub async fn get_next_pending_batch(&self, execution_id: &str) -> Result<Option<ExecutionBatch>, Box<dyn Error + Send + Sync>> {
-        let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
         let url = format!(
-            "{}/rest/v1/execution_batches?execution_id=eq.{}&status=eq.pending&scheduled_for=gt.{}&order=scheduled_for.asc&limit=1&select=*",
-            self.base_url, execution_id, now
+            "{}/rest/v1/execution_batches?execution_id=eq.{}&status=eq.pending&order=batch_number.asc&limit=1&select=*",
+            self.base_url, execution_id
         );
 
         let response = self.client.get(&url)

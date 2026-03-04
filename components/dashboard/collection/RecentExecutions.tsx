@@ -18,6 +18,7 @@ import {
   Clock,
   Zap,
 } from 'lucide-react'
+import { AnimatedNumber, AnimatedPercentage } from '@/components/ui/animated-number'
 
 interface RecentExecutionsProps {
   executions: any[]
@@ -133,19 +134,19 @@ export const RecentExecutions: React.FC<RecentExecutionsProps> = ({
                       <div className="grid grid-cols-4 gap-2 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1.5">
                           <Users className="h-4 w-4" />
-                          <span className="font-medium text-foreground">{exec.total_clients}</span> clientes
+                          <span className="font-medium text-foreground"><AnimatedNumber value={exec.total_clients} /></span> clientes
                         </span>
                         <span className="flex items-center gap-1.5">
                           <Send className="h-4 w-4" />
-                          <span className="font-medium text-foreground">{exec.emails_sent}</span> enviados
+                          <span className="font-medium text-foreground"><AnimatedNumber value={exec.emails_sent} /></span> enviados
                         </span>
                         <span className="flex items-center gap-1.5">
                           <MailOpen className="h-4 w-4" />
-                          <span className="font-medium text-foreground">{exec.emails_opened || 0}</span> abiertos
+                          <span className="font-medium text-foreground"><AnimatedNumber value={exec.emails_opened || 0} /></span> abiertos
                         </span>
                         <span className="flex items-center gap-1.5 text-red-600">
                           <AlertTriangle className="h-4 w-4" />
-                          <span className="font-medium">{exec.emails_bounced || 0}</span> fallidos
+                          <span className="font-medium"><AnimatedNumber value={exec.emails_bounced || 0} /></span> fallidos
                         </span>
                       </div>
                     </div>
@@ -153,7 +154,7 @@ export const RecentExecutions: React.FC<RecentExecutionsProps> = ({
                     {/* Métrica de rendimiento */}
                     <div className="text-right shrink-0">
                       <div className="text-lg font-semibold leading-none">
-                        {exec.avg_open_rate?.toFixed(0) || 0}%
+                        <AnimatedPercentage value={exec.avg_open_rate || 0} decimals={0} />
                       </div>
                       <div className="text-xs text-muted-foreground">
                         tasa apertura

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Play } from 'lucide-react'
 import { ActiveExecution } from '@/lib/models/collection/dashboard'
+import { AnimatedNumber, AnimatedPercentage } from '@/components/ui/animated-number'
 
 interface ActiveExecutionsProps {
     executions: ActiveExecution[]
@@ -22,7 +23,7 @@ export const ActiveExecutions: React.FC<ActiveExecutionsProps> = ({
         <div className="space-y-4">
             <h2 className="text-lg font-semibold tracking-tight flex items-center gap-2">
                 <Play className="h-5 w-5 text-green-600 animate-pulse" />
-                Ejecuciones en Progreso ({executions.length})
+                Ejecuciones en Progreso (<AnimatedNumber value={executions.length} />)
             </h2>
             <div className="grid gap-4 md:grid-cols-2">
                 {executions.map((exec) => (
@@ -42,26 +43,26 @@ export const ActiveExecutions: React.FC<ActiveExecutionsProps> = ({
                             <div className="space-y-1">
                                 <div className="flex items-center justify-between text-xs">
                                     <span className="text-muted-foreground">Progreso</span>
-                                    <span className="font-medium">{exec.progress_percent}%</span>
+                                    <span className="font-medium"><AnimatedPercentage value={exec.progress_percent} decimals={0} /></span>
                                 </div>
                                 <Progress value={exec.progress_percent} className="h-2" />
                             </div>
                             <div className="grid grid-cols-4 gap-2 text-center text-xs">
                                 <div className="bg-muted rounded p-1">
                                     <span className="text-muted-foreground block">Total</span>
-                                    <p className="font-semibold">{exec.total_clients}</p>
+                                    <p className="font-semibold"><AnimatedNumber value={exec.total_clients} /></p>
                                 </div>
                                 <div className="bg-muted rounded p-1">
                                     <span className="text-muted-foreground block">Enviados</span>
-                                    <p className="font-semibold">{exec.emails_sent}</p>
+                                    <p className="font-semibold"><AnimatedNumber value={exec.emails_sent} /></p>
                                 </div>
                                 <div className="bg-muted rounded p-1">
                                     <span className="text-muted-foreground block">Entregados</span>
-                                    <p className="font-semibold">{exec.emails_delivered}</p>
+                                    <p className="font-semibold"><AnimatedNumber value={exec.emails_delivered} /></p>
                                 </div>
                                 <div className="bg-muted rounded p-1">
                                     <span className="text-muted-foreground block">Abiertos</span>
-                                    <p className="font-semibold">{exec.emails_opened}</p>
+                                    <p className="font-semibold"><AnimatedNumber value={exec.emails_opened} /></p>
                                 </div>
                             </div>
                         </CardContent>

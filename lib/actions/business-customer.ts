@@ -162,6 +162,18 @@ export async function bulkUpsertFullCustomersAction(
       if (seen.has(key)) {
         duplicates.push(input.nit)
       } else {
+        // Deduplicar emails del input (case-insensitive)
+        if (input.emails && input.emails.length > 0) {
+          const emailSet = new Set<string>()
+          input.emails = input.emails.filter(email => {
+            const lowerEmail = email.toLowerCase()
+            if (emailSet.has(lowerEmail)) {
+              return false
+            }
+            emailSet.add(lowerEmail)
+            return true
+          })
+        }
         seen.set(key, input)
       }
     }

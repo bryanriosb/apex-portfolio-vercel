@@ -15,6 +15,7 @@ import {
     Shield,
 } from 'lucide-react'
 import { DashboardStats } from '@/lib/models/collection/dashboard'
+import { AnimatedNumber, AnimatedPercentage } from '@/components/ui/animated-number'
 
 interface StatsCardsProps {
     stats: DashboardStats | null
@@ -48,20 +49,20 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
                         ) : (
                             <>
                                 <div className="text-2xl font-bold">
-                                    {(stats?.total_emails_sent || 0).toLocaleString()}
+                                    <AnimatedNumber 
+                                        value={stats?.total_emails_sent || 0} 
+                                    />
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <p className="text-xs text-muted-foreground">
-                                        Hoy: {(stats?.today_emails_sent || 0).toLocaleString()}
+                                        Hoy: <AnimatedNumber value={stats?.today_emails_sent || 0} />
                                     </p>
                                     {stats && stats.today_emails_sent > 0 && (
                                         <Badge variant="outline" className="text-xs">
-                                            {(
-                                                (stats.today_emails_sent /
-                                                    Math.max(stats.total_emails_sent, 1)) *
-                                                100
-                                            ).toFixed(0)}
-                                            %
+                                            <AnimatedPercentage 
+                                                value={(stats.today_emails_sent / Math.max(stats.total_emails_sent, 1)) * 100} 
+                                                decimals={0}
+                                            />
                                         </Badge>
                                     )}
                                 </div>
@@ -80,9 +81,11 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
                             <Skeleton className="h-8 w-20" />
                         ) : (
                             <>
-                                <div className="text-2xl font-bold">{stats?.avg_open_rate || 0}%</div>
+                                <div className="text-2xl font-bold">
+                                    <AnimatedPercentage value={stats?.avg_open_rate || 0} />
+                                </div>
                                 <p className="text-xs text-muted-foreground">
-                                    {(stats?.total_emails_opened || 0).toLocaleString()} abiertos
+                                    <AnimatedNumber value={stats?.total_emails_opened || 0} /> abiertos
                                 </p>
                             </>
                         )}
@@ -99,10 +102,12 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
                             <Skeleton className="h-8 w-20" />
                         ) : (
                             <>
-                                <div className="text-2xl font-bold">{stats?.avg_delivery_rate || 0}%</div>
+                                <div className="text-2xl font-bold">
+                                    <AnimatedPercentage value={stats?.avg_delivery_rate || 0} />
+                                </div>
                                 <p className="text-xs text-muted-foreground">
-                                    {(stats?.total_emails_delivered || 0).toLocaleString()} de{' '}
-                                    {(stats?.total_emails_sent || 0).toLocaleString()}
+                                    <AnimatedNumber value={stats?.total_emails_delivered || 0} /> de{' '}
+                                    <AnimatedNumber value={stats?.total_emails_sent || 0} />
                                 </p>
                             </>
                         )}
@@ -127,10 +132,10 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
                                             : 'text-primary'
                                         }`}
                                 >
-                                    {stats?.avg_bounce_rate || 0}%
+                                    <AnimatedPercentage value={stats?.avg_bounce_rate || 0} />
                                 </div>
                                 <p className="text-xs text-muted-foreground">
-                                    {(stats?.total_emails_bounced || 0).toLocaleString()} rebotados
+                                    <AnimatedNumber value={stats?.total_emails_bounced || 0} /> rebotados
                                 </p>
                             </>
                         )}
@@ -150,14 +155,16 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
                             <Skeleton className="h-8 w-20" />
                         ) : (
                             <>
-                                <div className="text-2xl font-bold">{stats?.total_executions || 0}</div>
+                                <div className="text-2xl font-bold">
+                                    <AnimatedNumber value={stats?.total_executions || 0} />
+                                </div>
                                 <div className="flex gap-2 text-xs mt-1">
                                     <Badge variant="outline" className="text-xs">
-                                        {stats?.completed_executions || 0} completadas
+                                        <AnimatedNumber value={stats?.completed_executions || 0} /> completadas
                                     </Badge>
                                     {stats?.failed_executions ? (
                                         <Badge variant="destructive" className="text-xs">
-                                            {stats.failed_executions} fallidas
+                                            <AnimatedNumber value={stats.failed_executions} /> fallidas
                                         </Badge>
                                     ) : null}
                                 </div>
@@ -176,9 +183,11 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
                             <Skeleton className="h-8 w-20" />
                         ) : (
                             <>
-                                <div className="text-2xl font-bold">{stats?.processing_executions || 0}</div>
+                                <div className="text-2xl font-bold">
+                                    <AnimatedNumber value={stats?.processing_executions || 0} />
+                                </div>
                                 <p className="text-xs text-muted-foreground">
-                                    {stats?.pending_executions || 0} pendientes
+                                    <AnimatedNumber value={stats?.pending_executions || 0} /> pendientes
                                 </p>
                             </>
                         )}
@@ -218,9 +227,11 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
                             <Skeleton className="h-8 w-20" />
                         ) : (
                             <>
-                                <div className="text-2xl font-bold">{reputationCount}</div>
+                                <div className="text-2xl font-bold">
+                                    <AnimatedNumber value={reputationCount} />
+                                </div>
                                 <p className="text-xs text-muted-foreground">
-                                    {warmedCount} activos, {reputationCount - warmedCount} en warm-up
+                                    <AnimatedNumber value={warmedCount} /> activos, <AnimatedNumber value={reputationCount - warmedCount} /> en warm-up
                                 </p>
                             </>
                         )}

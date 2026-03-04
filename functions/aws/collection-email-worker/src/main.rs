@@ -192,12 +192,12 @@ fn wrap_with_styles(html_body: &str) -> String {
             <tbody>
             <tr>
                 <td style="font-family:sans-serif;vertical-align:top;padding-bottom:10px;padding-top:10px;color:#999999;font-size:12px;text-align:center" valign="top" align="center">
-                <span class="m_58810963162805476apple-link" style="color:#999999;font-size:12px;text-align:center">Si tiene dudas o inquietudes,  por favor comuníquese directamente con el comercio a través del contacto compartido</span>
+                <span class="m_58810963162805476apple-link" style="color:#999999;font-size:12px;text-align:center">Por favor responda a este correo o comuníquese directamente con el comercio a través del contacto compartido</span>
                 </td>
             </tr>
             <tr>
                 <td style="font-family:sans-serif;vertical-align:top;padding-bottom:10px;padding-top:10px;color:#999999;font-size:12px;text-align:center" valign="top" align="center">
-                <span class="m_58810963162805476apple-link" style="color:#999999;font-size:12px;text-align:center">APEX - Plataforma para la gestión inteligente de cobranza, propiedad de BORLS © 2026 Todos los derechos reservados | <a href="https://apex.borls.com" style="color:#999999;font-size:12px;text-align:center" target="_blank">https://apex.borls.com</a></span>
+                <span class="m_58810963162805476apple-link" style="color:#999999;font-size:12px;text-align:center">Notificacion automatica de cobranzas - APX - Plataforma para la gestión inteligente de cobranza, propiedad de BORLS © 2026 Todos los derechos reservados | <a href="https://apex.borls.com" style="color:#999999;font-size:12px;text-align:center" target="_blank">https://apex.borls.com</a></span>
                 </td>
             </tr>
             </tbody>
@@ -396,7 +396,7 @@ async fn schedule_next_batch(
     let next_batch = supabase.get_next_pending_batch(execution_id).await?;
 
     let Some(batch) = next_batch else {
-        info!("No future pending batches for execution {}. Nothing to schedule.", execution_id);
+        info!("No pending batches for execution {}. Nothing to schedule.", execution_id);
         return Ok(());
     };
 

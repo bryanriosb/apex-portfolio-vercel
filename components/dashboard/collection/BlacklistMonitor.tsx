@@ -28,6 +28,7 @@ import {
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { AnimatedNumber } from '@/components/ui/animated-number'
 
 interface BlacklistStats {
   total: number
@@ -162,7 +163,9 @@ export const BlacklistMonitor: React.FC = () => {
             {loading ? (
               <Skeleton className="h-7 w-16" />
             ) : (
-              <div className="text-xl font-bold">{stats?.total || 0}</div>
+              <div className="text-xl font-bold">
+                <AnimatedNumber value={stats?.total || 0} />
+              </div>
             )}
           </CardContent>
         </Card>
@@ -177,7 +180,7 @@ export const BlacklistMonitor: React.FC = () => {
               <Skeleton className="h-7 w-16" />
             ) : (
               <div className="text-xl font-bold text-red-600">
-                {stats?.hard_bounces || 0}
+                <AnimatedNumber value={stats?.hard_bounces || 0} />
               </div>
             )}
           </CardContent>
@@ -195,7 +198,7 @@ export const BlacklistMonitor: React.FC = () => {
               <Skeleton className="h-7 w-16" />
             ) : (
               <div className="text-xl font-bold text-yellow-600">
-                {stats?.soft_bounces || 0}
+                <AnimatedNumber value={stats?.soft_bounces || 0} />
               </div>
             )}
           </CardContent>
@@ -213,7 +216,7 @@ export const BlacklistMonitor: React.FC = () => {
               <Skeleton className="h-7 w-16" />
             ) : (
               <div className="text-xl font-bold">
-                {stats?.last_30_days || 0}
+                <AnimatedNumber value={stats?.last_30_days || 0} />
               </div>
             )}
           </CardContent>
@@ -230,7 +233,7 @@ export const BlacklistMonitor: React.FC = () => {
             </CardTitle>
             {stats && stats.total > 5 && (
               <span className="text-xs text-muted-foreground">
-                Mostrando {Math.min(recentItems.length, 5)} de {stats.total}
+                Mostrando <AnimatedNumber value={Math.min(recentItems.length, 5)} /> de <AnimatedNumber value={stats.total} />
               </span>
             )}
           </div>

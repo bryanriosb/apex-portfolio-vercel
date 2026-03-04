@@ -32,22 +32,30 @@ pub struct CollectionClient {
     pub threshold_id: Option<String>,
 }
 
+use std::collections::HashSet;
+
 impl CollectionClient {
+    /// Returns unique, non-empty emails for this client.
+    /// Deduplicates emails (case-insensitive) to prevent sending duplicates.
     pub fn emails(&self) -> Vec<String> {
         let Some(cd) = self.custom_data.as_ref() else {
             return vec![];
         };
 
+        let mut seen: HashSet<String> = HashSet::new();
+        let mut result: Vec<String> = Vec::new();
+
         // New format: emails is a JSON array
         if let Some(arr) = cd.get("emails").and_then(|v| v.as_array()) {
-            let parsed: Vec<String> = arr
-                .iter()
-                .filter_map(|v| v.as_str())
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty())
-                .collect();
-            if !parsed.is_empty() {
-                return parsed;
+            for email in arr.iter().filter_map(|v| v.as_str()) {
+                let trimmed = email.trim().to_lowercase();
+                if !trimmed.is_empty() && !seen.contains(&trimmed) {
+                    seen.insert(trimmed.clone());
+                    result.push(email.trim().to_string());
+                }
+            }
+            if !result.is_empty() {
+                return result;
             }
         }
 

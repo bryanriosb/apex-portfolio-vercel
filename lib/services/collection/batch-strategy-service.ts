@@ -338,9 +338,20 @@ export class BatchStrategyService {
       const clientIds = batchClients.map((c) => c.id)
 
       // Calcular tiempo base usando la nueva lógica de horarios
-      const baseTime = isImmediate 
-        ? new Date() 
-        : currentDay
+      let baseTime: Date
+      
+      if (isImmediate && batches.length > 0) {
+        // Para ejecuciones inmediatas con batches previos, usar el último batch + intervalo
+        const lastBatch = batches[batches.length - 1]
+        const lastScheduledTime = lastBatch.scheduled_for 
+          ? new Date(lastBatch.scheduled_for)
+          : new Date()
+        baseTime = new Date(lastScheduledTime.getTime() + intervalMinutes * 60000)
+      } else {
+        baseTime = isImmediate 
+          ? new Date() 
+          : currentDay
+      }
       
       const baseScheduledTime = this.calculateSendTime(
         baseTime,
@@ -349,11 +360,11 @@ export class BatchStrategyService {
         isImmediate
       )
       
-      // Aplicar offset de intervalo para batches subsiguientes
-      const intervalOffset = batchesToday.length * intervalMinutes
-      const scheduledTime = new Date(
-        baseScheduledTime.getTime() + intervalOffset * 60000
-      )
+      // Para ejecuciones inmediatas, ya aplicamos el offset arriba
+      // Para programadas, usar el offset tradicional basado en batches del día
+      const scheduledTime = isImmediate && batches.length > 0
+        ? baseScheduledTime
+        : new Date(baseScheduledTime.getTime() + batchesToday.length * intervalMinutes * 60000)
 
       batches.push({
         execution_id: executionId,
@@ -434,9 +445,20 @@ export class BatchStrategyService {
         options?.customIntervals?.[batchNumber - 1] ??
         (batchNumber === 1 ? 0 : intervalMinutes)
 
-      const baseTime = isImmediate 
-        ? new Date() 
-        : currentTime
+      let baseTime: Date
+      
+      if (isImmediate && batches.length > 0) {
+        // Para ejecuciones inmediatas con batches previos, usar el último batch + intervalo
+        const lastBatch = batches[batches.length - 1]
+        const lastScheduledTime = lastBatch.scheduled_for 
+          ? new Date(lastBatch.scheduled_for)
+          : new Date()
+        baseTime = new Date(lastScheduledTime.getTime() + intervalMinutes * 60000)
+      } else {
+        baseTime = isImmediate 
+          ? new Date() 
+          : currentTime
+      }
       
       const baseScheduledTime = this.calculateSendTime(
         baseTime,
@@ -445,10 +467,10 @@ export class BatchStrategyService {
         isImmediate
       )
       
-      // Aplicar offset de intervalo
-      const scheduledTime = new Date(
-        baseScheduledTime.getTime() + interval * 60000
-      )
+      // Aplicar offset de intervalo (solo si no es inmediato con batches previos)
+      const scheduledTime = isImmediate && batches.length > 0
+        ? baseScheduledTime
+        : new Date(baseScheduledTime.getTime() + interval * 60000)
       
       // Actualizar currentTime para la siguiente iteración (solo modo no inmediato)
       if (!isImmediate) {

@@ -339,10 +339,20 @@ export async function importCustomersWithProgress(
             throw new Error(`Fila ${i + 1}: El campo 'emails' no puede estar vacío`)
           }
 
+          // Parsear emails y eliminar duplicados (case-insensitive)
+          const emailSet = new Set<string>()
           const parsedEmails = cleanedRawEmails
             .split(',')
             .map((e: string) => e.trim())
             .filter(Boolean)
+            .filter((email: string) => {
+              const lowerEmail = email.toLowerCase()
+              if (emailSet.has(lowerEmail)) {
+                return false // Duplicado, ignorar
+              }
+              emailSet.add(lowerEmail)
+              return true
+            })
 
           if (parsedEmails.length === 0) {
             throw new Error(`Fila ${i + 1}: emails no contiene direcciones válidas`)
