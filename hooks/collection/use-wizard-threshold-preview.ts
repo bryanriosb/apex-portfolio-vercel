@@ -1,7 +1,10 @@
 'use client'
 
 import { useEffect, useCallback } from 'react'
-import { useWizardThresholdStore, generateClientsKey } from '@/lib/store/wizard-threshold-store'
+import {
+  useWizardThresholdStore,
+  generateClientsKey,
+} from '@/lib/store/wizard-threshold-store'
 import { NotificationThresholdService } from '@/lib/services/collection/notification-threshold-service'
 import type { GroupedClient } from '@/components/collection/wizard/types'
 
@@ -15,7 +18,7 @@ function findThresholdForDays(
   for (const threshold of thresholds) {
     const daysFrom = threshold.days_from
     const daysTo = threshold.days_to ?? Infinity
-    
+
     if (daysOverdue >= daysFrom && daysOverdue <= daysTo) {
       return threshold
     }
@@ -36,29 +39,31 @@ export function useWizardThresholdPreview(
   const calculatePreview = useCallback(async () => {
     // Verificar si necesita recalcular
     if (!store.needsRecalculation(businessId, clients)) {
-      console.log('[useWizardThresholdPreview] Usando cache existente')
       return
     }
-
-    console.log('[useWizardThresholdPreview] Calculando thresholds...')
     store.setLoading(true)
 
     try {
       // Obtener todos los thresholds (1 sola llamada a DB)
-      const thresholdsResponse = await NotificationThresholdService.fetchThresholds(businessId)
+      const thresholdsResponse =
+        await NotificationThresholdService.fetchThresholds(businessId)
       const thresholds = thresholdsResponse.data
 
       // Pre-sort thresholds
-      const sortedThresholds = [...thresholds].sort((a, b) => a.days_from - b.days_from)
+      const sortedThresholds = [...thresholds].sort(
+        (a, b) => a.days_from - b.days_from
+      )
 
       // Agrupar clientes
-      const clientsArray = Array.from(clients.values()).filter((c) => c.status === 'found')
+      const clientsArray = Array.from(clients.values()).filter(
+        (c) => c.status === 'found'
+      )
       const groupedByThreshold = new Map<string, any>()
       const unassigned: any[] = []
 
       for (const client of clientsArray) {
         if (client.status !== 'found') continue
-        
+
         const daysOverdue = client.total.total_days_overdue || 0
         const threshold = findThresholdForDays(sortedThresholds, daysOverdue)
 
@@ -80,10 +85,12 @@ export function useWizardThresholdPreview(
       }
 
       // Convertir a array y ordenar
-      const previewData = Array.from(groupedByThreshold.values()).sort((a, b) => {
-        if (!a.threshold || !b.threshold) return 0
-        return a.threshold.days_from - b.threshold.days_from
-      })
+      const previewData = Array.from(groupedByThreshold.values()).sort(
+        (a, b) => {
+          if (!a.threshold || !b.threshold) return 0
+          return a.threshold.days_from - b.threshold.days_from
+        }
+      )
 
       // Calcular rangos faltantes
       const missingThresholdRanges = calculateMissingRanges(unassigned)
@@ -98,12 +105,6 @@ export function useWizardThresholdPreview(
         hasAllThresholds: unassigned.length === 0,
         businessId,
         clientsKey: generateClientsKey(clients),
-      })
-
-      console.log('[useWizardThresholdPreview] Calculo completado:', {
-        totalClients: clientsArray.length,
-        unassignedCount: unassigned.length,
-        thresholdsCount: previewData.length,
       })
     } catch (error) {
       console.error('Error calculating threshold preview:', error)
@@ -129,10 +130,14 @@ export function useWizardThresholdPreview(
   }
 }
 
-function calculateMissingRanges(unassignedClients: any[]): { min: number; max: number }[] {
+function calculateMissingRanges(
+  unassignedClients: any[]
+): { min: number; max: number }[] {
   if (unassignedClients.length === 0) return []
 
-  const daysSet = new Set(unassignedClients.map((c) => c.total.total_days_overdue))
+  const daysSet = new Set(
+    unassignedClients.map((c) => c.total.total_days_overdue)
+  )
   const sortedDays = Array.from(daysSet).sort((a, b) => a - b)
 
   if (sortedDays.length === 0) return []

@@ -52,19 +52,6 @@ export function ThresholdPreview({ clients }: ThresholdPreviewProps) {
     null
   )
 
-  // Debug: log preview data
-  useEffect(() => {
-    console.log(
-      '[ThresholdPreview] previewData:',
-      previewData.map((d) => ({
-        name: d.threshold?.name,
-        daysFrom: d.threshold?.days_from,
-        daysTo: d.threshold?.days_to,
-        hasTemplate: !!d.threshold?.email_template,
-      }))
-    )
-  }, [previewData])
-
   if (isLoading) {
     return (
       <Card>
@@ -143,10 +130,11 @@ export function ThresholdPreview({ clients }: ThresholdPreviewProps) {
               return (
                 <div
                   key={data.threshold?.id || 'unassigned'}
-                  className={`p-4 border transition-all cursor-pointer flex flex-col ${isSelected
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:border-primary/50'
-                    }`}
+                  className={`p-4 border transition-all cursor-pointer flex flex-col ${
+                    isSelected
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:border-primary/50'
+                  }`}
                   onClick={() =>
                     setSelectedThreshold(
                       isSelected ? null : data.threshold?.id || null
@@ -177,7 +165,7 @@ export function ThresholdPreview({ clients }: ThresholdPreviewProps) {
                         >
                           {truncateText(
                             data.threshold?.email_template?.name ||
-                            'No asignado',
+                              'No asignado',
                             50
                           )}
                         </span>
@@ -200,8 +188,9 @@ export function ThresholdPreview({ clients }: ThresholdPreviewProps) {
                     </div>
 
                     <ChevronRight
-                      className={`h-5 w-5 text-muted-foreground transition-transform shrink-0 ml-2 ${isSelected ? 'rotate-90' : ''
-                        }`}
+                      className={`h-5 w-5 text-muted-foreground transition-transform shrink-0 ml-2 ${
+                        isSelected ? 'rotate-90' : ''
+                      }`}
                     />
                   </div>
 
