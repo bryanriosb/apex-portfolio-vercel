@@ -81,6 +81,7 @@ async fn func(event: LambdaEvent<Value>) -> Result<Value, Error> {
                                 processed += 1;
                             }
                             "Send" => {
+                                let _ = supabase.update_client_status(&client_id, "sent", None).await;
                                 processed += 1;
                             }
                             "Reject" => {

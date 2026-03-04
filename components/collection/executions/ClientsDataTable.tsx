@@ -86,6 +86,8 @@ export function ClientsDataTable({
         cell: ({ row }) => {
           const date = row.original.email_sent_at
           if (!date) return <span className="text-muted-foreground">-</span>
+          // DEBUG: Ver fecha original
+          console.log('email_sent_at raw:', date, 'formatted:', formatDateInTimezone(date, timezone))
           return (
             <div className="flex flex-col">
               <span className="text-xs">
@@ -238,7 +240,7 @@ export function ClientsDataTable({
         },
       },
     ],
-    []
+    [timezone]
   )
 
   const filters = useMemo<FilterConfig[]>(

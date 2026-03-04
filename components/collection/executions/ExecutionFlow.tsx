@@ -12,11 +12,11 @@ import {
   XCircle,
   Zap,
 } from 'lucide-react'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { formatInBusinessTimeZone } from '@/lib/utils/date-format'
 
 interface ExecutionFlowProps {
   execution: CollectionExecution
+  timezone?: string
 }
 
 interface FlowStep {
@@ -29,7 +29,7 @@ interface FlowStep {
   badge?: string
 }
 
-export function ExecutionFlow({ execution }: ExecutionFlowProps) {
+export function ExecutionFlow({ execution, timezone = 'America/Bogota' }: ExecutionFlowProps) {
   // Determinar timestamp para envío basado en cuando se inició
   const getSendingTimestamp = () => {
     if (execution.started_at && execution.emails_sent > 0) {
@@ -164,7 +164,7 @@ export function ExecutionFlow({ execution }: ExecutionFlowProps) {
 
   const formatTimestamp = (timestamp: string) => {
     try {
-      return format(new Date(timestamp), 'HH:mm:ss', { locale: es })
+      return formatInBusinessTimeZone(timestamp, 'HH:mm:ss', timezone)
     } catch {
       return ''
     }

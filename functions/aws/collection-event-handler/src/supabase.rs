@@ -24,6 +24,8 @@ impl SupabaseService {
     pub async fn create_event(&self, client_id: &str, execution_id: &str, event_type: &str, metadata: serde_json::Value) -> Result<(), Box<dyn Error>> {
         let url = format!("{}/rest/v1/collection_events", self.base_url);
 
+        // Use UTC now() when event is detected instead of provider timestamp
+        // This ensures consistent timezone handling across all providers
         let body = json!({
             "client_id": client_id,
             "execution_id": execution_id,
@@ -83,18 +85,47 @@ impl SupabaseService {
         Ok(None)
     }
 
-    pub async fn update_client_status(&self, client_id: &str, status: &str, details: Option<serde_json::Value>) -> Result<(), Box<dyn Error>> {
+    pub async fn update_client_status(
+        &self,
+        client_id: &str,
+        status: &str,
+        details: Option<serde_json::Value>,
+    ) -> Result<(), Box<dyn Error>> {
         let url = format!("{}/rest/v1/collection_clients?id=eq.{}", self.base_url, client_id);
-        
-        let mut body = json!({ "status": status });
-        
+
+        // Use UTC now() when event is detected
+        let now = chrono::Utc::now().to_rfc3339();
+
+        // Map status to the corresponding timestamp field
+        let timestamp_field = match status {
+            "sent" => Some("email_sent_at"),
+            "delivered" => Some("email_delivered_at"),
+            "opened" => Some("email_opened_at"),
+            "clicked" => Some("email_clicked_at"),
+            _ => None,
+        };
+
+        let mut body = json!({
+            "status": status,
+            "updated_at": now
+        });
+
+        // Add timestamp field if applicable
+        if let Some(field) = timestamp_field {
+            if let Some(obj) = body.as_object_mut() {
+                obj.insert(field.to_string(), json!(now));
+            }
+        }
+
         if let Some(d) = details {
             if let Some(obj) = body.as_object_mut() {
                 obj.insert("custom_data".to_string(), d);
             }
         }
 
-        let response = self.client.patch(&url)
+        let response = self
+            .client
+            .patch(&url)
             .header("apikey", &self.api_key)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")

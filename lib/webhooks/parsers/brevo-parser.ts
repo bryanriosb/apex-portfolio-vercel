@@ -61,44 +61,20 @@ export function parseBrevoEvent(body: any): EmailEvent | null {
                 return null
         }
 
-        // Parse timestamp - prioritize 'date' field as it's more reliable
-        // Brevo sends 'date' in format: "2026-02-27 03:38:07" (UTC time)
-        let eventTimestamp = new Date().toISOString()
-        let usedDateField = false
-
+        // Use our own UTC timestamp when event is received
+        // This ensures consistent timezone handling across all providers
+        const eventTimestamp = new Date().toISOString()
+        
+        // Keep original provider timestamp in metadata for reference
+        let providerTimestamp: string | undefined
         if (body.date && typeof body.date === 'string') {
-            const rawDate = body.date.trim()
-            // Parse "2026-02-27 03:38:07" format - it's UTC time from Brevo
-            const isoDate = rawDate.replace(' ', 'T') + 'Z'
-            const parsedDate = new Date(isoDate)
-            
-            if (!isNaN(parsedDate.getTime())) {
-                eventTimestamp = parsedDate.toISOString()
-                usedDateField = true
-            } else {
-                console.warn(`[BREVO] Failed to parse date field: ${rawDate}`)
-            }
-        }
-
-        // Fallback to timestamp fields if date field wasn't used
-        if (!usedDateField) {
+            providerTimestamp = body.date.trim()
+        } else if (body.ts || body.ts_event) {
             const ts = body.ts || body.ts_event
-            
-            if (ts) {
-                const tsNum = Number(ts)
-                // ts_event is typically in seconds
-                const parsedDate = new Date(tsNum * 1000)
-                
-                // Validate the parsed date
-                const minValidDate = new Date('2020-01-01')
-                const maxValidDate = new Date('2030-12-31')
-                
-                if (parsedDate >= minValidDate && parsedDate <= maxValidDate) {
-                    eventTimestamp = parsedDate.toISOString()
-                } else {
-                    console.warn(`[BREVO] Invalid timestamp received: ts=${ts}, parsedDate=${parsedDate.toISOString()}. Using current time.`)
-                    console.warn(`[BREVO] Full body:`, JSON.stringify(body))
-                }
+            const tsNum = Number(ts)
+            const parsedDate = new Date(tsNum * 1000)
+            if (!isNaN(parsedDate.getTime())) {
+                providerTimestamp = parsedDate.toISOString()
             }
         }
 
@@ -113,6 +89,7 @@ export function parseBrevoEvent(body: any): EmailEvent | null {
                 tag: body.tag,
                 subject: body.subject,
                 link: body.link,
+                providerTimestamp: providerTimestamp, // Original timestamp from provider (for reference only)
             },
         }
     } catch (error) {

@@ -207,6 +207,7 @@
 |--------|------|----------|---------|-------------|
 | id | UUID | NO | gen_random_uuid() | Primary Key |
 | execution_id | UUID | NO | - | FK → collection_executions.id |
+| batch_id | UUID | YES | NULL | FK → execution_batches.id - enables granular batch-level metrics |
 | customer_id | UUID | YES | NULL | FK → business_customers.id |
 | invoices | JSONB | YES | NULL | Invoice data array |
 | custom_data | JSONB | NO | '{}' | Custom variables for templates |
@@ -232,6 +233,7 @@
 
 - PRIMARY KEY (id)
 - INDEX (execution_id)
+- INDEX (batch_id) WHERE batch_id IS NOT NULL
 - INDEX (customer_id)
 - INDEX (status)
 - INDEX (ses_message_id)
@@ -1188,15 +1190,6 @@ SELECT release_scheduler_lock('worker-123');
 
 ### Collection & Email Functions
 
-#### increment_execution_counters(execution_id UUID, column_name TEXT, increment_by INTEGER DEFAULT 1)
-
-**Returns:** VOID
-**Purpose:** Atomically increment execution counter (emails_sent, emails_delivered, etc)
-
-```sql
-SELECT increment_execution_counters('uuid-here', 'emails_sent', 1);
-```
-
 #### accumulate_email_metrics(client_id UUID, event_type TEXT, metadata JSONB DEFAULT '{}')
 
 **Returns:** VOID
@@ -1469,6 +1462,7 @@ SELECT ensure_single_default_card('account-uuid', 'card-uuid');
 
 - [Auto-update updated_at triggers](#auto-update-updated_at-triggers)
 - [Business Creation Triggers](#business-creation-triggers)
+- [Collection Metrics Triggers](#collection-metrics-triggers)
 
 ### Auto-update updated_at triggers
 
@@ -1508,6 +1502,50 @@ INSERT INTO businesses → Trigger fires → create_default_delivery_strategies(
 |------|------|---------|-------------|
 | Recuperación de Reputación | conservative | false | Ultra conservadora para dominios con problemas de reputación |
 | Ramp-Up Gradual Estándar | ramp_up | true | Conservadora para nuevos dominios, incrementa volumen gradualmente |
+
+---
+
+### Collection Metrics Triggers
+
+#### increment_counters_on_client_update
+
+**Table:** `collection_clients`  
+**Timing:** AFTER UPDATE  
+**Function:** `increment_execution_counters()`  
+**Condition:** `OLD.status IS DISTINCT FROM NEW.status`  
+**Purpose:** Automatically updates email metrics in both `collection_executions` and `execution_batches` when a client's status changes.
+
+**Metrics Updated:**
+
+| Client Status | collection_executions | execution_batches |
+|---------------|----------------------|-------------------|
+| `sent` | emails_sent | emails_sent |
+| `delivered` | emails_delivered | emails_delivered |
+| `opened` | emails_opened | emails_opened |
+| `bounced` | emails_bounced | emails_bounced |
+| `failed` | - | emails_failed |
+
+**Features:**
+
+- **Batch Identification:** Uses `batch_id` from the client record for fast lookups, with fallback to `client_ids` array search
+- **Auto-Completion:** Automatically marks batch as `completed` and sets `completed_at` when all clients in the batch reach a final state (`sent`, `delivered`, `opened`, `bounced`, `failed`)
+- **Rate Recalculation:** Automatically recalculates `open_rate`, `bounce_rate`, and `delivery_rate` on `collection_executions`
+
+**Example Flow:**
+
+```
+Webhook updates client status: pending → delivered
+    ↓
+Trigger fires
+    ↓
+1. Updates collection_executions.emails_delivered +1
+2. Updates execution_batches.emails_delivered +1  
+3. Recalculates rates on collection_executions
+4. Checks if all batch clients are in final state
+5. If yes: marks batch as completed with completed_at
+```
+
+**Note:** This trigger is the **single source of truth** for email metrics updates. Webhook handlers and Lambda workers only update the `status` column on `collection_clients`.
 
 ---
 
@@ -1847,7 +1885,7 @@ Todas las funciones RPC documentadas en sección 9 SÍ existen EXCEPTO:
 
 | Función | Estado | Notas |
 |---------|--------|-------|
-| increment_execution_counter | RENOMBRADA | Ahora se llama `increment_execution_counters` |
+| increment_execution_counters | CONVERTIDA A TRIGGER | Ya no es función RPC - ahora es trigger function en `collection_clients` |
 | increment_client_stats | NO EXISTE | Función no implementada |
 | update_updated_at_column | NO VERIFICABLE | Es un trigger, no una función RPC callable |
 
@@ -1892,6 +1930,7 @@ Las siguientes funciones existen en la DB pero no están documentadas en secció
 | Tabla | Columna | Tipo | Notas |
 |-------|---------|------|-------|
 | email_reputation_profiles | provider | VARCHAR(50) | Proveedor de email (brevo/ses/etc) - AÑADIDA a documentación |
+| collection_clients | batch_id | UUID | FK → execution_batches.id - AÑADIDA Mar 2026 |
 
 ### Enum Types
 
@@ -1905,4 +1944,4 @@ Los siguientes tipos enum están documentados pero NO fueron verificados via API
 ---
 
 *Document generated for Apex Portfolio Collection System*
-*Last updated: March 3, 2026*
+*Last updated: March 4, 2026*

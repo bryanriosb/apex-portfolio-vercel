@@ -154,8 +154,9 @@ export async function syncBrevoEventsFromCSV(): Promise<SyncResult> {
         }
       }
 
-      // Parsear fecha
-      const timestamp = parseBrevoDate(record.ts)
+      // Use UTC now() when event is processed instead of provider timestamp
+      // This ensures consistent timezone handling across all providers
+      const timestamp = new Date().toISOString()
       
       // Insertar evento
       const { error: eventError } = await supabase
@@ -168,7 +169,7 @@ export async function syncBrevoEventsFromCSV(): Promise<SyncResult> {
             message_id: messageId,
             email: email,
             subject: record.sub,
-            timestamp: timestamp,
+            provider_timestamp: record.ts,  // Keep original for reference
             provider: 'brevo',
             originalEvent: record.st_text,
             link: record.link !== 'NA' ? record.link : undefined
@@ -265,10 +266,15 @@ export async function syncBrevoEventsFromCSV(): Promise<SyncResult> {
 }
 
 function parseBrevoDate(dateStr: string): string {
-  // Formato: 27-02-2026 13:36:31
+  // Formato: 27-02-2026 13:36:31 (hora de París UTC+1, según configuración de Brevo)
   const [datePart, timePart] = dateStr.split(' ')
   const [day, month, year] = datePart.split('-')
-  return `${year}-${month}-${day}T${timePart}.000Z`
+  
+  // Crear fecha en zona horaria de París (UTC+1)
+  const parisDate = new Date(`${year}-${month}-${day}T${timePart}+01:00`)
+  
+  // Convertir a UTC
+  return parisDate.toISOString()
 }
 
 async function updateExecutionCounters(supabase: any, stats: SyncResult['stats']) {

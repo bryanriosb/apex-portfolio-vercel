@@ -310,7 +310,7 @@ export default function ExecutionDetailPage() {
           <div className="grid gap-4 lg:grid-cols-3">
             {/* Left Column - Execution Flow */}
             <div className="lg:col-span-2">
-              <ExecutionFlow execution={execution} />
+              <ExecutionFlow execution={execution} timezone={businessTimezone} />
             </div>
 
             {/* Right Column - Details & Status */}

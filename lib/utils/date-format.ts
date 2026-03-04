@@ -6,6 +6,7 @@ import { es } from 'date-fns/locale'
 /**
  * Parses a date input (string, Date, or number) into a Date object.
  * Handles both seconds and milliseconds Unix timestamps.
+ * For ISO strings from Supabase (which are UTC), ensures proper UTC interpretation.
  */
 function parseDate(date: string | Date | number): Date {
     if (typeof date === 'number') {
@@ -13,7 +14,12 @@ function parseDate(date: string | Date | number): Date {
         // If timestamp is less than 10 billion, it's in seconds
         return new Date(date < 10000000000 ? date * 1000 : date)
     } else if (typeof date === 'string') {
-        return new Date(date)
+        // Supabase returns dates in ISO format without timezone (e.g., "2024-03-03T15:00:00")
+        // These should be interpreted as UTC. Append 'Z' to force UTC interpretation.
+        const isoString = date.includes('T') && !date.endsWith('Z') && !date.match(/[+-]\d{2}:?\d{2}$/)
+            ? date + 'Z'
+            : date
+        return new Date(isoString)
     } else {
         return date
     }
