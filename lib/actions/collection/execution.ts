@@ -402,6 +402,7 @@ export async function updateExecutionStatusAction(
 
 /**
  * Delete execution with cascade for related records
+ * Note: Audit logs, clients, and events are automatically deleted via ON DELETE CASCADE
  */
 export async function deleteExecutionAction(
   id: string
@@ -409,31 +410,17 @@ export async function deleteExecutionAction(
   try {
     const supabase = await getSupabaseAdminClient()
 
-    // Eliminar registros dependientes en orden
-    // 1. Eliminar logs de auditoría
-    const { error: logsError } = await supabase
-      .from('execution_audit_logs')
+    // Delete execution - all related records (audit_logs, clients, events, batches) 
+    // will be automatically deleted via ON DELETE CASCADE constraints
+    const { error } = await supabase
+      .from('collection_executions')
       .delete()
-      .eq('execution_id', id)
+      .eq('id', id)
 
-    if (logsError) {
-      console.error('Error deleting audit logs:', logsError)
-      throw new Error(`Error al eliminar logs de auditoría: ${logsError.message}`)
+    if (error) {
+      console.error('Error deleting execution:', error)
+      throw new Error(`Error al eliminar ejecución: ${error.message}`)
     }
-
-    // 2. Eliminar clientes asociados
-    const { error: clientsError } = await supabase
-      .from('collection_clients')
-      .delete()
-      .eq('execution_id', id)
-
-    if (clientsError) {
-      console.error('Error deleting clients:', clientsError)
-      throw new Error(`Error al eliminar clientes: ${clientsError.message}`)
-    }
-
-    // 3. Finalmente eliminar la ejecución
-    await deleteRecord('collection_executions', id)
 
     return { success: true }
   } catch (error: any) {
