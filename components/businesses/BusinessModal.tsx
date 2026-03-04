@@ -39,8 +39,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Upload, X, Image as ImageIcon, Clock } from 'lucide-react'
+import { X, Image as ImageIcon } from 'lucide-react'
 import BusinessStorageService from '@/lib/services/business/business-storage-service'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import BusinessAccountService from '@/lib/services/business-account/business-account-service'
@@ -167,6 +166,7 @@ export function BusinessModal({
           city: business.city,
           state: business.state,
           phone_number: business.phone_number || '',
+          type: business.type,
           timezone: business.timezone || 'America/Bogota',
         })
         setLogoPreview(business.logo_url)
@@ -324,24 +324,7 @@ export function BusinessModal({
               </div>
             )}
 
-            <Tabs defaultValue="general" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="general">General</TabsTrigger>
-                <TabsTrigger value="hours" disabled={!business?.id}>
-                  <Clock className="h-4 w-4 mr-1" />
-                  Horarios
-                </TabsTrigger>
-                <TabsTrigger
-                  value="gallery"
-                  disabled={
-                    !business?.id || (!isCompanyAdmin && !isBusinessAdmin)
-                  }
-                >
-                  Galería
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="general" className="space-y-6 mt-4">
+            <div className="space-y-6">
                 {/* Información básica */}
                 <div className="space-y-4">
                   <h3 className="text-sm font-medium">Información Básica</h3>
@@ -655,76 +638,7 @@ export function BusinessModal({
                     />
                   </div>
                 </div>
-              </TabsContent>
-
-              <TabsContent value="hours" className="mt-4">
-                Lorem
-              </TabsContent>
-
-              <TabsContent value="gallery" className="space-y-6 mt-4">
-                {!business?.id ? (
-                  <div className="p-4 bg-muted rounded-lg text-center">
-                    <p className="text-sm text-muted-foreground">
-                      Guarda la sucursal primero para poder gestionar las
-                      imágenes
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    {/* Gallery Cover */}
-                    <div className="space-y-2">
-                      <FormLabel>Imagen de Portada</FormLabel>
-                      <div className="flex items-center gap-4">
-                        {galleryCoverPreview ? (
-                          <div className="relative w-32 h-24 border rounded-lg overflow-hidden">
-                            <img
-                              src={galleryCoverPreview}
-                              alt="Gallery cover preview"
-                              className="w-full h-full object-cover"
-                            />
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="icon"
-                              className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                              onClick={() => handleRemoveImage('galleryCover')}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="w-32 h-24 border-2 border-dashed rounded-lg flex items-center justify-center text-muted-foreground">
-                            <ImageIcon className="h-8 w-8" />
-                          </div>
-                        )}
-                        <input
-                          ref={galleryCoverInputRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => handleImageSelect(e, 'galleryCover')}
-                          className="hidden"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => galleryCoverInputRef.current?.click()}
-                          disabled={isSubmitting}
-                        >
-                          <Upload className="mr-2 h-4 w-4" />
-                          {galleryCoverPreview
-                            ? 'Cambiar Portada'
-                            : 'Subir Portada'}
-                        </Button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </TabsContent>
-            </Tabs>
-            <small>
-              Para definir horario e imagenes debes primero crear la sucursal
-            </small>
-
+            </div>
             <DialogFooter>
               <Button
                 type="button"

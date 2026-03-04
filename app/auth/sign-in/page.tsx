@@ -23,7 +23,7 @@ import { LogIn } from 'lucide-react'
 import Link from 'next/link'
 import Logo from '@/components/Logo'
 import { AuthSidePanel } from '@/components/auth/AuthSidePanel'
-import { TurnstileWidget } from '@/components/auth/TurnstileWidget'
+import { TurnstileWidget, type TurnstileWidgetRef } from '@/components/auth/TurnstileWidget'
 
 const formSchema = z.object({
   username: z
@@ -43,6 +43,7 @@ export default function SignInPage() {
   const [isLoading, setIsLoading] = React.useState(false)
   const [turnstileToken, setTurnstileToken] = React.useState<string>('')
   const [isTurnstileLoading, setIsTurnstileLoading] = React.useState(true)
+  const turnstileRef = React.useRef<TurnstileWidgetRef>(null)
 
   const form = useForm<SignInSchemaType>({
     resolver: zodResolver(formSchema),
@@ -65,6 +66,9 @@ export default function SignInPage() {
 
       if (!result?.ok) {
         toast.error('Credenciales inválidas.')
+        // Resetear Turnstile para permitir nuevo intento
+        turnstileRef.current?.reset()
+        setTurnstileToken('')
         setIsLoading(false)
         return
       }
@@ -76,6 +80,9 @@ export default function SignInPage() {
       }, 2000)
     } catch (error) {
       toast.error('Ocurrió un error. Por favor, intenta de nuevo.')
+      // Resetear Turnstile para permitir nuevo intento
+      turnstileRef.current?.reset()
+      setTurnstileToken('')
       setIsLoading(false)
     }
   }
@@ -146,6 +153,7 @@ export default function SignInPage() {
               />
 
               <TurnstileWidget
+                ref={turnstileRef}
                 onSuccess={(token) => {
                   setTurnstileToken(token)
                   setIsTurnstileLoading(false)

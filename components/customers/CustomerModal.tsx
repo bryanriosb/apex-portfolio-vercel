@@ -51,7 +51,7 @@ const STATUS_OPTIONS: { value: CustomerStatus; label: string }[] = [
 const formSchema = z.object({
   company_name: z.string().optional(),
   nit: z.string().min(1, 'El NIT es requerido'),
-  full_name: z.string().min(1, 'El nombre completo es requerido'),
+  full_name: z.string().optional(),
   phone: z.string().optional(),
   status: z.enum(['active', 'inactive', 'vip', 'blocked']).optional(),
   category: z.string().optional(),
@@ -203,7 +203,7 @@ function CustomerModal({
         const updateData: BusinessCustomerUpdate = {
           company_name: data.company_name?.trim() || null,
           nit: data.nit.trim(),
-          full_name: data.full_name.trim(),
+          full_name: data.full_name?.trim() || null,
           emails: validEmails.map(email => email.trim()),
           phone: data.phone?.trim() || null,
           status: data.status,
@@ -219,7 +219,7 @@ function CustomerModal({
           business_id: businessId,
           company_name: data.company_name?.trim() || null,
           nit: data.nit.trim(),
-          full_name: data.full_name.trim(),
+          full_name: data.full_name?.trim() || null,
           emails: validEmails.map(email => email.trim()),
           phone: data.phone?.trim() || null,
           status: data.status,
@@ -243,7 +243,7 @@ function CustomerModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-lg max-h-screen sm:max-h-[90vh] overflow-hidden"
+        className="max-w-lg max-h-[95vh] overflow-hidden flex flex-col"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
@@ -307,10 +307,7 @@ function CustomerModal({
                   name="full_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
-                        Nombre completo del contacto{' '}
-                        <span className="text-destructive">*</span>
-                      </FormLabel>
+                      <FormLabel>Nombre completo del contacto</FormLabel>
                       <FormControl>
                         <Input
                           placeholder="María González López"
