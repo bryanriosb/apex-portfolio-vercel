@@ -62,7 +62,7 @@ function DialogContent({
         className={cn(
           'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed z-50 grid gap-4 border shadow-lg duration-200',
           'top-0 left-0 right-0 bottom-0 w-full h-full max-h-full rounded-none p-4',
-          'sm:top-1/2 sm:left-1/2 sm:right-auto sm:bottom-auto sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg sm:p-6',
+          'sm:top-1/2 sm:left-1/2 sm:right-auto sm:bottom-auto sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:h-auto sm:max-h-[90vh] sm:max-w-lg  sm:p-6',
           className
         )}
         {...props}

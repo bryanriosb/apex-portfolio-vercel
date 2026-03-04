@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Loader2, Plus, X } from 'lucide-react'
+import { Loader2, Plus, X, ChevronDown, Mail } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import { TagsSelector } from '@/components/TagsSelector'
 import { CategorySelector } from '@/components/CategorySelector'
 import type {
@@ -85,6 +90,7 @@ function CustomerModal({
   const [tags, setTags] = useState<string[]>([])
   const [emails, setEmails] = useState<string[]>([''])
   const [emailErrors, setEmailErrors] = useState<(string | null)[]>([null])
+  const [emailsOpen, setEmailsOpen] = useState(false)
 
   const isEditing = !!customer
 
@@ -111,7 +117,8 @@ function CustomerModal({
         }
 
         setTags(customer.tags || [])
-        const customerEmails = customer.emails?.length > 0 ? customer.emails : ['']
+        const customerEmails =
+          customer.emails?.length > 0 ? customer.emails : ['']
         setEmails(customerEmails)
         setEmailErrors(customerEmails.map(() => null))
         form.reset({
@@ -154,14 +161,19 @@ function CustomerModal({
   }
 
   const validateAllEmails = (): boolean => {
-    const errors = emails.map(email => validateEmail(email))
+    const errors = emails.map((email) => validateEmail(email))
     setEmailErrors(errors)
-    return errors.every(error => error === null) && emails.length > 0 && emails.some(email => email.trim() !== '')
+    return (
+      errors.every((error) => error === null) &&
+      emails.length > 0 &&
+      emails.some((email) => email.trim() !== '')
+    )
   }
 
   const addEmailField = () => {
     setEmails([...emails, ''])
     setEmailErrors([...emailErrors, null])
+    setEmailsOpen(true) // Expandir automáticamente al agregar
   }
 
   const removeEmailField = (index: number) => {
@@ -177,7 +189,7 @@ function CustomerModal({
     const newEmails = [...emails]
     newEmails[index] = value
     setEmails(newEmails)
-    
+
     // Validar en tiempo real
     const newErrors = [...emailErrors]
     newErrors[index] = value.trim() ? validateEmail(value) : null
@@ -190,8 +202,8 @@ function CustomerModal({
       return
     }
 
-    const validEmails = emails.filter(email => email.trim() !== '')
-    
+    const validEmails = emails.filter((email) => email.trim() !== '')
+
     if (validEmails.length === 0) {
       setEmailErrors(emails.map(() => 'Debe agregar al menos un email'))
       return
@@ -204,7 +216,7 @@ function CustomerModal({
           company_name: data.company_name?.trim() || null,
           nit: data.nit.trim(),
           full_name: data.full_name?.trim() || null,
-          emails: validEmails.map(email => email.trim()),
+          emails: validEmails.map((email) => email.trim()),
           phone: data.phone?.trim() || null,
           status: data.status,
           category:
@@ -220,7 +232,7 @@ function CustomerModal({
           company_name: data.company_name?.trim() || null,
           nit: data.nit.trim(),
           full_name: data.full_name?.trim() || null,
-          emails: validEmails.map(email => email.trim()),
+          emails: validEmails.map((email) => email.trim()),
           phone: data.phone?.trim() || null,
           status: data.status,
           category:
@@ -243,11 +255,11 @@ function CustomerModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-lg max-h-[95vh] overflow-hidden flex flex-col"
+        className="max-w-lg max-h-[95vh] p-0 overflow-hidden flex flex-col"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
-        <DialogHeader>
+        <DialogHeader className="px-6 pt-6 shrink-0">
           <DialogTitle>
             {isEditing ? 'Editar Cliente' : 'Nuevo Cliente'}
           </DialogTitle>
@@ -257,228 +269,175 @@ function CustomerModal({
               : 'Ingresa los datos del nuevo cliente'}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col min-h-full">
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="flex flex-col h-full"
-            >
-              <div className="flex-1 overflow-y-auto space-y-6 pr-2 pb-4">
-                <FormField
-                  control={form.control}
-                  name="company_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nombre de la empresa</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Empresa ABC S.A."
-                          disabled={isSubmitting}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col flex-1 min-h-0"
+          >
+            <div className="flex-1 overflow-y-auto space-y-6 px-6 py-4">
+              <FormField
+                control={form.control}
+                name="company_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nombre de la empresa</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Empresa ABC S.A."
+                        disabled={isSubmitting}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                <FormField
-                  control={form.control}
-                  name="nit"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        NIT <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="900123456"
-                          disabled={isSubmitting || isEditing}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="full_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nombre completo del contacto</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="María González López"
-                          disabled={isSubmitting}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <FormLabel className="text-sm font-medium leading-none">
-                      Correos electrónicos{' '}
-                      <span className="text-destructive">*</span>
+              <FormField
+                control={form.control}
+                name="nit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      NIT <span className="text-destructive">*</span>
                     </FormLabel>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={addEmailField}
-                      disabled={isSubmitting}
-                      className="h-8 px-2 text-xs"
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Agregar email
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    {emails.map((email, index) => (
-                      <div key={index} className="flex gap-2 items-start">
-                        <div className="flex-1">
-                          <Input
-                            type="email"
-                            placeholder="maria@empresaabc.com"
-                            disabled={isSubmitting}
-                            value={email}
-                            onChange={(e) => updateEmail(index, e.target.value)}
-                            className={emailErrors[index] ? 'border-destructive' : ''}
-                          />
-                          {emailErrors[index] && (
-                            <p className="text-sm text-destructive mt-1">
-                              {emailErrors[index]}
-                            </p>
+                    <FormControl>
+                      <Input
+                        placeholder="900123456"
+                        disabled={isSubmitting || isEditing}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="full_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nombre completo del contacto</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="María González López"
+                        disabled={isSubmitting}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Collapsible open={emailsOpen} onOpenChange={setEmailsOpen}>
+                <div className="border rounded-md">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <FormLabel className="text-sm font-medium leading-none cursor-pointer">
+                        Correos <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                        {emails.length}{' '}
+                        {emails.length === 1 ? 'correo' : 'correos'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 text-xs">
+                        <ChevronDown
+                          className={`h-5 w-5  transition-transform ${
+                            emailsOpen ? 'rotate-180' : ''
+                          }`}
+                        />
+                        <span className="font-medium">
+                          {emailsOpen ? 'Cerrar' : 'Ver'}
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          addEmailField()
+                        }}
+                        disabled={isSubmitting}
+                        className="h-7 px-2 text-xs hover:bg-background"
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Agregar
+                      </Button>
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="p-4  space-y-2 border-t">
+                      {emails.map((email, index) => (
+                        <div key={index} className="flex gap-2 items-start">
+                          <div className="flex-1">
+                            <Input
+                              type="email"
+                              placeholder="maria@empresaabc.com"
+                              disabled={isSubmitting}
+                              value={email}
+                              onChange={(e) =>
+                                updateEmail(index, e.target.value)
+                              }
+                              className={
+                                emailErrors[index] ? 'border-destructive' : ''
+                              }
+                            />
+                            {emailErrors[index] && (
+                              <p className="text-sm text-destructive mt-1">
+                                {emailErrors[index]}
+                              </p>
+                            )}
+                          </div>
+                          {emails.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeEmailField(index)}
+                              disabled={isSubmitting}
+                              className="h-10 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
                           )}
                         </div>
-                        {emails.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeEmailField(index)}
-                            disabled={isSubmitting}
-                            className="h-10 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
                 </div>
+              </Collapsible>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Estado</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          disabled={isSubmitting}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Seleccionar..." />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {STATUS_OPTIONS.map((option) => (
-                              <SelectItem
-                                key={option.value}
-                                value={option.value}
-                              >
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Teléfono</FormLabel>
-                        <FormControl>
-                          <PhoneInput
-                            defaultCountry="CO"
-                            countries={['CO']}
-                            international
-                            countryCallingCodeEditable={false}
-                            countrySelectProps={{ disabled: true }}
-                            placeholder="300 123 4567"
-                            limitMaxLength={true}
-                            value={field.value}
-                            onChange={field.onChange}
-                            className="phone-input"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Categoría</FormLabel>
-                        <FormControl>
-                          <CategorySelector
-                            value={field.value}
-                            onChange={(value) =>
-                              field.onChange(value || 'none')
-                            }
-                            businessAccountId={businessAccountId}
-                            disabled={isSubmitting}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <FormLabel>Etiquetas</FormLabel>
-                  <TagsSelector
-                    value={tags}
-                    onChange={setTags}
-                    placeholder="Seleccionar o crear etiquetas..."
-                    existingTags={[]}
-                    createNew={true}
-                  />
-                </div>
-
+              <div className="grid grid-cols-2 gap-2">
                 <FormField
                   control={form.control}
-                  name="preferences"
+                  name="status"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Preferencias</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Preferencias de comunicación o atención..."
-                          disabled={isSubmitting}
-                          {...field}
-                        />
-                      </FormControl>
+                      <FormLabel>Estado</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={isSubmitting}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Seleccionar..." />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {STATUS_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -486,15 +445,22 @@ function CustomerModal({
 
                 <FormField
                   control={form.control}
-                  name="notes"
+                  name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Notas</FormLabel>
+                      <FormLabel>Teléfono</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="Notas adicionales sobre el cliente..."
-                          disabled={isSubmitting}
-                          {...field}
+                        <PhoneInput
+                          defaultCountry="CO"
+                          countries={['CO']}
+                          international
+                          countryCallingCodeEditable={false}
+                          countrySelectProps={{ disabled: true }}
+                          placeholder="300 123 4567"
+                          limitMaxLength={true}
+                          value={field.value}
+                          onChange={field.onChange}
+                          className="phone-input"
                         />
                       </FormControl>
                       <FormMessage />
@@ -503,29 +469,97 @@ function CustomerModal({
                 />
               </div>
 
-              <DialogFooter className="shrink-0 pt-4 border-t">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  disabled={isSubmitting}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <div className="space-y-2">
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Categoría</FormLabel>
+                      <FormControl>
+                        <CategorySelector
+                          value={field.value}
+                          onChange={(value) => field.onChange(value || 'none')}
+                          businessAccountId={businessAccountId}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                  {isSubmitting
-                    ? 'Guardando'
-                    : isEditing
-                      ? 'Actualizar'
-                      : 'Crear Cliente'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </div>
+                />
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel>Etiquetas</FormLabel>
+                <TagsSelector
+                  value={tags}
+                  onChange={setTags}
+                  placeholder="Seleccionar o crear etiquetas..."
+                  existingTags={[]}
+                  createNew={true}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="preferences"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Preferencias</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Preferencias de comunicación o atención..."
+                        disabled={isSubmitting}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notas</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Notas adicionales sobre el cliente..."
+                        disabled={isSubmitting}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <DialogFooter className="shrink-0 px-6 py-4 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {isSubmitting
+                  ? 'Guardando'
+                  : isEditing
+                    ? 'Actualizar'
+                    : 'Crear Cliente'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   )
