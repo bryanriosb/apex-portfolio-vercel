@@ -73,25 +73,16 @@ export function Step3Content({
   const { previewData, unassignedCount, totalClients, isLoading } =
     useWizardThresholdPreview(fileData.groupedClients, activeBusiness?.id || '')
 
-  // Debug: Verificar resultado del store
-  console.log('[Step3Content] useWizardThresholdPreview result:', {
-    totalClients,
-    unassignedCount,
-    previewData: previewData.map((d: any) => ({
-      thresholdName: d.threshold?.name,
-      count: d.count,
-      daysFrom: d.threshold?.days_from,
-      daysTo: d.threshold?.days_to,
-    })),
-  })
-
   // Calcular totales basados en los datos del hook
   // totalClients ya excluye los no válidos (status !== 'found')
   const validClients = totalClients
   const totalInvoices = previewData.reduce(
     (acc: number, curr: any) =>
       acc +
-      curr.clients.reduce((sum: number, client: any) => sum + client.invoices.length, 0),
+      curr.clients.reduce(
+        (sum: number, client: any) => sum + client.invoices.length,
+        0
+      ),
     0
   )
 
@@ -171,12 +162,15 @@ export function Step3Content({
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-yellow-700">
-              Estos clientes no coinciden con ningún rango de días de los umbrales configurados.
-              Seleccione una plantilla de respaldo para enviarles correo, o no se les enviará nada.
+              Estos clientes no coinciden con ningún rango de días de los
+              umbrales configurados. Seleccione una plantilla de respaldo para
+              enviarles correo, o no se les enviará nada.
             </p>
 
             <div className="space-y-2">
-              <Label className="text-yellow-900">Plantilla de Respaldo (Fallback)</Label>
+              <Label className="text-yellow-900">
+                Plantilla de Respaldo (Fallback)
+              </Label>
               <Select
                 value={emailConfig.templateId || ''}
                 onValueChange={(value) => onTemplateChange(value)}
@@ -260,7 +254,8 @@ export function Step3Content({
                   <p className="text-xs text-blue-800">
                     La estrategia seleccionada permite envíos entre las{' '}
                     <strong>
-                      {selectedStrategy.preferred_send_hour_start || 9}:00 - {selectedStrategy.preferred_send_hour_end || 17}:00
+                      {selectedStrategy.preferred_send_hour_start || 9}:00 -{' '}
+                      {selectedStrategy.preferred_send_hour_end || 17}:00
                     </strong>
                     . Si inicias fuera de este rango, el envío se programará
                     automáticamente para el inicio del horario permitido.
@@ -282,8 +277,8 @@ export function Step3Content({
                 Dominio Remitente
               </Label>
               <p className="text-xs text-muted-foreground">
-                El dominio que se mostrará como remitente de los correos.
-                Los dominios nuevos comenzarán a generar reputación desde cero.
+                El dominio que se mostrará como remitente de los correos. Los
+                dominios nuevos comenzarán a generar reputación desde cero.
               </p>
             </div>
 
@@ -302,8 +297,12 @@ export function Step3Content({
                   <SelectValue placeholder="Seleccionar un dominio" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="custom">✍️ Usar otro dominio...</SelectItem>
-                  {availableDomains.length > 0 && <div className="h-px bg-muted my-1" />}
+                  <SelectItem value="custom">
+                    ✍️ Usar otro dominio...
+                  </SelectItem>
+                  {availableDomains.length > 0 && (
+                    <div className="h-px bg-muted my-1" />
+                  )}
                   {availableDomains.map((domain) => (
                     <SelectItem key={domain} value={domain}>
                       {domain}
@@ -312,7 +311,8 @@ export function Step3Content({
                 </SelectContent>
               </Select>
 
-              {(senderDomain === '' || !availableDomains.includes(senderDomain)) && (
+              {(senderDomain === '' ||
+                !availableDomains.includes(senderDomain)) && (
                 <div className="animate-in fade-in slide-in-from-top-2">
                   <Input
                     id="customDomain"
@@ -391,10 +391,10 @@ function ExecutionModeOption({
           {icon}
         </div>
         <div className="flex flex-col">
-          <span className="text-sm font-semibold leading-none mb-1 text-foreground">{title}</span>
-          <span className="text-xs text-muted-foreground">
-            {description}
+          <span className="text-sm font-semibold leading-none mb-1 text-foreground">
+            {title}
           </span>
+          <span className="text-xs text-muted-foreground">{description}</span>
         </div>
       </Label>
     </div>
@@ -428,7 +428,9 @@ function StrategyCard({
         </div>
         <div className="flex flex-col min-w-0 flex-1">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-semibold truncate text-foreground">{strategy.name}</span>
+            <span className="text-sm font-semibold truncate text-foreground">
+              {strategy.name}
+            </span>
             {isDefault && (
               <span className="text-[10px] uppercase font-bold tracking-wider bg-primary/10 text-primary px-1.5 py-0.5">
                 Por Defecto
@@ -436,9 +438,13 @@ function StrategyCard({
             )}
           </div>
           <span className="text-xs text-muted-foreground leading-snug">
-            {strategy.description || getStrategyTypeLabel(strategy.strategy_type)}
+            {strategy.description ||
+              getStrategyTypeLabel(strategy.strategy_type)}
           </span>
-          <span className="text-[11px] text-muted-foreground/70 italic mt-2 overflow-hidden text-ellipsis whitespace-nowrap" title={getStrategyDetails(strategy)}>
+          <span
+            className="text-[11px] text-muted-foreground/70 italic mt-2 overflow-hidden text-ellipsis whitespace-nowrap"
+            title={getStrategyDetails(strategy)}
+          >
             {getStrategyDetails(strategy)}
           </span>
         </div>
