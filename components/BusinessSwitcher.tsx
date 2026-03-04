@@ -36,8 +36,11 @@ export function BusinessSwitcher() {
     activeBusiness,
     businesses,
     isLoading,
+    hydrated,
+    userId: storeUserId,
     setActiveBusiness,
     loadBusinesses,
+    reset,
   } = useActiveBusinessStore()
 
   const handleRefreshBusinesses = useCallback(async () => {
@@ -51,22 +54,55 @@ export function BusinessSwitcher() {
   }, [businessAccountId, loadBusinesses, user?.id])
 
   useEffect(() => {
-    if (role === USER_ROLES.BUSINESS_ADMIN && businessAccountId && user?.id) {
-      // Validar que los datos corresponden al usuario actual
-      const currentState = useActiveBusinessStore.getState()
-      
-      // Si el usuario cambió, resetear completamente
-      if (currentState.userId && currentState.userId !== user.id) {
-        console.log('[BusinessSwitcher] Cambio de usuario detectado, limpiando estado...')
-        useActiveBusinessStore.getState().reset()
-      }
+    // Solo proceder si el store está hidratado y tenemos datos del usuario
+    if (!hydrated || isUserLoading) {
+      return
+    }
 
+    // Validar que tenemos el usuario actual
+    if (!user?.id) {
+      return
+    }
+
+    // Si hay un userId almacenado y es diferente al usuario actual, limpiar estado
+    if (storeUserId && storeUserId !== user.id) {
+      console.log('[BusinessSwitcher] Cambio de usuario detectado, limpiando estado...')
+      reset()
+      return
+    }
+
+    // Cargar negocios solo si es admin de negocio y tiene businessAccountId
+    if (role === USER_ROLES.BUSINESS_ADMIN && businessAccountId) {
       loadBusinesses(businessAccountId, user.id)
     }
-  }, [role, businessAccountId, loadBusinesses, user?.id])
+  }, [hydrated, isUserLoading, user?.id, storeUserId, role, businessAccountId, loadBusinesses, reset])
 
-  if (isUserLoading) {
-    return null
+  // Mostrar loading mientras el store se hidrata o el usuario carga
+  if (!hydrated || isUserLoading) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <div
+            className={`flex items-center justify-center p-2 ${isCollapsed ? 'size-8' : 'w-full gap-2'
+              }`}
+          >
+            <div className="bg-muted flex aspect-square size-8 items-center justify-center">
+              <Loading />
+            </div>
+            {!isCollapsed && (
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-medium text-muted-foreground">
+                  <Loading />
+                </span>
+                <span className="truncate text-xs text-muted-foreground">
+                  Sucursales
+                </span>
+              </div>
+            )}
+          </div>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    )
   }
 
   if (role !== USER_ROLES.BUSINESS_ADMIN) {

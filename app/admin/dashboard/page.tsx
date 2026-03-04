@@ -194,7 +194,9 @@ export default function DashboardPage() {
             Tablero
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground">
-            Selecciona una sucursal para ver el tablero
+            {!useActiveBusinessStore.getState().hydrated
+              ? 'Cargando datos...'
+              : 'Selecciona una sucursal para ver el tablero'}
           </p>
         </div>
       </div>

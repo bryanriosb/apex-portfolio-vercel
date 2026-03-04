@@ -67,23 +67,25 @@ export function CompactEmailLimitIndicator({
   return (
     <div className="flex items-center gap-3 flex-1">
       <div className="flex items-center gap-1.5 text-muted-foreground">
-        <Mail className="h-3.5 w-3.5" />
-        <span className="text-xs">Límite de Correos:</span>
+        <Mail className="h-4 w-4" />
+        <span className="text-xs">Disponibles:</span>
       </div>
 
-      <div className="flex-1 max-w-[200px]">
-        <Progress value={percentage} className="h-1.5" />
-      </div>
+      <div className="flex items-center gap-4 w-full">
+        <div className="flex-1 max-w-[200px]">
+          <Progress value={percentage} className="h-1.5" />
+        </div>
 
-      <div className="flex items-center gap-1 text-xs">
-        <span className="font-medium text-foreground">
-          {limitInfo.emailsSent}
-        </span>
-        <span className="text-muted-foreground">/</span>
-        <span className="text-muted-foreground">{limitInfo.maxEmails}</span>
-        <span className="text-muted-foreground">
-          ({limitInfo.emailsRemaining} restantes)
-        </span>
+        <div className="flex items-center gap-1 text-xs">
+          <span className="font-medium text-foreground">
+            {limitInfo.emailsSent}
+          </span>
+          <span className="text-muted-foreground">/</span>
+          <span className="text-muted-foreground">{limitInfo.maxEmails}</span>
+          <span className="text-muted-foreground">
+            ({limitInfo.emailsRemaining} restantes)
+          </span>
+        </div>
       </div>
     </div>
   )

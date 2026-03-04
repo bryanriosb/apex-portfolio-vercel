@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { useEffect, useState } from 'react'
 import BusinessService from '@/lib/services/business/business-service'
 
 export interface Business {
@@ -17,12 +16,14 @@ interface ActiveBusinessState {
   lastFetched: number | null
   cacheDuration: number
   userId: string | null // Track which user owns this data
+  hydrated: boolean // Track if store has been rehydrated from storage
   setActiveBusiness: (business: Business) => void
   setBusinesses: (businesses: Business[]) => void
   initializeFromSession: (businesses: Business[], userId: string) => void
   loadBusinesses: (businessAccountId: string, userId: string) => Promise<void>
   reset: () => void
   validateUserSession: (currentUserId: string) => boolean
+  setHydrated: (hydrated: boolean) => void
 }
 
 export const useActiveBusinessStore = create<ActiveBusinessState>()(
@@ -34,8 +35,11 @@ export const useActiveBusinessStore = create<ActiveBusinessState>()(
       lastFetched: null,
       cacheDuration: 5 * 60 * 1000, // 5 minutes
       userId: null,
+      hydrated: false,
 
       setActiveBusiness: (business) => set({ activeBusiness: business }),
+
+      setHydrated: (hydrated) => set({ hydrated }),
 
       setBusinesses: (businesses) => set({ businesses }),
 
@@ -58,17 +62,19 @@ export const useActiveBusinessStore = create<ActiveBusinessState>()(
       initializeFromSession: (businesses, userId) => {
         const state = get()
         
-        // Validate user session first
+        // Siempre validar que los datos corresponden al usuario actual
         if (state.userId && state.userId !== userId) {
-          console.log('[ActiveBusinessStore] Cambio de usuario detectado, reseteando...')
+          console.log('[ActiveBusinessStore] Cambio de usuario en sesión, reseteando...')
           set({
             businesses,
             activeBusiness: businesses[0] || null,
             userId,
+            lastFetched: Date.now(),
           })
           return
         }
 
+        // Mantener el negocio activo si aún existe en la nueva lista
         const current = state.activeBusiness
         const validBusiness = current ? businesses.find((b) => b.id === current.id) : null
 
@@ -76,6 +82,7 @@ export const useActiveBusinessStore = create<ActiveBusinessState>()(
           businesses,
           activeBusiness: validBusiness || businesses[0] || null,
           userId,
+          lastFetched: Date.now(),
         })
       },
 
@@ -153,17 +160,17 @@ export const useActiveBusinessStore = create<ActiveBusinessState>()(
         lastFetched: state.lastFetched,
         userId: state.userId 
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.hydrated = true
+        }
+      },
     }
   )
 )
 
 export function useActiveBusinessHydrated() {
-  const [hydrated, setHydrated] = useState(false)
   const store = useActiveBusinessStore()
-
-  useEffect(() => {
-    setHydrated(true)
-  }, [])
-
-  return { ...store, hydrated }
+  
+  return store
 }
