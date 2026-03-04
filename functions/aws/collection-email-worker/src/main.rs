@@ -833,7 +833,7 @@ async fn send_client_email(
         subject: template.subject.clone(),
         html_body: html_body.clone(),
         text_body: text_body.to_string(),
-        from: format!("{} - Cartera <notify@borls.com>", business_name),
+        from: format!("{} - Cartera <siesa@borls.com>", business_name),
         attachments: attachments.to_vec(),
         client_id: Some(client.id.clone()),
         execution_id: Some(execution_id.to_string()),

@@ -71,11 +71,13 @@ export function BusinessDetailModal({
         <DialogHeader>
           <div className="flex items-center gap-3">
             {business.logo_url ? (
-              <img
-                src={business.logo_url}
-                alt={business.name}
-                className="h-12 w-12 rounded-lg object-cover"
-              />
+              <div className="w-[94px] h-[35px] rounded overflow-hidden bg-muted/30 flex items-center justify-center flex-shrink-0">
+                <img
+                  src={business.logo_url}
+                  alt={business.name}
+                  className="w-full h-full object-contain"
+                />
+              </div>
             ) : (
               <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center">
                 <Store className="h-6 w-6 text-muted-foreground" />

@@ -169,12 +169,12 @@ Procesa todos los eventos SNS entrantes:
 
 Entendemos la importancia de establecer una buena reputación de sender. Nuestro plan:
 
-| Fase | Duración | Volumen Diario | Descripción |
-|------|----------|----------------|-------------|
-| **Fase 1** | Semanas 1-2 | 50-100 emails/día | Establecimiento inicial de reputación |
-| **Fase 2** | Semanas 3-4 | 200-500 emails/día | Monitoreo intensivo de métricas |
-| **Fase 3** | Mes 2 | 500-1,000 emails/día | Expansión gradual |
-| **Fase 4** | Mes 3+ | 1,000-5,000 emails/día | Operación a escala completa |
+| Fase       | Duración    | Volumen Diario         | Descripción                           |
+| ---------- | ----------- | ---------------------- | ------------------------------------- |
+| **Fase 1** | Semanas 1-2 | 50-100 emails/día      | Establecimiento inicial de reputación |
+| **Fase 2** | Semanas 3-4 | 200-500 emails/día     | Monitoreo intensivo de métricas       |
+| **Fase 3** | Mes 2       | 500-1,000 emails/día   | Expansión gradual                     |
+| **Fase 4** | Mes 3+      | 1,000-5,000 emails/día | Operación a escala completa           |
 
 ### Volumen Anual Proyectado
 
@@ -327,21 +327,21 @@ Utilizamos **TipTap Editor + Handlebars** para templates:
 
 ## 10. Resumen de Puntos Clave para Aprobación
 
-| Aspecto | Nuestro Caso |
-|---------|--------------|
-| **Tipo de Email** | Transaccional (NO marketing) |
-| **Origen de Datos** | Clientes existentes con contratos firmados |
-| **Frecuencia** | 1-2 emails/cliente/mes máximo |
-| **Opt-In** | Consentimiento documentado en contrato comercial |
-| **Opt-Out** | Enlace claro en cada email, proceso automático |
-| **Bounce Handling** | SNS Topics eliminan direcciones inválidas |
-| **Complaint Handling** | Remoción inmediata, alerta automática |
-| **Volumen Inicial** | 50-100 emails/día (ramp-up gradual) |
-| **Compliance** | CAN-SPAM, GDPR ready |
-| **Dominio** | borls.com verificado |
-| **Autenticación** | SPF + DKIM + DMARC configurados |
-| **Infraestructura** | Lambda + SNS + SES completos |
-| **Casos de Uso** | Recordatorios de pago, notificaciones de cuenta |
+| Aspecto                | Nuestro Caso                                     |
+| ---------------------- | ------------------------------------------------ |
+| **Tipo de Email**      | Transaccional (NO marketing)                     |
+| **Origen de Datos**    | Clientes existentes con contratos firmados       |
+| **Frecuencia**         | 1-2 emails/cliente/mes máximo                    |
+| **Opt-In**             | Consentimiento documentado en contrato comercial |
+| **Opt-Out**            | Enlace claro en cada email, proceso automático   |
+| **Bounce Handling**    | SNS Topics eliminan direcciones inválidas        |
+| **Complaint Handling** | Remoción inmediata, alerta automática            |
+| **Volumen Inicial**    | 50-100 emails/día (ramp-up gradual)              |
+| **Compliance**         | CAN-SPAM, GDPR ready                             |
+| **Dominio**            | borls.com verificado                             |
+| **Autenticación**      | SPF + DKIM + DMARC configurados                  |
+| **Infraestructura**    | Lambda + SNS + SES completos                     |
+| **Casos de Uso**       | Recordatorios de pago, notificaciones de cuenta  |
 
 ---
 
@@ -360,7 +360,7 @@ Nos comprometemos a:
 ## Información de Contacto
 
 - **Cuenta AWS:** <cllctnai@gmail.com>
-- **Email de contacto:** <notify@borls.com>
+- **Email de contacto:** <siesa@borls.com>
 - **Sitio web:** <https://borls.com>
 - **Documentación técnica:** [Enlace a docs del proyecto]
 
@@ -375,9 +375,9 @@ Atentamente,
 **Bryan**
 **CTO / Desarrollador Principal**
 **Borls Collections Management System**
-Email: <notify@borls.com>
+Email: <siesa@borls.com>
 Sitio: <https://borls.com>
 
 ---
 
-*Este documento ha sido preparado para demostrar nuestro compromiso con las mejores prácticas de envío de emails transaccionales y cumplimiento con las políticas de AWS SES.*
+_Este documento ha sido preparado para demostrar nuestro compromiso con las mejores prácticas de envío de emails transaccionales y cumplimiento con las políticas de AWS SES._

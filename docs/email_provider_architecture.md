@@ -25,7 +25,7 @@ graph TB
         Trait --> SES
         Trait --> Brevo
     end
-    
+
     subgraph "Next.js API Webhooks"
         Route[/api/webhooks/email/provider]
         SESParser[SES Parser]
@@ -36,14 +36,14 @@ graph TB
         SESParser --> Handler
         BrevoParser --> Handler
     end
-    
+
     subgraph "Database"
         Events[collection_events]
         Clients[collection_clients]
         Handler --> Events
         Handler --> Clients
     end
-    
+
     SES -->|sends email| ASES[AWS SES]
     Brevo -->|sends email| API[Brevo API]
     ASES -->|webhook SNS| Route
@@ -61,7 +61,7 @@ graph TB
 ```rust
 #[async_trait]
 pub trait EmailProvider: Send + Sync {
-    async fn send_email(&self, message: EmailMessage) 
+    async fn send_email(&self, message: EmailMessage)
         -> Result<SendResult, Box<dyn Error + Send + Sync>>;
     fn provider_name(&self) -> &str;
 }
@@ -80,7 +80,7 @@ pub trait EmailProvider: Send + Sync {
 pub async fn create_email_provider() -> Arc<dyn EmailProvider> {
     let provider_type = std::env::var("EMAIL_PROVIDER")
         .unwrap_or_else(|_| "ses".to_string());
-    
+
     match provider_type.as_str() {
         "brevo" => Arc::new(BrevoProvider::new()),
         "ses" | _ => Arc::new(SesProvider::new().await),
@@ -118,13 +118,11 @@ pub async fn create_email_provider() -> Arc<dyn EmailProvider> {
 
 ```json
 {
-  "sender": {"name": "Manager", "email": "notify@borls.com"},
-  "to": [{"email": "client@example.com"}],
+  "sender": { "name": "Manager", "email": "siesa@borls.com" },
+  "to": [{ "email": "client@example.com" }],
   "subject": "Recordatorio de pago",
   "htmlContent": "<html>...</html>",
-  "attachment": [
-    {"content": "base64...", "name": "factura.pdf"}
-  ]
+  "attachment": [{ "content": "base64...", "name": "factura.pdf" }]
 }
 ```
 
@@ -179,13 +177,13 @@ interface EmailEvent {
 
 Mapea eventos Brevo → mismo formato `EmailEvent`:
 
-| Brevo Event | Internal Event |
-|-------------|----------------|
-| `delivered` | delivered |
-| `hard_bounce`, `soft_bounce`, `blocked`, `invalid_email` | bounced |
-| `spam`, `unsubscribed` | complained |
-| `opened`, `unique_opened` | opened |
-| `error`, `deferred` | failed |
+| Brevo Event                                              | Internal Event |
+| -------------------------------------------------------- | -------------- |
+| `delivered`                                              | delivered      |
+| `hard_bounce`, `soft_bounce`, `blocked`, `invalid_email` | bounced        |
+| `spam`, `unsubscribed`                                   | complained     |
+| `opened`, `unique_opened`                                | opened         |
+| `error`, `deferred`                                      | failed         |
 
 ### 2.3 Event Handler
 
@@ -352,7 +350,7 @@ match provider_type.as_str() {
 ```typescript
 // lib/webhooks/parsers/sendgrid-parser.ts
 export function parseSendGridEvent(body: any): EmailEvent | null {
-    // Mapear eventos de SendGrid
+  // Mapear eventos de SendGrid
 }
 ```
 
@@ -361,8 +359,8 @@ export function parseSendGridEvent(body: any): EmailEvent | null {
 ```typescript
 // app/api/webhooks/email/[provider]/route.ts
 if (provider === 'sendgrid') {
-    const event = parseSendGridEvent(body)
-    await processEmailEvent('sendgrid', event)
+  const event = parseSendGridEvent(body)
+  await processEmailEvent('sendgrid', event)
 }
 ```
 

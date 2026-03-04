@@ -7,6 +7,7 @@ export interface Business {
   name: string
   business_account_id: string
   timezone: string
+  logo_url: string | null
 }
 
 interface ActiveBusinessState {
@@ -24,6 +25,7 @@ interface ActiveBusinessState {
   reset: () => void
   validateUserSession: (currentUserId: string) => boolean
   setHydrated: (hydrated: boolean) => void
+  updateBusinessLogo: (businessId: string, logoUrl: string | null) => void
 }
 
 export const useActiveBusinessStore = create<ActiveBusinessState>()(
@@ -125,6 +127,7 @@ export const useActiveBusinessStore = create<ActiveBusinessState>()(
             name: b.name,
             business_account_id: b.business_account_id,
             timezone: b.timezone,
+            logo_url: b.logo_url,
           }))
 
           const currentActive = state.activeBusiness
@@ -151,6 +154,26 @@ export const useActiveBusinessStore = create<ActiveBusinessState>()(
         lastFetched: null,
         userId: null 
       }),
+
+      updateBusinessLogo: (businessId: string, logoUrl: string | null) => {
+        const state = get()
+        
+        // Actualizar el negocio activo si coincide
+        if (state.activeBusiness?.id === businessId) {
+          set({
+            activeBusiness: {
+              ...state.activeBusiness,
+              logo_url: logoUrl,
+            },
+          })
+        }
+        
+        // Actualizar en la lista de negocios
+        const updatedBusinesses = state.businesses.map((b) =>
+          b.id === businessId ? { ...b, logo_url: logoUrl } : b
+        )
+        set({ businesses: updatedBusinesses })
+      },
     }),
     {
       name: 'active-business-storage',

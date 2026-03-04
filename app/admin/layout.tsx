@@ -11,6 +11,7 @@ import { NavigationLoader } from '@/components/NavigationLoader'
 import { PermissionsLoader } from '@/components/PermissionsLoader'
 import { TrialProviderClient } from '@/components/trial/TrialProviderClient'
 import { getTrialDataFromServer } from '@/lib/services/trial/trial-server-service'
+import { getBusinessWithLogoByAccountAction } from '@/lib/actions/business'
 
 export default async function AdminLayout({
   children,
@@ -34,10 +35,19 @@ export default async function AdminLayout({
   // Obtener datos del trial desde el servidor para pre-carga
   const trialData = await getTrialDataFromServer()
 
+  // Obtener logo del negocio activo (SSR para mejor UX)
+  const businessWithLogo = businessAccountId
+    ? await getBusinessWithLogoByAccountAction(businessAccountId)
+    : null
+  const businessLogoUrl = businessWithLogo?.logo_url || null
+
   return (
     <SidebarProvider defaultOpen={sidebarOpen}>
       <Suspense fallback={<SidebarSkeleton />}>
-        <AppSidebar accessibleModules={accessibleModules} />
+        <AppSidebar
+          accessibleModules={accessibleModules}
+          businessLogoUrl={businessLogoUrl}
+        />
       </Suspense>
       {businessAccountId && (
         <TrialProviderClient

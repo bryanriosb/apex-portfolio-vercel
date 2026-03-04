@@ -46,7 +46,7 @@ export async function sendEmailVerificationAction(email: string): Promise<{
     // Enviar email usando Contiguity
     const result = await sendEmailMailgun({
       to: email,
-      from: 'APEX <notify@borls.com>',
+      from: 'APEX <siesa@borls.com>',
       subject: 'Código de verificación - APEX',
       body: {
         text: `Tu código de verificación es: ${code}. Este código expirará en 10 minutos.`,

@@ -66,7 +66,10 @@ interface BusinessModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   business?: Business | BusinessWithAccount | null
-  onSave: (data: BusinessInsert | BusinessUpdate) => Promise<void>
+  onSave: (
+    data: BusinessInsert | BusinessUpdate,
+    logoUrl?: string | null
+  ) => Promise<void>
 }
 
 export function BusinessModal({
@@ -77,6 +80,7 @@ export function BusinessModal({
 }: BusinessModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [logoError, setLogoError] = useState<string | null>(null)
 
   // Image states
   const [logoFile, setLogoFile] = useState<File | null>(null)
@@ -192,6 +196,7 @@ export function BusinessModal({
       setGalleryCoverFile(null)
       setGalleryImages([])
       setUploadError(null)
+      setLogoError(null)
     }
 
     if (open) {
@@ -207,22 +212,46 @@ export function BusinessModal({
     if (!file) return
 
     setUploadError(null)
+    setLogoError(null)
 
     if (!file.type.startsWith('image/')) {
-      setUploadError('El archivo debe ser una imagen')
+      setLogoError('El archivo debe ser una imagen')
       return
     }
 
     const maxSize = 5 * 1024 * 1024
     if (file.size > maxSize) {
-      setUploadError('La imagen no debe superar los 5MB')
+      setLogoError('La imagen no debe superar los 5MB')
       return
     }
 
+    // Validación de dimensiones para logo
     if (imageType === 'logo') {
-      setLogoFile(file)
+      const img = new Image()
+      img.onload = () => {
+        // Proporción ideal: ~2.67:1 (187x70px)
+        const aspectRatio = img.width / img.height
+        const idealRatio = 187 / 70 // ~2.67
+        const tolerance = 0.5 // Tolerancia de 50%
+
+        if (
+          aspectRatio < idealRatio * (1 - tolerance) ||
+          aspectRatio > idealRatio * (1 + tolerance)
+        ) {
+          setLogoError(
+            `El logo debe tener proporción horizontal (~2.7:1). Tu imagen es ${img.width}x${img.height} (${aspectRatio.toFixed(1)}:1). Recomendado: 187x70px`
+          )
+          // No permitir la carga si la proporción es incorrecta
+          return
+        }
+
+        setLogoFile(file)
+        setLogoPreview(img.src)
+      }
       const reader = new FileReader()
-      reader.onloadend = () => setLogoPreview(reader.result as string)
+      reader.onloadend = () => {
+        img.src = reader.result as string
+      }
       reader.readAsDataURL(file)
     } else {
       setGalleryCoverFile(file)
@@ -236,6 +265,7 @@ export function BusinessModal({
     if (imageType === 'logo') {
       setLogoFile(null)
       setLogoPreview(business?.logo_url || null)
+      setLogoError(null)
       if (logoInputRef.current) logoInputRef.current.value = ''
     } else {
       setGalleryCoverFile(null)
@@ -288,7 +318,7 @@ export function BusinessModal({
         timezone: data.timezone,
       }
 
-      await onSave(saveData)
+      await onSave(saveData, finalLogoUrl)
       onOpenChange(false)
     } catch (error) {
       console.error('Error saving business:', error)
@@ -325,127 +355,76 @@ export function BusinessModal({
             )}
 
             <div className="space-y-6">
-                {/* Información básica */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-medium">Información Básica</h3>
+              {/* Información básica */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium">Información Básica</h3>
 
-                  {/* Selector de Business Account (solo para company_admin) */}
-                  {isCompanyAdmin && (
-                    <FormField
-                      control={form.control}
-                      name="business_account_id"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            Cuenta de Negocio{' '}
-                            <span className="text-destructive">*</span>
-                          </FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                            disabled={
-                              isSubmitting || loadingAccounts || !!business
-                            }
-                          >
-                            <FormControl>
-                              <SelectTrigger className="w-full">
-                                <SelectValue
-                                  placeholder={
-                                    loadingAccounts ? (
-                                      <Loading />
-                                    ) : (
-                                      'Selecciona una cuenta'
-                                    )
-                                  }
-                                />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {businessAccounts.map((account) => (
-                                <SelectItem key={account.id} value={account.id}>
-                                  {account.company_name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-
-                  {/* Campo hidden para business_account_id (solo para business_admin) */}
-                  {isBusinessAdmin && (
-                    <FormField
-                      control={form.control}
-                      name="business_account_id"
-                      render={({ field }) => <input type="hidden" {...field} />}
-                    />
-                  )}
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem className="col-span-2 sm:col-span-1">
-                          <FormLabel>
-                            Nombre <span className="text-destructive">*</span>
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Nombre del salón"
-                              disabled={isSubmitting}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="type"
-                      render={({ field }) => (
-                        <FormItem className="col-span-2 sm:col-span-1">
-                          <FormLabel>
-                            Tipo <span className="text-destructive">*</span>
-                          </FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            disabled={isSubmitting}
-                          >
-                            <FormControl>
-                              <SelectTrigger className="w-full">
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {BUSINESS_TYPES_OPTIONS.map((t) => (
-                                <SelectItem key={t.value} value={t.value}>
-                                  {t.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
+                {/* Selector de Business Account (solo para company_admin) */}
+                {isCompanyAdmin && (
                   <FormField
                     control={form.control}
-                    name="description"
+                    name="business_account_id"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Descripción</FormLabel>
+                        <FormLabel>
+                          Cuenta de Negocio{' '}
+                          <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          disabled={
+                            isSubmitting || loadingAccounts || !!business
+                          }
+                        >
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue
+                                placeholder={
+                                  loadingAccounts ? (
+                                    <Loading />
+                                  ) : (
+                                    'Selecciona una cuenta'
+                                  )
+                                }
+                              />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {businessAccounts.map((account) => (
+                              <SelectItem key={account.id} value={account.id}>
+                                {account.company_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {/* Campo hidden para business_account_id (solo para business_admin) */}
+                {isBusinessAdmin && (
+                  <FormField
+                    control={form.control}
+                    name="business_account_id"
+                    render={({ field }) => <input type="hidden" {...field} />}
+                  />
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem className="col-span-2 sm:col-span-1">
+                        <FormLabel>
+                          Nombre <span className="text-destructive">*</span>
+                        </FormLabel>
                         <FormControl>
-                          <Textarea
-                            placeholder="Descripción del salón"
-                            rows={3}
+                          <Input
+                            placeholder="Nombre del salón"
                             disabled={isSubmitting}
                             {...field}
                           />
@@ -457,34 +436,11 @@ export function BusinessModal({
 
                   <FormField
                     control={form.control}
-                    name="phone_number"
+                    name="type"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Teléfono</FormLabel>
-                        <FormControl>
-                          <PhoneInput
-                            defaultCountry="CO"
-                            international
-                            countryCallingCodeEditable={false}
-                            placeholder="300 123 4567"
-                            value={field.value}
-                            onChange={field.onChange}
-                            disabled={isSubmitting}
-                            className="phone-input"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="timezone"
-                    render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="col-span-2 sm:col-span-1">
                         <FormLabel>
-                          Zona Horaria <span className="text-destructive">*</span>
+                          Tipo <span className="text-destructive">*</span>
                         </FormLabel>
                         <Select
                           onValueChange={field.onChange}
@@ -492,98 +448,262 @@ export function BusinessModal({
                           disabled={isSubmitting}
                         >
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecciona una zona horaria" />
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="America/Bogota">Bogotá (GMT-5)</SelectItem>
-                            <SelectItem value="America/Mexico_City">Ciudad de México (GMT-6)</SelectItem>
-                            <SelectItem value="America/New_York">Nueva York (GMT-5)</SelectItem>
-                            <SelectItem value="America/Santiago">Santiago (GMT-4)</SelectItem>
-                            <SelectItem value="America/Lima">Lima (GMT-5)</SelectItem>
-                            <SelectItem value="America/Caracas">Caracas (GMT-4)</SelectItem>
-                            <SelectItem value="America/Argentina/Buenos_Aires">Buenos Aires (GMT-3)</SelectItem>
-                            <SelectItem value="UTC">UTC</SelectItem>
+                            {BUSINESS_TYPES_OPTIONS.map((t) => (
+                              <SelectItem key={t.value} value={t.value}>
+                                {t.label}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-
-                  {/* Logo del Negocio */}
-                  {business?.id && (
-                    <div className="space-y-2">
-                      <FormLabel>Logo del Negocio</FormLabel>
-                      <div className="flex items-start gap-2">
-                        <div className="relative w-24 h-24">
-                          {logoPreview ? (
-                            <>
-                              <div
-                                className="w-full h-full border rounded-lg overflow-hidden bg-muted/30 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
-                                onClick={() => logoInputRef.current?.click()}
-                              >
-                                <img
-                                  src={logoPreview}
-                                  alt="Logo preview"
-                                  className="max-w-full max-h-full object-contain"
-                                />
-                              </div>
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="icon"
-                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-md z-10"
-                                onClick={() => handleRemoveImage('logo')}
-                                disabled={isSubmitting}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </>
-                          ) : (
-                            <div
-                              className="w-full h-full border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-muted-foreground cursor-pointer hover:bg-muted/50 transition-colors"
-                              onClick={() => logoInputRef.current?.click()}
-                            >
-                              <ImageIcon className="h-8 w-8 mb-1" />
-                              <span className="text-xs">Subir logo</span>
-                            </div>
-                          )}
-                          <input
-                            ref={logoInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleImageSelect(e, 'logo')}
-                            className="hidden"
-                          />
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Haz click para {logoPreview ? 'cambiar' : 'subir'} el
-                          logo. Tamaño máximo: 5MB
-                        </p>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
-                {/* Ubicación */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-medium">Ubicación</h3>
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Descripción</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Descripción del salón"
+                          rows={3}
+                          disabled={isSubmitting}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
+                <FormField
+                  control={form.control}
+                  name="phone_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Teléfono</FormLabel>
+                      <FormControl>
+                        <PhoneInput
+                          defaultCountry="CO"
+                          international
+                          countryCallingCodeEditable={false}
+                          placeholder="300 123 4567"
+                          value={field.value}
+                          onChange={field.onChange}
+                          disabled={isSubmitting}
+                          className="phone-input"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="timezone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Zona Horaria <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        disabled={isSubmitting}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona una zona horaria" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="America/Bogota">
+                            Bogotá (GMT-5)
+                          </SelectItem>
+                          <SelectItem value="America/Mexico_City">
+                            Ciudad de México (GMT-6)
+                          </SelectItem>
+                          <SelectItem value="America/New_York">
+                            Nueva York (GMT-5)
+                          </SelectItem>
+                          <SelectItem value="America/Santiago">
+                            Santiago (GMT-4)
+                          </SelectItem>
+                          <SelectItem value="America/Lima">
+                            Lima (GMT-5)
+                          </SelectItem>
+                          <SelectItem value="America/Caracas">
+                            Caracas (GMT-4)
+                          </SelectItem>
+                          <SelectItem value="America/Argentina/Buenos_Aires">
+                            Buenos Aires (GMT-3)
+                          </SelectItem>
+                          <SelectItem value="UTC">UTC</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Logo del Negocio */}
+                {business?.id && (
+                  <div className="space-y-2">
+                    <FormLabel className="text-sm font-medium">
+                      Logo Empresarial
+                    </FormLabel>
+                    <p className="text-xs text-muted-foreground">
+                      Tamaño recomendado: <strong>187 x 70 px</strong>{' '}
+                      (proporción 2.7:1). Se mostrará en la cabecera del menu de
+                      la aplicación.
+                    </p>
+                    <input
+                      ref={logoInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageSelect(e, 'logo')}
+                      className="hidden"
+                    />
+                    <div
+                      className="border-2 border-dashed p-4 transition-colors cursor-pointer hover:border-primary"
+                      onClick={() => logoInputRef.current?.click()}
+                    >
+                      {logoPreview ? (
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {/* Preview con proporción correcta 187x70 */}
+                            <div className="w-[94px] h-[35px] rounded overflow-hidden bg-muted/30 flex items-center justify-center flex-shrink-0">
+                              <img
+                                src={logoPreview}
+                                alt="Logo preview"
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                Logo cargado
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Click para cambiar la imagen
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                logoInputRef.current?.click()
+                              }}
+                            >
+                              Cambiar
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-muted-foreground hover:text-destructive px-2"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleRemoveImage('logo')
+                              }}
+                              disabled={isSubmitting}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">
+                                Seleccionar logo
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                PNG, JPG o WEBP • Máx 5MB • 187x70px
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              logoInputRef.current?.click()
+                            }}
+                          >
+                            Examinar
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    {logoError && (
+                      <p className="text-xs text-destructive mt-1">
+                        {logoError}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Ubicación */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium">Ubicación</h3>
+
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Dirección <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Calle 123 #45-67"
+                          disabled={isSubmitting}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid gap-4">
                   <FormField
                     control={form.control}
-                    name="address"
+                    name="state"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Dirección <span className="text-destructive">*</span>
+                          Departamento{' '}
+                          <span className="text-destructive">*</span>
                         </FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="Calle 123 #45-67"
+                          <StateComboBox
+                            value={field.value}
+                            onChange={(value) => {
+                              field.onChange(value)
+                              // Reset city when state changes
+                              form.setValue('city', '')
+                            }}
                             disabled={isSubmitting}
-                            {...field}
                           />
                         </FormControl>
                         <FormMessage />
@@ -591,53 +711,27 @@ export function BusinessModal({
                     )}
                   />
 
-                  <div className="grid gap-4">
-                    <FormField
-                      control={form.control}
-                      name="state"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            Departamento{' '}
-                            <span className="text-destructive">*</span>
-                          </FormLabel>
-                          <FormControl>
-                            <StateComboBox
-                              value={field.value}
-                              onChange={(value) => {
-                                field.onChange(value)
-                                // Reset city when state changes
-                                form.setValue('city', '')
-                              }}
-                              disabled={isSubmitting}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="city"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            Ciudad <span className="text-destructive">*</span>
-                          </FormLabel>
-                          <FormControl>
-                            <CityComboBox
-                              value={field.value}
-                              onChange={field.onChange}
-                              disabled={isSubmitting}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Ciudad <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <CityComboBox
+                            value={field.value}
+                            onChange={field.onChange}
+                            disabled={isSubmitting}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
+              </div>
             </div>
             <DialogFooter>
               <Button

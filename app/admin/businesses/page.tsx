@@ -20,6 +20,8 @@ import { Plus } from 'lucide-react'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { useCanCreate, formatLimitUsage } from '@/hooks/use-plan-limits'
 import { useUnifiedPermissionsStore } from '@/lib/store/unified-permissions-store'
+import { useActiveBusinessStore } from '@/lib/store/active-business-store'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import type {
   BusinessWithAccount,
@@ -43,6 +45,8 @@ export default function BusinessesPage() {
   const dataTableRef = useRef<DataTableRef>(null)
   const { canCreate, limitInfo } = useCanCreate('business')
   const { loadPermissions } = useUnifiedPermissionsStore()
+  const { updateBusinessLogo } = useActiveBusinessStore()
+  const router = useRouter()
 
   const [modalOpen, setModalOpen] = useState(false)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
@@ -183,7 +187,10 @@ export default function BusinessesPage() {
     }
   }
 
-  const handleSaveBusiness = async (data: BusinessInsert | BusinessUpdate) => {
+  const handleSaveBusiness = async (
+    data: BusinessInsert | BusinessUpdate,
+    logoUrl?: string | null
+  ) => {
     try {
       if (selectedBusiness) {
         await businessService.updateItem({
@@ -191,6 +198,14 @@ export default function BusinessesPage() {
           ...(data as BusinessUpdate),
         })
         toast.success('Sucursal actualizada correctamente')
+
+        // Actualizar el logo en el store si se cambió
+        if (logoUrl !== undefined) {
+          updateBusinessLogo(selectedBusiness.id, logoUrl)
+        }
+
+        // Forzar re-renderización del layout para actualizar el logo en el sidebar
+        router.refresh()
       } else {
         // Company admin siempre puede crear, business admin debe respetar límites del plan
         if (!isCompanyAdmin && !canCreate) {

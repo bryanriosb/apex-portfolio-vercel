@@ -230,3 +230,37 @@ export async function deleteBusinessesAction(
     return { success: false, deletedCount: 0, error: error.message }
   }
 }
+
+/**
+ * Obtiene el primer negocio de una cuenta con su logo
+ * Útil para SSR del logo en el layout
+ */
+export async function getBusinessWithLogoByAccountAction(
+  businessAccountId: string
+): Promise<{ id: string; name: string; logo_url: string | null } | null> {
+  try {
+    const client = await getSupabaseClient()
+
+    const { data, error } = await client
+      .from('businesses')
+      .select('id, name, logo_url')
+      .eq('business_account_id', businessAccountId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .single()
+
+    if (error || !data) {
+      console.error('Error fetching business with logo:', error)
+      return null
+    }
+
+    return {
+      id: data.id,
+      name: data.name,
+      logo_url: data.logo_url,
+    }
+  } catch (error) {
+    console.error('Error in getBusinessWithLogoByAccountAction:', error)
+    return null
+  }
+}

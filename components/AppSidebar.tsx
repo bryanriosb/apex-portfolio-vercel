@@ -15,6 +15,7 @@ import {
   SIDE_SYSTEM_MENU_ITEMS,
 } from '@/const/sidebar-menu'
 import { useCurrentUser } from '@/hooks/use-current-user'
+import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import { USER_ROLES } from '@/const/roles'
 import { NavMain } from './NavMain'
 import { BusinessSwitcher } from './BusinessSwitcher'
@@ -24,12 +25,17 @@ import Logo from './Logo'
 
 interface AppSidebarProps {
   accessibleModules: string[]
+  businessLogoUrl?: string | null
 }
 
-export function AppSidebar({ accessibleModules }: AppSidebarProps) {
+export function AppSidebar({ accessibleModules, businessLogoUrl }: AppSidebarProps) {
   const { role } = useCurrentUser()
   const { state } = useSidebar()
+  const { activeBusiness } = useActiveBusinessStore()
   const isCollapsed = state === 'collapsed'
+  
+  // Usar el logo del negocio activo del store si está disponible, de lo contrario usar el prop del SSR
+  const effectiveLogoUrl = activeBusiness?.logo_url ?? businessLogoUrl
 
   // COMPANY_ADMIN siempre tiene acceso completo (superuser)
   const isCompanyAdmin = role === USER_ROLES.COMPANY_ADMIN
@@ -203,7 +209,7 @@ export function AppSidebar({ accessibleModules }: AppSidebarProps) {
               }}
             />
             */}
-            <Logo />
+            <Logo businessLogoUrl={effectiveLogoUrl} />
           </div>
         </div>
 

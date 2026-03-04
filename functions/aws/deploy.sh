@@ -25,7 +25,7 @@ ENV_VARS=$(grep -v '^#' .env | \
 
 # Agregar variables adicionales que no están en .env pero son necesarias
 # Nota: AWS_REGION no se incluye porque es una variable reservada de Lambda
-ADDITIONAL_VARS="APP_ENV=dev,SES_CONFIGURATION_SET=borls-collection-config,SES_SOURCE_EMAIL=notify@borls.com,API_BASE_URL=https://apex.borls.com"
+ADDITIONAL_VARS="APP_ENV=dev,SES_CONFIGURATION_SET=borls-collection-config,SES_SOURCE_EMAIL=siesa@borls.com,API_BASE_URL=https://apex.borls.com"
 
 # Combinar variables
 ALL_ENV_VARS="${ENV_VARS},${ADDITIONAL_VARS}"

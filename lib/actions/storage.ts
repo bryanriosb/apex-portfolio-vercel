@@ -37,7 +37,7 @@ export async function uploadImageAction(
 
     const timestamp = Date.now()
     const fileExt = file.name.split('.').pop()
-    const fileName = `${businessId}/${type}/${timestamp}.${fileExt}`
+    const fileName = `images/apex/${businessId}/${timestamp}.${fileExt}`
 
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
