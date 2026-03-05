@@ -59,6 +59,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { NumericInput } from '@/components/ui/numeric-input'
 
 const strategyIcons: Record<StrategyType, typeof Rocket> = {
   ramp_up: Rocket,
@@ -74,10 +75,7 @@ const strategyLabels: Record<StrategyType, string> = {
   aggressive: 'Agresivo',
 }
 
-const defaultStrategyConfig: Record<
-  StrategyType,
-  Partial<DeliveryStrategy>
-> = {
+const defaultStrategyConfig: Record<StrategyType, Partial<DeliveryStrategy>> = {
   ramp_up: {
     rampup_day_1_limit: 50,
     rampup_day_2_limit: 100,
@@ -142,7 +140,8 @@ export function DeliveryStrategiesTab() {
   const [strategies, setStrategies] = useState<DeliveryStrategy[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingStrategy, setEditingStrategy] = useState<DeliveryStrategy | null>(null)
+  const [editingStrategy, setEditingStrategy] =
+    useState<DeliveryStrategy | null>(null)
   const [formData, setFormData] = useState<StrategyFormData>({
     name: '',
     description: '',
@@ -221,8 +220,8 @@ export function DeliveryStrategiesTab() {
       pause_on_complaint: strategy.pause_on_complaint,
       respect_timezone: strategy.respect_timezone,
       avoid_weekends: strategy.avoid_weekends,
-      preferred_send_hour_start: strategy.preferred_send_hour_start || 9,
-      preferred_send_hour_end: strategy.preferred_send_hour_end || 17,
+      preferred_send_hour_start: strategy.preferred_send_hour_start ?? 9,
+      preferred_send_hour_end: strategy.preferred_send_hour_end ?? 17,
     })
     setDialogOpen(true)
   }
@@ -250,10 +249,18 @@ export function DeliveryStrategiesTab() {
         avoid_weekends: formData.avoid_weekends,
         preferred_send_hour_start: formData.preferred_send_hour_start,
         preferred_send_hour_end: formData.preferred_send_hour_end,
-        rampup_day_1_limit: defaultStrategyConfig[formData.strategy_type].rampup_day_1_limit || 50,
-        rampup_day_2_limit: defaultStrategyConfig[formData.strategy_type].rampup_day_2_limit || 100,
-        rampup_day_3_5_limit: defaultStrategyConfig[formData.strategy_type].rampup_day_3_5_limit || 200,
-        rampup_day_6_plus_limit: defaultStrategyConfig[formData.strategy_type].rampup_day_6_plus_limit || 500,
+        rampup_day_1_limit:
+          defaultStrategyConfig[formData.strategy_type].rampup_day_1_limit ||
+          50,
+        rampup_day_2_limit:
+          defaultStrategyConfig[formData.strategy_type].rampup_day_2_limit ||
+          100,
+        rampup_day_3_5_limit:
+          defaultStrategyConfig[formData.strategy_type].rampup_day_3_5_limit ||
+          200,
+        rampup_day_6_plus_limit:
+          defaultStrategyConfig[formData.strategy_type]
+            .rampup_day_6_plus_limit || 500,
       }
 
       if (editingStrategy) {
@@ -273,7 +280,8 @@ export function DeliveryStrategiesTab() {
   }
 
   const handleDelete = async (strategy: DeliveryStrategy) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar esta estrategia?')) return
+    if (!confirm('¿Estás seguro de que deseas eliminar esta estrategia?'))
+      return
 
     try {
       await deleteDeliveryStrategyAction(strategy.id)
@@ -310,7 +318,8 @@ export function DeliveryStrategiesTab() {
         <div>
           <h3 className="text-lg font-medium">Estrategias de Envío</h3>
           <p className="text-sm text-muted-foreground">
-            Configura cómo se envían los emails: ramp-up, batch, conservador o agresivo
+            Configura cómo se envían los emails: ramp-up, batch, conservador o
+            agresivo
           </p>
         </div>
         <Button onClick={handleCreate}>
@@ -364,16 +373,22 @@ export function DeliveryStrategiesTab() {
                       <div
                         className={cn(
                           'p-2 rounded-lg',
-                          strategy.strategy_type === 'ramp_up' && 'bg-blue-100 text-blue-700',
-                          strategy.strategy_type === 'batch' && 'bg-green-100 text-green-700',
-                          strategy.strategy_type === 'conservative' && 'bg-amber-100 text-amber-700',
-                          strategy.strategy_type === 'aggressive' && 'bg-red-100 text-red-700'
+                          strategy.strategy_type === 'ramp_up' &&
+                            'bg-blue-100 text-blue-700',
+                          strategy.strategy_type === 'batch' &&
+                            'bg-green-100 text-green-700',
+                          strategy.strategy_type === 'conservative' &&
+                            'bg-amber-100 text-amber-700',
+                          strategy.strategy_type === 'aggressive' &&
+                            'bg-red-100 text-red-700'
                         )}
                       >
                         <Icon className="w-5 h-5" />
                       </div>
                       <div>
-                        <CardTitle className="text-base">{strategy.name}</CardTitle>
+                        <CardTitle className="text-base">
+                          {strategy.name}
+                        </CardTitle>
                         <CardDescription className="text-xs">
                           {strategyLabels[strategy.strategy_type]}
                         </CardDescription>
@@ -391,7 +406,9 @@ export function DeliveryStrategiesTab() {
                           Editar
                         </DropdownMenuItem>
                         {!strategy.is_default && (
-                          <DropdownMenuItem onClick={() => handleSetDefault(strategy)}>
+                          <DropdownMenuItem
+                            onClick={() => handleSetDefault(strategy)}
+                          >
                             <Star className="w-4 h-4 mr-2" />
                             Establecer como predeterminada
                           </DropdownMenuItem>
@@ -415,20 +432,36 @@ export function DeliveryStrategiesTab() {
                   )}
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div className="bg-muted rounded p-2">
-                      <span className="text-muted-foreground text-xs">Batch</span>
-                      <p className="font-medium">{strategy.batch_size} emails</p>
+                      <span className="text-muted-foreground text-xs">
+                        Batch
+                      </span>
+                      <p className="font-medium">
+                        {strategy.batch_size} emails
+                      </p>
                     </div>
                     <div className="bg-muted rounded p-2">
-                      <span className="text-muted-foreground text-xs">Intervalo</span>
-                      <p className="font-medium">{strategy.batch_interval_minutes} min</p>
+                      <span className="text-muted-foreground text-xs">
+                        Intervalo
+                      </span>
+                      <p className="font-medium">
+                        {strategy.batch_interval_minutes} min
+                      </p>
                     </div>
                     <div className="bg-muted rounded p-2">
-                      <span className="text-muted-foreground text-xs">Máx/día</span>
-                      <p className="font-medium">{strategy.max_batches_per_day} batches</p>
+                      <span className="text-muted-foreground text-xs">
+                        Máx/día
+                      </span>
+                      <p className="font-medium">
+                        {strategy.max_batches_per_day} batches
+                      </p>
                     </div>
                     <div className="bg-muted rounded p-2">
-                      <span className="text-muted-foreground text-xs">Concurrentes</span>
-                      <p className="font-medium">{strategy.concurrent_batches}</p>
+                      <span className="text-muted-foreground text-xs">
+                        Concurrentes
+                      </span>
+                      <p className="font-medium">
+                        {strategy.concurrent_batches}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -485,11 +518,13 @@ export function DeliveryStrategiesTab() {
                       ...formData,
                       strategy_type: value,
                       batch_size: config.batch_size || 100,
-                      batch_interval_minutes: config.batch_interval_minutes || 10,
+                      batch_interval_minutes:
+                        config.batch_interval_minutes || 10,
                       max_batches_per_day: config.max_batches_per_day || 20,
                       concurrent_batches: config.concurrent_batches || 3,
                       max_retry_attempts: config.max_retry_attempts || 3,
-                      retry_interval_minutes: config.retry_interval_minutes || 30,
+                      retry_interval_minutes:
+                        config.retry_interval_minutes || 30,
                     })
                   }}
                 >
@@ -543,54 +578,57 @@ export function DeliveryStrategiesTab() {
             </div>
 
             <div className="border-t pt-4">
-              <h4 className="text-sm font-medium mb-4">Configuración de Batches</h4>
+              <h4 className="text-sm font-medium mb-4">
+                Configuración de Batches
+              </h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="batch_size">Tamaño del Batch</Label>
-                  <Input
+                  <NumericInput
                     id="batch_size"
-                    type="number"
                     min={1}
                     max={1000}
                     value={formData.batch_size}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setFormData({
                         ...formData,
-                        batch_size: parseInt(e.target.value) || 1,
+                        batch_size: value || 1,
                       })
                     }
                   />
-                  <p className="text-xs text-muted-foreground">Emails por batch</p>
+                  <p className="text-xs text-muted-foreground">
+                    Emails por batch
+                  </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="batch_interval">Intervalo (minutos)</Label>
-                  <Input
+                  <NumericInput
                     id="batch_interval"
-                    type="number"
                     min={1}
                     value={formData.batch_interval_minutes}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setFormData({
                         ...formData,
-                        batch_interval_minutes: parseInt(e.target.value) || 1,
+                        batch_interval_minutes: value || 1,
                       })
                     }
                   />
-                  <p className="text-xs text-muted-foreground">Tiempo entre batches</p>
+                  <p className="text-xs text-muted-foreground">
+                    Tiempo entre batches
+                  </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="max_batches">Máx Batches/Día</Label>
-                  <Input
+                  <NumericInput
                     id="max_batches"
-                    type="number"
                     min={1}
                     value={formData.max_batches_per_day}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setFormData({
                         ...formData,
-                        max_batches_per_day: parseInt(e.target.value) || 1,
+                        max_batches_per_day: value || 1,
                       })
                     }
                   />
@@ -598,16 +636,15 @@ export function DeliveryStrategiesTab() {
 
                 <div className="space-y-2">
                   <Label htmlFor="concurrent">Batches Concurrentes</Label>
-                  <Input
+                  <NumericInput
                     id="concurrent"
-                    type="number"
                     min={1}
                     max={10}
                     value={formData.concurrent_batches}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setFormData({
                         ...formData,
-                        concurrent_batches: parseInt(e.target.value) || 1,
+                        concurrent_batches: value || 1,
                       })
                     }
                   />
@@ -620,32 +657,32 @@ export function DeliveryStrategiesTab() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="max_retries">Máx Reintentos</Label>
-                  <Input
+                  <NumericInput
                     id="max_retries"
-                    type="number"
                     min={0}
                     max={10}
                     value={formData.max_retry_attempts}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setFormData({
                         ...formData,
-                        max_retry_attempts: parseInt(e.target.value) || 0,
+                        max_retry_attempts: value || 0,
                       })
                     }
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="retry_interval">Intervalo Reintentos (min)</Label>
-                  <Input
+                  <Label htmlFor="retry_interval">
+                    Intervalo Reintentos (min)
+                  </Label>
+                  <NumericInput
                     id="retry_interval"
-                    type="number"
                     min={1}
                     value={formData.retry_interval_minutes}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setFormData({
                         ...formData,
-                        retry_interval_minutes: parseInt(e.target.value) || 1,
+                        retry_interval_minutes: value || 1,
                       })
                     }
                   />
@@ -658,42 +695,45 @@ export function DeliveryStrategiesTab() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="hour_start">Hora de Inicio</Label>
-                  <Input
+                  <NumericInput
                     id="hour_start"
-                    type="number"
                     min={0}
                     max={23}
                     value={formData.preferred_send_hour_start}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setFormData({
                         ...formData,
-                        preferred_send_hour_start: parseInt(e.target.value) || 9,
+                        preferred_send_hour_start: value ?? 9,
                       })
                     }
                   />
-                  <p className="text-xs text-muted-foreground">Hora inicial permitida (0-23)</p>
+                  <p className="text-xs text-muted-foreground">
+                    Hora inicial permitida (0-23)
+                  </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="hour_end">Hora de Fin</Label>
-                  <Input
+                  <NumericInput
                     id="hour_end"
-                    type="number"
                     min={0}
                     max={23}
                     value={formData.preferred_send_hour_end}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setFormData({
                         ...formData,
-                        preferred_send_hour_end: parseInt(e.target.value) || 17,
+                        preferred_send_hour_end: value ?? 17,
                       })
                     }
                   />
-                  <p className="text-xs text-muted-foreground">Hora final permitida (0-23)</p>
+                  <p className="text-xs text-muted-foreground">
+                    Hora final permitida (0-23)
+                  </p>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                Si una ejecución inmediata se crea fuera de este rango, se programará para el inicio del rango
+                Si una ejecución inmediata se crea fuera de este rango, se
+                programará para el inicio del rango
               </p>
             </div>
 
@@ -711,7 +751,10 @@ export function DeliveryStrategiesTab() {
                     id="pause_bounce"
                     checked={formData.pause_on_high_bounce}
                     onCheckedChange={(checked) =>
-                      setFormData({ ...formData, pause_on_high_bounce: checked })
+                      setFormData({
+                        ...formData,
+                        pause_on_high_bounce: checked,
+                      })
                     }
                   />
                 </div>
@@ -750,7 +793,9 @@ export function DeliveryStrategiesTab() {
 
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label htmlFor="avoid_weekends">Evitar Fines de Semana</Label>
+                    <Label htmlFor="avoid_weekends">
+                      Evitar Fines de Semana
+                    </Label>
                     <p className="text-xs text-muted-foreground">
                       No envía emails sábados y domingos
                     </p>

@@ -254,8 +254,8 @@ export function Step3Content({
                   <p className="text-xs text-blue-800">
                     La estrategia seleccionada permite envíos entre las{' '}
                     <strong>
-                      {selectedStrategy.preferred_send_hour_start || 9}:00 -{' '}
-                      {selectedStrategy.preferred_send_hour_end || 17}:00
+                      {selectedStrategy.preferred_send_hour_start ?? 9}:00 -{' '}
+                      {selectedStrategy.preferred_send_hour_end ?? 17}:00
                     </strong>
                     . Si inicias fuera de este rango, el envío se programará
                     automáticamente para el inicio del horario permitido.
