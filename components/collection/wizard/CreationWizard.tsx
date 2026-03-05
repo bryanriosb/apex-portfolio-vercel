@@ -21,6 +21,7 @@ import {
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
+import { useWizardThresholdStore } from '@/lib/store/wizard-threshold-store'
 import { createExecutionWithClientsAction } from '@/lib/actions/collection/execution-workflow'
 import { getCurrentUser } from '@/lib/services/auth/supabase-auth'
 import {
@@ -182,12 +183,19 @@ export function CreationWizard() {
     const loadingToast = toast.loading('Creando ejecución de cobro...')
 
     try {
-      const validClients = Array.from(fileData.groupedClients.values()).filter(
-        (client) => client.status === 'found'
-      )
+      // Obtener clientes con umbral asignado desde el store
+      const thresholdStore = useWizardThresholdStore.getState()
+      
+      // Extraer todos los clientes que tienen umbral asignado
+      const clientsWithThreshold: any[] = []
+      thresholdStore.previewData.forEach((data) => {
+        if (data.threshold) {
+          clientsWithThreshold.push(...data.clients)
+        }
+      })
 
-      if (validClients.length === 0) {
-        toast.error('No hay clientes válidos para procesar')
+      if (clientsWithThreshold.length === 0) {
+        toast.error('No hay clientes dentro de los rangos de umbrales configurados')
         toast.dismiss(loadingToast)
         return
       }
@@ -275,7 +283,7 @@ export function CreationWizard() {
 
       const result = await createExecutionWithClientsAction({
         executionData,
-        clients: validClients,
+        clients: clientsWithThreshold,
         strategyConfig,
       })
 

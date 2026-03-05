@@ -54,10 +54,10 @@ export default async function AdminLayout({
           businessAccountId={businessAccountId}
           initialData={trialData || undefined}
         >
-          <section className="grid gap-4 w-full h-full overflow-x-hidden">
+          <section className="flex flex-col w-full h-full overflow-hidden min-w-0">
             <PermissionsLoader />
             <TrialBanner />
-            <div className="grid gap-4 p-4">
+            <div className="flex flex-col gap-4 p-4 overflow-y-auto overflow-x-hidden min-w-0 flex-1">
               <AdminHeader />
               <Suspense fallback={null}>
                 <NavigationLoader>{children}</NavigationLoader>
@@ -67,9 +67,9 @@ export default async function AdminLayout({
         </TrialProviderClient>
       )}
       {!businessAccountId && (
-        <section className="grid gap-4 w-full h-full overflow-x-hidden">
+        <section className="flex flex-col w-full h-full overflow-hidden min-w-0">
           <PermissionsLoader />
-          <div className="grid gap-4 p-4">
+          <div className="flex flex-col gap-4 p-4 overflow-y-auto overflow-x-hidden min-w-0 flex-1">
             <AdminHeader />
             <Suspense fallback={null}>
               <NavigationLoader>{children}</NavigationLoader>

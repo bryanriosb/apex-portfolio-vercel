@@ -383,7 +383,7 @@ export default function ExecutionDetailPage() {
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-muted-foreground">Progreso</span>
                       <span className="font-medium">
-                        {progressRate.toFixed(1)}%
+                        {progressRate.toFixed(2)}%
                       </span>
                     </div>
                     <ProgressIndicator

@@ -74,8 +74,9 @@ export function Step3Content({
     useWizardThresholdPreview(fileData.groupedClients, activeBusiness?.id || '')
 
   // Calcular totales basados en los datos del hook
-  // totalClients ya excluye los no válidos (status !== 'found')
-  const validClients = totalClients
+  // totalClients incluye todos los válidos (status === 'found')
+  // clientsToProcess excluye los que no tienen umbral asignado
+  const clientsToProcess = totalClients - unassignedCount
   const totalInvoices = previewData.reduce(
     (acc: number, curr: any) =>
       acc +
@@ -115,7 +116,7 @@ export function Step3Content({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{validClients}</div>
+            <div className="text-2xl font-bold">{clientsToProcess}</div>
             <p className="text-xs text-muted-foreground">
               De {totalClientsInCsv} totales
             </p>
@@ -149,46 +150,6 @@ export function Step3Content({
       {/* Threshold Preview */}
       {fileData?.groupedClients && fileData.groupedClients.size > 0 && (
         <ThresholdPreview clients={fileData.groupedClients} />
-      )}
-
-      {/* Fallback Template Alert & Selection */}
-      {unassignedCount > 0 && !isLoading && (
-        <Card className="border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-              <AlertTriangle className="h-4 w-4" />
-              Atención: {unassignedCount} clientes sin umbral asignado
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-yellow-700">
-              Estos clientes no coinciden con ningún rango de días de los
-              umbrales configurados. Seleccione una plantilla de respaldo para
-              enviarles correo, o no se les enviará nada.
-            </p>
-
-            <div className="space-y-2">
-              <Label className="text-yellow-900">
-                Plantilla de Respaldo (Fallback)
-              </Label>
-              <Select
-                value={emailConfig.templateId || ''}
-                onValueChange={(value) => onTemplateChange(value)}
-              >
-                <SelectTrigger className="w-full bg-white">
-                  <SelectValue placeholder="Seleccionar plantilla..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.map((template) => (
-                    <SelectItem key={template.id} value={template.id}>
-                      {template.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
       )}
 
       {/* Execution Mode */}

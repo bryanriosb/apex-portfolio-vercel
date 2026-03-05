@@ -47,22 +47,22 @@ export const ActiveExecutions: React.FC<ActiveExecutionsProps> = ({
                                 </div>
                                 <Progress value={exec.progress_percent} className="h-2" />
                             </div>
-                            <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                                <div className="bg-muted rounded p-1">
-                                    <span className="text-muted-foreground block">Total</span>
-                                    <p className="font-semibold"><AnimatedNumber value={exec.total_clients} /></p>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                                <div className="bg-muted rounded p-1.5 sm:p-1">
+                                    <span className="text-muted-foreground block text-[10px] sm:text-xs">Total</span>
+                                    <p className="font-semibold text-sm sm:text-base"><AnimatedNumber value={exec.total_clients} /></p>
                                 </div>
-                                <div className="bg-muted rounded p-1">
-                                    <span className="text-muted-foreground block">Enviados</span>
-                                    <p className="font-semibold"><AnimatedNumber value={exec.emails_sent} /></p>
+                                <div className="bg-muted rounded p-1.5 sm:p-1">
+                                    <span className="text-muted-foreground block text-[10px] sm:text-xs">Enviados</span>
+                                    <p className="font-semibold text-sm sm:text-base"><AnimatedNumber value={exec.emails_sent} /></p>
                                 </div>
-                                <div className="bg-muted rounded p-1">
-                                    <span className="text-muted-foreground block">Entregados</span>
-                                    <p className="font-semibold"><AnimatedNumber value={exec.emails_delivered} /></p>
+                                <div className="bg-muted rounded p-1.5 sm:p-1">
+                                    <span className="text-muted-foreground block text-[10px] sm:text-xs">Entregados</span>
+                                    <p className="font-semibold text-sm sm:text-base"><AnimatedNumber value={exec.emails_delivered} /></p>
                                 </div>
-                                <div className="bg-muted rounded p-1">
-                                    <span className="text-muted-foreground block">Abiertos</span>
-                                    <p className="font-semibold"><AnimatedNumber value={exec.emails_opened} /></p>
+                                <div className="bg-muted rounded p-1.5 sm:p-1">
+                                    <span className="text-muted-foreground block text-[10px] sm:text-xs">Abiertos</span>
+                                    <p className="font-semibold text-sm sm:text-base"><AnimatedNumber value={exec.emails_opened} /></p>
                                 </div>
                             </div>
                         </CardContent>

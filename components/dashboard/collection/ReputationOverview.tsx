@@ -18,7 +18,10 @@ import {
 } from 'lucide-react'
 import { EmailReputationProfile } from '@/lib/models/collection/email-reputation'
 import { cn } from '@/lib/utils'
-import { AnimatedNumber, AnimatedPercentage } from '@/components/ui/animated-number'
+import {
+  AnimatedNumber,
+  AnimatedPercentage,
+} from '@/components/ui/animated-number'
 
 interface ReputationOverviewProps {
   profiles: EmailReputationProfile[]
@@ -62,12 +65,15 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
             Reputación de Dominios
           </h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Monitor de reputación de envío para evitar bloqueos y mejorar entregabilidad
+            Monitor de reputación de envío para evitar bloqueos y mejorar
+            entregabilidad
           </p>
         </div>
         {!loading && (
           <span className="text-sm text-muted-foreground shrink-0">
-            <AnimatedNumber value={profiles.length} /> dominio{profiles.length !== 1 ? 's' : ''} configurado{profiles.length !== 1 ? 's' : ''}
+            <AnimatedNumber value={profiles.length} /> dominio
+            {profiles.length !== 1 ? 's' : ''} configurado
+            {profiles.length !== 1 ? 's' : ''}
           </span>
         )}
       </div>
@@ -97,9 +103,12 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
         <Card className="rounded-none border border-dashed py-12">
           <div className="text-center">
             <Globe className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">Sin dominios configurados</h3>
+            <h3 className="text-lg font-medium mb-2">
+              Sin dominios configurados
+            </h3>
             <p className="text-muted-foreground text-sm">
-              Los dominios se configuran automáticamente al crear estrategias de envío
+              Los dominios se configuran automáticamente al crear estrategias de
+              envío
             </p>
           </div>
         </Card>
@@ -108,7 +117,7 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
           {profiles.map((profile) => (
             <Card key={profile.id} className="rounded-none border shadow-none">
               <CardHeader className="pb-4">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <div
                       className={cn(
@@ -123,7 +132,9 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                       <Globe className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">
-                      <CardTitle className="text-base truncate">{profile.domain}</CardTitle>
+                      <CardTitle className="text-base truncate">
+                        {profile.domain}
+                      </CardTitle>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         {profile.is_warmed_up ? (
                           <Badge variant="default" className="bg-primary">
@@ -133,7 +144,11 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                         ) : (
                           <Badge variant="secondary">
                             <Clock className="w-3 h-3 mr-1" />
-                            En calentamiento (Día <AnimatedNumber value={profile.current_warmup_day} />)
+                            En calentamiento (Día{' '}
+                            <AnimatedNumber
+                              value={profile.current_warmup_day}
+                            />
+                            )
                           </Badge>
                         )}
                         {profile.has_reputation_issues && (
@@ -143,7 +158,10 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                           </Badge>
                         )}
                         {profile.is_under_review && (
-                          <Badge variant="outline" className="border-amber-500 text-amber-600">
+                          <Badge
+                            variant="outline"
+                            className="border-amber-500 text-amber-600"
+                          >
                             <AlertTriangle className="w-3 h-3 mr-1" />
                             En revisión
                           </Badge>
@@ -151,12 +169,14 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                       </div>
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
+                  <div className="flex gap-2 items-center sm:text-right shrink-0">
                     <div className="text-sm font-medium">
-                      <AnimatedNumber value={profile.total_emails_sent} /> enviados
+                      <AnimatedNumber value={profile.total_emails_sent} />{' '}
+                      enviados
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      <AnimatedNumber value={profile.daily_sending_limit} />/día límite
+                      <AnimatedNumber value={profile.daily_sending_limit} />
+                      /día límite
                     </div>
                   </div>
                 </div>
@@ -171,15 +191,29 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                         <Mail className="w-3 h-3" />
                         Entregados
                       </span>
-                      <span className={cn('font-medium', getRateColor(Math.min(100, profile.delivery_rate), 'good'))}>
-                        <AnimatedPercentage value={Math.min(100, profile.delivery_rate)} decimals={1} />
+                      <span
+                        className={cn(
+                          'font-medium',
+                          getRateColor(
+                            Math.min(100, profile.delivery_rate),
+                            'good'
+                          )
+                        )}
+                      >
+                        <AnimatedPercentage
+                          value={Math.min(100, profile.delivery_rate)}
+                          decimals={1}
+                        />
                       </span>
                     </div>
                     <Progress
                       value={Math.min(100, profile.delivery_rate)}
                       className="h-2"
                       // @ts-ignore
-                      indicatorClassName={getProgressColor(profile.delivery_rate, 'good')}
+                      indicatorClassName={getProgressColor(
+                        profile.delivery_rate,
+                        'good'
+                      )}
                     />
                   </div>
 
@@ -189,15 +223,26 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                         <TrendingUp className="w-3 h-3" />
                         Apertura
                       </span>
-                      <span className={cn('font-medium', getRateColor(Math.min(100, profile.open_rate), 'good'))}>
-                        <AnimatedPercentage value={Math.min(100, profile.open_rate)} decimals={1} />
+                      <span
+                        className={cn(
+                          'font-medium',
+                          getRateColor(Math.min(100, profile.open_rate), 'good')
+                        )}
+                      >
+                        <AnimatedPercentage
+                          value={Math.min(100, profile.open_rate)}
+                          decimals={1}
+                        />
                       </span>
                     </div>
                     <Progress
                       value={Math.min(100, profile.open_rate)}
                       className="h-2"
                       // @ts-ignore
-                      indicatorClassName={getProgressColor(profile.open_rate, 'good')}
+                      indicatorClassName={getProgressColor(
+                        profile.open_rate,
+                        'good'
+                      )}
                     />
                   </div>
 
@@ -207,15 +252,26 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                         <TrendingDown className="w-3 h-3" />
                         Rebotes
                       </span>
-                      <span className={cn('font-medium', getRateColor(profile.bounce_rate, 'bad'))}>
-                        <AnimatedPercentage value={profile.bounce_rate} decimals={1} />
+                      <span
+                        className={cn(
+                          'font-medium',
+                          getRateColor(profile.bounce_rate, 'bad')
+                        )}
+                      >
+                        <AnimatedPercentage
+                          value={profile.bounce_rate}
+                          decimals={1}
+                        />
                       </span>
                     </div>
                     <Progress
                       value={Math.min(profile.bounce_rate * 10, 100)}
                       className="h-2"
                       // @ts-ignore
-                      indicatorClassName={getProgressColor(profile.bounce_rate, 'bad')}
+                      indicatorClassName={getProgressColor(
+                        profile.bounce_rate,
+                        'bad'
+                      )}
                     />
                   </div>
 
@@ -225,15 +281,26 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                         <AlertTriangle className="w-3 h-3" />
                         Quejas
                       </span>
-                      <span className={cn('font-medium', getRateColor(profile.complaint_rate, 'bad'))}>
-                        <AnimatedPercentage value={profile.complaint_rate} decimals={2} />
+                      <span
+                        className={cn(
+                          'font-medium',
+                          getRateColor(profile.complaint_rate, 'bad')
+                        )}
+                      >
+                        <AnimatedPercentage
+                          value={profile.complaint_rate}
+                          decimals={2}
+                        />
                       </span>
                     </div>
                     <Progress
                       value={Math.min(profile.complaint_rate * 20, 100)}
                       className="h-2"
                       // @ts-ignore
-                      indicatorClassName={getProgressColor(profile.complaint_rate, 'bad')}
+                      indicatorClassName={getProgressColor(
+                        profile.complaint_rate,
+                        'bad'
+                      )}
                     />
                   </div>
                 </div>
@@ -244,13 +311,17 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                     <div className="text-2xl font-semibold">
                       <AnimatedNumber value={profile.total_emails_delivered} />
                     </div>
-                    <div className="text-xs text-muted-foreground">Entregados</div>
+                    <div className="text-xs text-muted-foreground">
+                      Entregados
+                    </div>
                   </div>
                   <div>
                     <div className="text-2xl font-semibold">
                       <AnimatedNumber value={profile.total_emails_opened} />
                     </div>
-                    <div className="text-xs text-muted-foreground">Abiertos</div>
+                    <div className="text-xs text-muted-foreground">
+                      Abiertos
+                    </div>
                   </div>
                   <div>
                     <div className="text-2xl font-semibold text-red-600">
@@ -271,7 +342,10 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                   <div className="mt-4 pt-4 border-t flex items-center justify-between text-sm text-muted-foreground">
                     {profile.sending_ip && (
                       <div>
-                        IP: <span className="font-medium text-foreground">{profile.sending_ip}</span>
+                        IP:{' '}
+                        <span className="font-medium text-foreground">
+                          {profile.sending_ip}
+                        </span>
                       </div>
                     )}
                     {profile.current_strategy && (

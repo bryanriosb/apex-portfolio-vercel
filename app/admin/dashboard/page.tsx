@@ -204,7 +204,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-6 w-full h-full min-h-[calc(100vh-120px)]">
+    <div className="flex flex-col gap-4 sm:gap-6 w-full min-w-0">
       <DashboardHeader
         today={today}
         statsLoading={statsLoading}

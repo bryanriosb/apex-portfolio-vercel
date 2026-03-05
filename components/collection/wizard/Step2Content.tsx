@@ -42,7 +42,8 @@ export function Step2Content({
     activeBusiness?.id || ''
   )
 
-  const totalValidClients = totalClients
+  // Clientes que serán procesados = total - sin umbral
+  const clientsToProcess = totalClients - unassignedCount
   const totalClientsInCsv = fileData?.groupedClients?.size || 0
 
   if (isLoading) {
@@ -95,12 +96,13 @@ export function Step2Content({
           </h4>
           <ul className="text-sm text-muted-foreground space-y-1">
             <li>• {previewData.length} umbrales configurados</li>
-            <li>• {totalValidClients} clientes serán procesados</li>
+            <li>• {clientsToProcess} clientes serán procesados</li>
             <li>• {config.attachmentIds.length} adjuntos seleccionados</li>
             {unassignedClients.length > 0 && (
-              <li className="text-destructive">
+              <li className="text-yellow-700">
                 • {unassignedClients.length} cliente
-                {unassignedClients.length !== 1 ? 's' : ''} sin umbral
+                {unassignedClients.length !== 1 ? 's' : ''} fuera de rangos (no
+                procesados)
               </li>
             )}
           </ul>

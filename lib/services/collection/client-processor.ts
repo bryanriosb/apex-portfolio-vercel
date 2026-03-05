@@ -109,26 +109,11 @@ export const ClientProcessor = {
     )
 
     // 4. Build processed client results
+    // Filtrar solo clientes con umbral asignado - los sin umbral no se procesan
     for (const { clientData, daysOverdue, threshold, attachments } of clientsWithAttachments) {
       try {
         if (!threshold) {
-          processedClients.push({
-            execution_id: params.execution_id,
-            customer_id: clientData.customer?.id,
-            invoices: clientData.invoices,
-            custom_data: {
-              nit: clientData.nit,
-              total_amount_due: clientData.total?.total_amount_due,
-              total_days_overdue: clientData.total?.total_days_overdue,
-              total_invoices: clientData.total?.total_invoices,
-              days_overdue: daysOverdue,
-              emails: clientData.customer?.emails ?? [],
-              full_name: clientData.customer?.full_name,
-              phone: clientData.customer?.phone,
-              company_name: clientData.customer?.company_name,
-            },
-            status: 'pending',
-          })
+          // Cliente sin umbral asignado - se excluye del procesamiento
           continue
         }
 
@@ -183,7 +168,8 @@ export const ClientProcessor = {
       }
     }
 
-    console.log(`[ClientProcessor] Processed ${processedClients.length} clients`)
+    const excludedCount = params.clients.length - processedClients.length
+    console.log(`[ClientProcessor] Processed ${processedClients.length} clients (${excludedCount} excluded - no threshold match)`)
     return processedClients
   },
 

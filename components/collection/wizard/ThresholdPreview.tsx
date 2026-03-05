@@ -75,18 +75,20 @@ export function ThresholdPreview({ clients }: ThresholdPreviewProps) {
     <div className="space-y-4">
       {/* Alerta de umbrales faltantes */}
       {!hasAllThresholds && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Umbrales incompletos</AlertTitle>
-          <AlertDescription>
+        <Alert className="border-yellow-500/50 bg-yellow-500/10">
+          <AlertCircle className="h-4 w-4 text-yellow-600" />
+          <AlertTitle className="text-yellow-800">
+            Clientes fuera de rangos configurados
+          </AlertTitle>
+          <AlertDescription className="text-yellow-700">
             <p className="mb-2">
-              {unassignedCount} cliente{unassignedCount !== 1 ? 's' : ''} no
-              tiene{unassignedCount === 1 ? '' : 'n'} umbral asignado.
+              {unassignedCount} cliente{unassignedCount !== 1 ? 's' : ''} está
+              {unassignedCount === 1 ? '' : 'n'} fuera de los rangos de umbrales
+              configurados y no serán procesados.
             </p>
             {missingThresholdRanges.length > 0 && (
               <p className="text-sm">
-                Rango{missingThresholdRanges.length > 1 ? 's' : ''} faltante
-                {missingThresholdRanges.length > 1 ? 's' : ''}:{' '}
+                Días sin cobertura:{' '}
                 {missingThresholdRanges.map((range, idx) => (
                   <span key={idx} className="font-semibold">
                     {range.min === range.max
@@ -101,9 +103,9 @@ export function ThresholdPreview({ clients }: ThresholdPreviewProps) {
             <p className="text-sm mt-3">
               <a
                 href="/admin/settings/collection"
-                className="underline font-medium hover:text-destructive/80"
+                className="underline font-medium hover:text-yellow-900"
               >
-                Configurar umbrales →
+                Configurar umbrales adicionales →
               </a>
             </p>
           </AlertDescription>
@@ -214,18 +216,18 @@ export function ThresholdPreview({ clients }: ThresholdPreviewProps) {
 
             {/* Clientes sin asignar */}
             {unassignedCount > 0 && (
-              <div className="p-4 border border-destructive/50 bg-destructive/5 lg:col-span-3">
+              <div className="p-4 border border-yellow-500/50 bg-yellow-500/5 lg:col-span-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-destructive" />
-                    <span className="font-medium text-sm">
-                      Sin umbral asignado
+                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                    <span className="font-medium text-sm text-yellow-800">
+                      Fuera de rangos configurados
                     </span>
                   </div>
-                  <Badge variant="destructive">{unassignedCount}</Badge>
+                  <Badge variant="outline" className="border-yellow-500 text-yellow-700">{unassignedCount}</Badge>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Estos clientes usarán el template por defecto de la campaña
+                <p className="text-xs text-yellow-700/80 mt-2">
+                  Estos clientes no serán procesados ni notificados
                 </p>
               </div>
             )}

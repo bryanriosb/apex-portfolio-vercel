@@ -94,14 +94,27 @@ export async function createExecutionWithClientsAction({
       }
     }
 
-    // 1. Create Execution
+    // 1. Process clients with thresholds FIRST to get filtered count
+    const processedClients = await ClientProcessor.processClientsWithThresholds({
+      clients,
+      business_id: executionData.business_id,
+    })
+
+    if (processedClients.length === 0) {
+      return {
+        success: false,
+        error: 'No hay clientes dentro de los rangos de umbrales configurados',
+      }
+    }
+
+    // 2. Create Execution with correct filtered count
     const { data: execution, error: execError } = await supabase
       .from('collection_executions')
       .insert({
         ...executionData,
         email_template_id: emailTemplateId,
         status: 'pending',
-        total_clients: clients.length,
+        total_clients: processedClients.length,
       })
       .select()
       .single()
@@ -110,15 +123,9 @@ export async function createExecutionWithClientsAction({
       throw new Error(`Error creating execution: ${execError?.message}`)
     }
 
-    // 2. Process clients with thresholds
-    const processedClients = await ClientProcessor.processClientsWithThresholds({
-      clients,
-      business_id: executionData.business_id,
-      execution_id: execution.id,
-    })
-
+    // Asignar execution_id a los clientes procesados
     const clientsToInsert: CollectionClientInsert[] = processedClients.map((processed) => ({
-      execution_id: processed.execution_id!,
+      execution_id: execution.id,
       customer_id: processed.customer_id,
       invoices: processed.invoices,
       status: processed.status as CollectionClientInsert['status'],
@@ -238,7 +245,7 @@ export async function createExecutionWithClientsAction({
       success: true,
       executionId: execution.id,
       batchesCreated: batches.length,
-      totalClients: clients.length,
+      totalClients: processedClients.length,
       estimatedCompletionTime,
       message,
     }

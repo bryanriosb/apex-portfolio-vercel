@@ -108,16 +108,16 @@ export const RecentExecutions: React.FC<RecentExecutionsProps> = ({
                   <Link
                     key={exec.id}
                     href={`/admin/collection/executions/${exec.id}`}
-                    className="flex items-center gap-4 py-4 px-3 -mx-3 hover:bg-muted/50 transition-colors group border border-transparent hover:border-border"
+                    className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 py-3 sm:py-4 px-3 -mx-3 hover:bg-muted/50 transition-colors group border border-transparent hover:border-border"
                   >
                     {/* Icono de estado */}
                     <div
-                      className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${getStatusColor(exec.status)}`}
+                      className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center shrink-0 ${getStatusColor(exec.status)}`}
                     >
-                      <StatusIcon className="h-5 w-5" />
+                      <StatusIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
 
-                    {/* Info principal - Expandida */}
+                     {/* Info principal - Expandida */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-medium text-sm truncate">
@@ -130,39 +130,47 @@ export const RecentExecutions: React.FC<RecentExecutionsProps> = ({
                           {formatDate(exec.created_at)}
                         </Badge>
                       </div>
-                      {/* Indicadores expandidos en grid */}
-                      <div className="grid grid-cols-4 gap-2 text-sm text-muted-foreground">
+                      {/* Indicadores expandidos en grid - Responsive */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs sm:text-sm text-muted-foreground">
                         <span className="flex items-center gap-1.5">
-                          <Users className="h-4 w-4" />
-                          <span className="font-medium text-foreground"><AnimatedNumber value={exec.total_clients} /></span> clientes
+                          <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <span className="font-medium text-foreground"><AnimatedNumber value={exec.total_clients} /></span> 
+                          <span className="hidden sm:inline">clientes</span>
+                          <span className="sm:hidden">cli.</span>
                         </span>
                         <span className="flex items-center gap-1.5">
-                          <Send className="h-4 w-4" />
-                          <span className="font-medium text-foreground"><AnimatedNumber value={exec.emails_sent} /></span> enviados
+                          <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <span className="font-medium text-foreground"><AnimatedNumber value={exec.emails_sent} /></span> 
+                          <span className="hidden sm:inline">enviados</span>
+                          <span className="sm:hidden">env.</span>
                         </span>
                         <span className="flex items-center gap-1.5">
-                          <MailOpen className="h-4 w-4" />
-                          <span className="font-medium text-foreground"><AnimatedNumber value={exec.emails_opened || 0} /></span> abiertos
+                          <MailOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <span className="font-medium text-foreground"><AnimatedNumber value={exec.emails_opened || 0} /></span> 
+                          <span className="hidden sm:inline">abiertos</span>
+                          <span className="sm:hidden">abr.</span>
                         </span>
                         <span className="flex items-center gap-1.5 text-red-600">
-                          <AlertTriangle className="h-4 w-4" />
-                          <span className="font-medium"><AnimatedNumber value={exec.emails_bounced || 0} /></span> fallidos
+                          <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <span className="font-medium"><AnimatedNumber value={exec.emails_bounced || 0} /></span> 
+                          <span className="hidden sm:inline">fallidos</span>
+                          <span className="sm:hidden">fall.</span>
                         </span>
                       </div>
                     </div>
 
                     {/* Métrica de rendimiento */}
-                    <div className="text-right shrink-0">
-                      <div className="text-lg font-semibold leading-none">
+                    <div className="text-right shrink-0 ml-auto sm:ml-0">
+                      <div className="text-base sm:text-lg font-semibold leading-none">
                         <AnimatedPercentage value={exec.avg_open_rate || 0} decimals={0} />
                       </div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-[10px] sm:text-xs text-muted-foreground">
                         tasa apertura
                       </div>
                     </div>
 
                     {/* Flecha */}
-                    <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    <ChevronRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 hidden sm:block" />
                   </Link>
                 )
               })}

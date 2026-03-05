@@ -30,7 +30,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             <div className="h-2 w-2 rounded-full bg-primary" />
             <div className="absolute !h-2.5 !w-2.5 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary animate-ping" />
           </div>
-          Actualizaciones en Tiempo Real
+          Actualizado en Tiempo Real
         </div>
       </div>
     </div>

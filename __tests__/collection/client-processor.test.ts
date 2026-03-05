@@ -152,7 +152,7 @@ describe('ClientProcessor - Batch Processing', () => {
       expect(result[2].email_template_id).toBe('template-3')
     })
 
-    it('should handle clients with no matching threshold', async () => {
+    it('should exclude clients with no matching threshold', async () => {
       const clients = [
         {
           nit: '1',
@@ -168,8 +168,8 @@ describe('ClientProcessor - Batch Processing', () => {
         execution_id: executionId,
       })
 
-      expect(result[0].threshold_id).toBeUndefined()
-      expect(result[0].email_template_id).toBeUndefined()
+      // Los clientes sin umbral deben ser excluidos del procesamiento
+      expect(result).toHaveLength(0)
     })
   })
 

@@ -120,7 +120,7 @@ export function ExecutionDetail({ initialExecution }: ExecutionDetailProps) {
                 ? (
                     (execution.emails_sent / execution.total_clients) *
                     100
-                  ).toFixed(1)
+                  ).toFixed(2)
                 : 0}
               % del total
             </p>
