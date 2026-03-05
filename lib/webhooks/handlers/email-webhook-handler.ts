@@ -101,10 +101,10 @@ export async function processEmailEvent(
         
         if (isDuplicateEvent) {
             console.log(`[WEBHOOK] Duplicate event detected for client ${client.id}, type ${event.eventType}, msg ${event.messageId}. Will update client status if needed, but skip metrics.`)
-        } else if (canHaveMultipleEvents) {
-            console.log(`[WEBHOOK] Processing ${event.eventType} event for client ${client.id} (can have multiple events per message)`)    
         } else {
             // Registrar evento en collection_events
+            // Nota: email_opened y email_clicked pueden ocurrir múltiples veces, 
+            // pero cada apertura/clic se registra como evento separado
             console.log(`[WEBHOOK] Inserting event: type=${event.eventType}, timestamp=${event.timestamp}`)
             const { error: eventError } = await supabase.from('collection_events').insert({
                 execution_id: client?.execution_id,
