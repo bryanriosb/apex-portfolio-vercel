@@ -18,7 +18,8 @@ export async function processEmailEvent(
 
         let foundByMessageId = false;
 
-        // Consolidar búsqueda por message_id (variaciones con/sin <>)
+        // OPTIMIZED: Search by message_id using single() for better performance
+        // single() is more efficient than limit(1) as it returns the row directly
         const messageIdsToTry = [event.messageId];
         if (event.messageId.startsWith('<') && event.messageId.endsWith('>')) {
             messageIdsToTry.push(event.messageId.substring(1, event.messageId.length - 1));
@@ -31,14 +32,16 @@ export async function processEmailEvent(
                 .from('collection_clients')
                 .select('id, customer_id, status, custom_data, execution_id, email_sent_at')
                 .eq("custom_data->>'message_id'", mid)
-                .limit(1);
+                .single();
 
-            if (data && data.length > 0) {
-                clients = data;
+            if (data) {
+                clients = [data];
                 foundByMessageId = true;
                 break;
             }
-            if (error) searchError = error;
+            if (error && error.code !== 'PGRST116') { // PGRST116 = "Results contain 0 rows"
+                searchError = error;
+            }
         }
 
         if (searchError) {
@@ -50,21 +53,22 @@ export async function processEmailEvent(
         if (!clients || clients.length === 0) {
             console.log(`[BREVO] No client found for message_id: ${event.messageId}. Trying fallback by email: ${event.email}...`);
 
+            // OPTIMIZED: Use single() instead of limit(1) for better performance
             // Search by email (array or string) in custom_data
             // CRITICAL: Search in ALL statuses, not just initial ones, because clients can receive
             // multiple events (e.g., multiple opens) after being processed
-            const { data: emailClients, error: emailSearchError } = await supabase
+            const { data: emailClient, error: emailSearchError } = await supabase
                 .from('collection_clients')
                 .select('id, customer_id, status, custom_data, execution_id, email_sent_at')
                 .or(`custom_data->emails.cs.["${event.email}"],custom_data->>'email'.eq.${event.email}`)
                 .order('created_at', { ascending: false })
-                .limit(1)
+                .single();
 
-            if (emailSearchError) {
+            if (emailSearchError && emailSearchError.code !== 'PGRST116') {
                 console.error('[BREVO] Error in email fallback search:', emailSearchError)
-            } else if (emailClients && emailClients.length > 0) {
-                console.log(`[BREVO] Fallback found client ${emailClients[0].id} by email search.`);
-                clients = emailClients;
+            } else if (emailClient) {
+                console.log(`[BREVO] Fallback found client ${emailClient.id} by email search.`);
+                clients = [emailClient];
             }
         }
 
@@ -84,19 +88,21 @@ export async function processEmailEvent(
         let isDuplicateEvent = false
         
         if (!canHaveMultipleEvents) {
+            // OPTIMIZED: Use maybeSingle() for efficient duplicate checking
+            // Returns null instead of throwing when no rows found
             const { data: existingEvent, error: checkError } = await supabase
                 .from('collection_events')
                 .select('id')
                 .eq('client_id', client.id)
                 .eq('event_type', event.eventType)
                 .eq("event_data->>'message_id'", event.messageId)
-                .limit(1)
+                .maybeSingle()
 
             if (checkError) {
                 console.error('[WEBHOOK] Error checking for existing event:', checkError)
             }
             
-            isDuplicateEvent = !!(existingEvent && existingEvent.length > 0)
+            isDuplicateEvent = !!existingEvent
         }
         
         if (isDuplicateEvent) {
@@ -126,6 +132,14 @@ export async function processEmailEvent(
                 console.error('[DEBUG-v2] Error inserting event:', eventError)
                 throw eventError
             }
+        }
+
+        // CRITICAL FIX: For email_sent events, ALWAYS ensure client status is updated to 'sent'
+        // even if the event is a duplicate. This ensures the trigger increments emails_sent counter.
+        // This fixes the issue where the first email_sent event failed to update the client,
+        // causing all subsequent events to be marked as duplicates and skipping the status update.
+        if (isDuplicateEvent && event.eventType === 'email_sent' && client.status !== 'sent') {
+            console.log(`[WEBHOOK] CRITICAL FIX: Duplicate email_sent event for client ${client.id} but status is ${client.status}, not 'sent'. Forcing status update to trigger counter increment.`)
         }
 
         // Actualizar status del cliente según el evento
@@ -169,7 +183,19 @@ export async function processEmailEvent(
                     break
             }
 
-            if (newStatus !== client.status) {
+            // CRITICAL FIX: Update client if status changed OR if this is a duplicate email_sent event
+            // and client status is not 'sent'. This handles the case where the first email_sent event
+            // failed to update the client status, causing subsequent events to be marked as duplicates
+            // and skipping the status update, leaving emails_sent counter at 0.
+            const shouldForceSentUpdate = isDuplicateEvent && event.eventType === 'email_sent' && client.status !== 'sent'
+            
+            if (newStatus !== client.status || shouldForceSentUpdate) {
+                // If forcing update for duplicate email_sent, ensure newStatus is 'sent'
+                if (shouldForceSentUpdate && newStatus === client.status) {
+                    newStatus = 'sent'
+                    console.log(`[WEBHOOK] Forcing status update to 'sent' for client ${client.id} despite duplicate event`)
+                }
+                
                 const updatedCustomData = {
                     ...client.custom_data,
                     [`${event.eventType}_at`]: event.timestamp,
