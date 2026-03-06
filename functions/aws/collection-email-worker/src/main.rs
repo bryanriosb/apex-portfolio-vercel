@@ -66,8 +66,71 @@ fn get_f64(v: &serde_json::Value) -> f64 {
     }
 }
 
+fn fix_table_colspan(html: &str) -> String {
+    let mut processed = html.to_string();
+
+    // Fix 1: Replace rows with 5+ colspan="0" cells containing Handlebars helpers
+    // Pattern: <tr>...<td colspan="0"...><p>{{#each invoices}}</p></td><td colspan="0"...><p></p></td>...</tr>
+    let re_helper_row = Regex::new(
+        r#"(?is)<tr[^>]*>(.*?)</tr>"#
+    ).unwrap();
+    
+    let re_colspan_zero_cell = Regex::new(
+        r#"(?is)<td[^>]*colspan=["']0["'][^>]*>"#
+    ).unwrap();
+    
+    processed = re_helper_row.replace_all(&processed, |caps: &regex::Captures| {
+        let row_content = &caps[1];
+        let full_row = caps[0].to_string();
+        
+        // Count colspan="0" cells in this row
+        let colspan_zero_count = re_colspan_zero_cell.find_iter(row_content).count();
+        
+        // If 5+ colspan="0" cells, consolidate them
+        if colspan_zero_count >= 5 {
+            // Check if this row contains a Handlebars helper
+            let re_helper = Regex::new(r#"\{\{[/#!]?\s*\w+[^}]*\}\}"#).unwrap();
+            
+            if re_helper.is_match(row_content) {
+                // Find all helpers in this row
+                let helpers: Vec<_> = re_helper.find_iter(row_content).map(|m| m.as_str()).collect();
+                
+                if !helpers.is_empty() {
+                    // Replace the entire row with properly formatted cells
+                    let mut new_row = String::from("<tr>");
+                    for helper in helpers {
+                        new_row.push_str(&format!(
+                            r#"<td colspan="5" style="padding: 8px; border: 1px solid rgb(229, 231, 235);"><p>{}</p></td>"#,
+                            helper
+                        ));
+                    }
+                    new_row.push_str("</tr>");
+                    return new_row;
+                }
+            }
+        }
+        
+        full_row
+    }).to_string();
+
+    // Fix 2: Clean up remaining consecutive empty colspan="0" cells
+    let re_empty_cells = Regex::new(
+        r#"(?is)(<td[^>]*colspan=["']0["'][^>]*>\s*<p>\s*</p>\s*</td>)(?:\s*<td[^>]*colspan=["']0["'][^>]*>\s*<p>\s*</p>\s*</td>){2,}"#
+    ).unwrap();
+
+    processed = re_empty_cells.replace_all(&processed, |caps: &regex::Captures| {
+        // Replace with a single empty colspan="5" cell
+        r#"<td colspan="5" style="padding: 8px; border: 1px solid rgb(229, 231, 235);"><p>&nbsp;</p></td>"#.to_string()
+    }).to_string();
+
+    processed
+}
+
 fn preprocess_tiptap_template(template_str: &str) -> String {
     let mut processed = template_str.to_string();
+
+    // Fix colspan="0" issues before processing helpers
+    processed = fix_table_colspan(&processed);
 
     // Strip <tr><td[...]>[<p>]{{#each}}|{{/each}}[</p>]</td><td></td|<td><p></p></td>*</tr>
     // TipTap wraps cell content in <p> tags and empty cells become <td><p></p></td>
@@ -517,6 +580,61 @@ mod tests {
         // Same pattern for closing {{/each}}
         let input = "<tr><td style=\"color:gray\"><p>{{/each}}</p></td><td><p></p></td><td><p></p></td></tr>";
         assert_eq!(preprocess_tiptap_template(input), "{{/each}}");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Table colspan="0" fix tests
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_fix_table_colspan_zero_basic() {
+        // Input: Multiple colspan="0" cells should be consolidated
+        let input = r#"<tr><td colspan="0" rowspan="1"><p>{{#each invoices}}</p></td><td colspan="0" rowspan="1"><p></p></td><td colspan="0" rowspan="1"><p></p></td><td colspan="0" rowspan="1"><p></p></td><td colspan="0" rowspan="1"><p></p></td></tr>"#;
+        let result = fix_table_colspan(input);
+        
+        // Should have colspan="5" and only one cell
+        assert!(result.contains(r#"colspan="5""#), "Result should have colspan=5: {}", result);
+        assert!(result.contains("{{#each invoices}}"), "Result should preserve the helper: {}", result);
+        
+        // Count <td tags - should only be 1
+        let td_count = result.matches("<td").count();
+        assert_eq!(td_count, 1, "Should have only 1 td tag, found {}: {}", td_count, result);
+    }
+
+    #[test]
+    fn test_fix_table_colspan_zero_mixed_with_content() {
+        // Real-world scenario from the database
+        let input = r#"<tr><td colspan="0" rowspan="1" style="padding: 8px;"><p>{{invoice_number}}</p></td><td colspan="0" rowspan="1" style="padding: 8px;"><p>{{amount_due}}</p></td><td colspan="0" rowspan="1"><p></p></td><td colspan="0" rowspan="1"><p></p></td><td colspan="0" rowspan="1"><p></p></td><td colspan="1" rowspan="1"><p></p></td></tr>"#;
+        let result = fix_table_colspan(input);
+        
+        // The invoice data cells should remain, empty ones should be consolidated
+        assert!(result.contains("{{invoice_number}}"), "Should preserve invoice_number: {}", result);
+        assert!(result.contains("{{amount_due}}"), "Should preserve amount_due: {}", result);
+    }
+
+    #[test]
+    fn test_fix_table_colspan_no_change_for_valid_colspan() {
+        // Valid colspan="5" should not be modified
+        let input = r#"<tr><td colspan="5" style="padding: 8px;"><p>{{#each invoices}}</p></td></tr>"#;
+        let result = fix_table_colspan(input);
+        
+        assert_eq!(result, input, "Valid colspan=5 should not be modified");
+    }
+
+    #[test]
+    fn test_full_pipeline_with_colspan_zero() {
+        // Test the full preprocess pipeline
+        let input = r#"<table><tr><td colspan="0" rowspan="1"><p>{{#each invoices}}</p></td><td colspan="0" rowspan="1"><p></p></td><td colspan="0" rowspan="1"><p></p></td><td colspan="0" rowspan="1"><p></p></td><td colspan="0" rowspan="1"><p></p></td></tr><tr><td colspan="0" rowspan="1"><p>{{invoice_number}}</p></td><td colspan="0" rowspan="1"><p>{{amount_due}}</p></td><td colspan="0" rowspan="1"><p></p></td><td colspan="0" rowspan="1"><p></p></td><td colspan="0" rowspan="1"><p></p></td></tr><tr><td colspan="0" rowspan="1"><p>{{/each}}</p></td><td colspan="0" rowspan="1"><p></p></td><td colspan="0" rowspan="1"><p></p></td><td colspan="0" rowspan="1"><p></p></td><td colspan="0" rowspan="1"><p></p></td></tr></table>"#;
+        
+        let result = preprocess_tiptap_template(input);
+        
+        // Should have Handlebars helpers extracted
+        assert!(result.contains("{{#each invoices}}"), "Should contain {{#each invoices}}: {}", result);
+        assert!(result.contains("{{/each}}"), "Should contain {{/each}}: {}", result);
+        
+        // The invoice row should still be a proper table row
+        assert!(result.contains("<tr>"), "Should preserve table structure: {}", result);
+        assert!(result.contains("{{invoice_number}}"), "Should preserve invoice_number: {}", result);
     }
 
     // ─────────────────────────────────────────────────────────────────────────────

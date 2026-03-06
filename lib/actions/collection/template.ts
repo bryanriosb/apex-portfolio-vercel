@@ -97,18 +97,66 @@ export async function getTemplateByIdAction(
 }
 
 /**
+ * Sanitize template HTML to fix colspan="0" issues
+ */
+function sanitizeTemplateHtml(html: string): string {
+    if (!html) return html;
+    
+    let sanitized = html;
+    
+    // Fix colspan="0" by consolidating consecutive cells
+    // Pattern: multiple <td colspan="0"...> in a row
+    const colspanZeroPattern = /<td[^>]*colspan=["']0["'][^>]*>[\s\S]*?<\/td>/gi;
+    
+    // Count occurrences in each row (using [\s\S] instead of dot with s flag)
+    const rowPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+    sanitized = sanitized.replace(rowPattern, (match, rowContent) => {
+        const matches = rowContent.match(colspanZeroPattern);
+        if (matches && matches.length >= 5) {
+            // Check if row contains Handlebars helpers
+            const helperPattern = /\{\{[/#!]?\s*\w+[^}]*\}\}/;
+            if (helperPattern.test(rowContent)) {
+                // Find all cells with helpers
+                const cellWithHelperPattern = /<td[^>]*colspan=["']0["'][^>]*>[\s\S]*?(\{\{[/#!]?\s*\w+[^}]*\}\})[\s\S]*?<\/td>/gi;
+                const helpers: string[] = [];
+                let cellMatch;
+                while ((cellMatch = cellWithHelperPattern.exec(rowContent)) !== null) {
+                    helpers.push(cellMatch[1]);
+                }
+                
+                if (helpers.length > 0) {
+                    // Build new row with proper colspan="5"
+                    const newCells = helpers.map(helper => 
+                        `<td colspan="5" style="padding: 8px; border: 1px solid rgb(229, 231, 235);"><p>${helper}</p></td>`
+                    ).join('');
+                    
+                    return `<tr>${newCells}</tr>`;
+                }
+            }
+        }
+        return match;
+    });
+    
+    return sanitized;
+}
+
+/**
  * Create template
  */
 export async function createTemplateAction(
     data: CollectionTemplateInsert
 ): Promise<{ success: boolean; data?: CollectionTemplate; error?: string }> {
     try {
+        // Sanitize HTML content before saving
+        const sanitizedData = {
+            ...data,
+            content_html: sanitizeTemplateHtml(data.content_html || ''),
+            is_active: data.is_active !== undefined ? data.is_active : true,
+        };
+        
         const template = await insertRecord<CollectionTemplate>(
             'collection_templates',
-            {
-                ...data,
-                is_active: data.is_active !== undefined ? data.is_active : true,
-            }
+            sanitizedData
         )
 
         if (!template) {
@@ -130,10 +178,19 @@ export async function updateTemplateAction(
     data: CollectionTemplateUpdate
 ): Promise<{ success: boolean; data?: CollectionTemplate; error?: string }> {
     try {
+        // Sanitize HTML content before saving if content_html is being updated
+        const sanitizedData: CollectionTemplateUpdate = {
+            ...data,
+        }
+        
+        if (data.content_html !== undefined && data.content_html !== null) {
+            sanitizedData.content_html = sanitizeTemplateHtml(data.content_html)
+        }
+        
         const template = await updateRecord<CollectionTemplate>(
             'collection_templates',
             id,
-            data
+            sanitizedData
         )
 
         if (!template) {
