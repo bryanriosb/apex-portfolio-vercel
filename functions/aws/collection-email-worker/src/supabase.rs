@@ -382,4 +382,115 @@ impl SupabaseService {
         
         Ok(None)
     }
+
+    /// Check if a client has already been processed (sent, accepted, delivered, or has message_id)
+    /// Returns (already_processed, message_id_if_exists)
+    pub async fn check_client_processed(&self, client_id: &str) -> Result<(bool, Option<String>), Box<dyn Error + Send + Sync>> {
+        let url = format!(
+            "{}/rest/v1/collection_clients?id=eq.{}&select=id,status,custom_data",
+            self.base_url, client_id
+        );
+
+        let response = self.client.get(&url)
+            .header("apikey", &self.api_key)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to check client status: {}", response.status()).into());
+        }
+
+        let clients: Vec<serde_json::Value> = response.json().await?;
+        
+        if let Some(client) = clients.first() {
+            let status = client.get("status").and_then(|v| v.as_str()).unwrap_or("pending");
+            let custom_data = client.get("custom_data").cloned().unwrap_or(json!({}));
+            let message_id = custom_data.get("message_id").and_then(|v| v.as_str()).map(|s| s.to_string());
+            
+            // Client is considered processed if:
+            // 1. Status is not "pending" (accepted, sent, delivered, opened, clicked, bounced, failed)
+            // 2. Has a message_id assigned
+            let is_processed = !matches!(status, "pending" | "processing") || message_id.is_some();
+            
+            return Ok((is_processed, message_id));
+        }
+
+        Ok((false, None))
+    }
+
+    /// Atomically claim a client by setting status to "processing" with a lock timestamp.
+    /// Returns true if this worker won the claim (client was in pending status).
+    /// This prevents multiple workers from processing the same client simultaneously.
+    pub async fn claim_client(&self, client_id: &str) -> Result<bool, Box<dyn Error + Send + Sync>> {
+        let url = format!(
+            "{}/rest/v1/collection_clients?id=eq.{}&status=eq.pending",
+            self.base_url, client_id
+        );
+
+        let body = json!({
+            "status": "processing",
+            "custom_data": {
+                "processing_started_at": chrono::Utc::now().to_rfc3339(),
+                "processing_worker_id": uuid::Uuid::new_v4().to_string()
+            }
+        });
+
+        let response = self.client.patch(&url)
+            .header("apikey", &self.api_key)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .header("Prefer", "return=representation")
+            .json(&body)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            // If status is not success, it means the client is not in "pending" status
+            // (already claimed by another worker or already processed)
+            log::warn!("Failed to claim client {}: status {}", client_id, response.status());
+            return Ok(false);
+        }
+
+        // Supabase returns the updated rows; if empty, someone else claimed it or it's not pending
+        let updated: Vec<serde_json::Value> = response.json().await?;
+        let claimed = !updated.is_empty();
+        
+        if claimed {
+            log::info!("Successfully claimed client {} for processing", client_id);
+        } else {
+            log::warn!("Client {} was already claimed or not in pending status", client_id);
+        }
+        
+        Ok(claimed)
+    }
+
+    /// Check if an event already exists to prevent duplicates
+    pub async fn check_event_exists(
+        &self, 
+        client_id: &str, 
+        event_type: &str, 
+        message_id: &str
+    ) -> Result<bool, Box<dyn Error + Send + Sync>> {
+        // Clean message_id by removing brackets
+        let clean_message_id = message_id.trim_start_matches('<').trim_end_matches('>');
+        
+        let url = format!(
+            "{}/rest/v1/collection_events?client_id=eq.{}&event_type=eq.{}&event_data->>message_id=eq.%3C{}%3E&limit=1&select=id",
+            self.base_url, client_id, event_type, clean_message_id
+        );
+
+        let response = self.client.get(&url)
+            .header("apikey", &self.api_key)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Failed to check event existence: {}", response.status()).into());
+        }
+
+        let events: Vec<serde_json::Value> = response.json().await?;
+        Ok(!events.is_empty())
+    }
 }

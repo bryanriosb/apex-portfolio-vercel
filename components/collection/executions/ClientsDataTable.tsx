@@ -71,6 +71,13 @@ export function ClientsDataTable({
         cell: ({ row }) => {
           const status = row.original.status
           const config = statusConfig[status]
+          if (!config) {
+            return (
+              <Badge className="flex items-center gap-1 bg-primary text-primary-foreground hover:bg-primary/90">
+                {status}
+              </Badge>
+            )
+          }
           const Icon = config.icon
           return (
             <Badge className="flex items-center gap-1 bg-primary text-primary-foreground hover:bg-primary/90">

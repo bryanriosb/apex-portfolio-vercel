@@ -664,6 +664,38 @@ async fn process_batch_from_db(
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
 
+        // ========== IDEMPOTENCY CHECK #1: Verify if client was already processed ==========
+        match supabase.check_client_processed(&client.id).await {
+            Ok((true, Some(message_id))) => {
+                info!("[IDEMPOTENCY] Client {} already processed with message_id: {}. Skipping.", client.id, message_id);
+                continue;
+            }
+            Ok((true, None)) => {
+                info!("[IDEMPOTENCY] Client {} already processed (status: {}). Skipping.", client.id, client.status);
+                continue;
+            }
+            Ok((false, _)) => {
+                // Client not processed yet, continue with processing
+            }
+            Err(e) => {
+                error!("[IDEMPOTENCY] Failed to check client {} status: {}. Will attempt to process anyway.", client.id, e);
+            }
+        }
+
+        // ========== IDEMPOTENCY CHECK #2: Atomically claim the client ==========
+        match supabase.claim_client(&client.id).await {
+            Ok(true) => {
+                info!("[IDEMPOTENCY] Successfully claimed client {} for processing", client.id);
+            }
+            Ok(false) => {
+                warn!("[IDEMPOTENCY] Client {} was already claimed by another worker or not in pending status. Skipping.", client.id);
+                continue;
+            }
+            Err(e) => {
+                error!("[IDEMPOTENCY] Failed to claim client {}: {}. Will attempt to process anyway.", client.id, e);
+            }
+        }
+
         let emails = client.emails();
         info!("[process_batch_from_db] Client {} has {} emails: {:?}", client.id, emails.len(), emails);
         
@@ -698,26 +730,83 @@ async fn process_batch_from_db(
         // Send with retry: max 5 attempts, 5s between each
         let mut last_err: Option<String> = None;
         let mut success = false;
+        let mut final_message_id: Option<String> = None;
 
         info!("[process_batch_from_db] Sending email to client {} (attempt 1/5)", client.id);
 
         for attempt in 1u8..=5 {
+            // ========== IDEMPOTENCY CHECK #3: Before each retry, verify if another worker already sent it ==========
+            if attempt > 1 {
+                match supabase.check_client_processed(&client.id).await {
+                    Ok((true, Some(msg_id))) => {
+                        info!("[IDEMPOTENCY] Client {} was already processed by another worker during retry. Message ID: {}. Stopping retries.", 
+                            client.id, msg_id);
+                        final_message_id = Some(msg_id);
+                        success = true;
+                        break;
+                    }
+                    Ok((true, None)) => {
+                        info!("[IDEMPOTENCY] Client {} was already processed by another worker during retry. Stopping retries.", client.id);
+                        success = true;
+                        break;
+                    }
+                    _ => {
+                        // Continue with retry
+                    }
+                }
+            }
+
             match send_client_email(supabase, provider, &template, &client, &emails, &attachments, execution_id, business_name).await {
                 Ok(message_id) => {
                     info!("[process_batch_from_db] Email sent successfully to client {}: message_id={}", client.id, message_id);
-                    let mut custom_data = client.custom_data.clone().unwrap_or(json!({}));
-                    if let Some(obj) = custom_data.as_object_mut() {
-                        obj.insert("message_id".into(), json!(message_id));
-                        obj.insert("email_sent_at".into(), json!(Utc::now().to_rfc3339()));
-                        obj.insert("template_id".into(), json!(&template_id));
-                        if let Some(tid) = &client.threshold_id {
-                            obj.insert("threshold_id".into(), json!(tid));
+                    
+                    // ========== IDEMPOTENCY CHECK #4: Verify if event already exists before marking as accepted ==========
+                    match supabase.check_event_exists(&client.id, "email_sent", &message_id).await {
+                        Ok(true) => {
+                            warn!("[IDEMPOTENCY] Event email_sent for client {} with message_id {} already exists. Duplicate detected, skipping status update.", 
+                                client.id, message_id);
+                            // Still count as success but don't insert duplicate
+                            success = true;
+                            final_message_id = Some(message_id);
+                            break;
+                        }
+                        Ok(false) => {
+                            // Event doesn't exist, proceed normally
+                            let mut custom_data = client.custom_data.clone().unwrap_or(json!({}));
+                            if let Some(obj) = custom_data.as_object_mut() {
+                                obj.insert("message_id".into(), json!(message_id));
+                                obj.insert("email_sent_at".into(), json!(Utc::now().to_rfc3339()));
+                                obj.insert("template_id".into(), json!(&template_id));
+                                if let Some(tid) = &client.threshold_id {
+                                    obj.insert("threshold_id".into(), json!(tid));
+                                }
+                            }
+                            let _ = supabase.update_client_status(&client.id, "accepted", Some(custom_data)).await;
+                            sent_count += 1;
+                            success = true;
+                            final_message_id = Some(message_id);
+                            break;
+                        }
+                        Err(e) => {
+                            error!("[IDEMPOTENCY] Failed to check event existence for client {}: {}. Proceeding with status update anyway.", 
+                                client.id, e);
+                            // Proceed with update even if check failed
+                            let mut custom_data = client.custom_data.clone().unwrap_or(json!({}));
+                            if let Some(obj) = custom_data.as_object_mut() {
+                                obj.insert("message_id".into(), json!(message_id));
+                                obj.insert("email_sent_at".into(), json!(Utc::now().to_rfc3339()));
+                                obj.insert("template_id".into(), json!(&template_id));
+                                if let Some(tid) = &client.threshold_id {
+                                    obj.insert("threshold_id".into(), json!(tid));
+                                }
+                            }
+                            let _ = supabase.update_client_status(&client.id, "accepted", Some(custom_data)).await;
+                            sent_count += 1;
+                            success = true;
+                            final_message_id = Some(message_id);
+                            break;
                         }
                     }
-                    let _ = supabase.update_client_status(&client.id, "accepted", Some(custom_data)).await;
-                    sent_count += 1;
-                    success = true;
-                    break;
                 }
                 Err(e) => {
                     last_err = Some(e.to_string());
@@ -734,10 +823,19 @@ async fn process_batch_from_db(
         if !success {
             let err_msg = last_err.unwrap_or_else(|| "Unknown error".to_string());
             error!("All 5 attempts failed for client {}: {}", client.id, err_msg);
-            let _ = supabase.update_client_status(&client.id, "failed", Some(json!({
-                "error": err_msg,
-                "template_id": &template_id
-            }))).await;
+            
+            // Check one more time if another worker succeeded
+            match supabase.check_client_processed(&client.id).await {
+                Ok((true, _)) => {
+                    info!("[IDEMPOTENCY] Client {} was processed by another worker after all retries failed. Not marking as failed.", client.id);
+                }
+                _ => {
+                    let _ = supabase.update_client_status(&client.id, "failed", Some(json!({
+                        "error": err_msg,
+                        "template_id": &template_id
+                    }))).await;
+                }
+            }
         }
     }
 
