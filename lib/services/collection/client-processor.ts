@@ -109,11 +109,16 @@ export const ClientProcessor = {
     )
 
     // 4. Build processed client results
-    // Filtrar solo clientes con umbral asignado - los sin umbral no se procesan
+    // Filtrar solo clientes con umbral asignado y status válido - los sin umbral o blacklisted no se procesan
     for (const { clientData, daysOverdue, threshold, attachments } of clientsWithAttachments) {
       try {
         if (!threshold) {
           // Cliente sin umbral asignado - se excluye del procesamiento
+          continue
+        }
+
+        if (clientData.status === 'blacklisted') {
+          // Cliente en blacklist - se excluye del procesamiento
           continue
         }
 

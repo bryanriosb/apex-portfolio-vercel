@@ -186,11 +186,12 @@ export function CreationWizard() {
       // Obtener clientes con umbral asignado desde el store
       const thresholdStore = useWizardThresholdStore.getState()
       
-      // Extraer todos los clientes que tienen umbral asignado
+      // Extraer todos los clientes que tienen umbral asignado (excluir blacklisted)
       const clientsWithThreshold: any[] = []
       thresholdStore.previewData.forEach((data) => {
         if (data.threshold) {
-          clientsWithThreshold.push(...data.clients)
+          const validClients = data.clients.filter((client) => client.status === 'found')
+          clientsWithThreshold.push(...validClients)
         }
       })
 

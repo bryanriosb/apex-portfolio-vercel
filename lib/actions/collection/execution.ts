@@ -245,8 +245,8 @@ export async function getRecentExecutionsAction(businessId: string, limit = 5): 
     if (error) throw error
 
     return (data || []).map((exec: any) => {
-      const openRate = exec.emails_sent > 0
-        ? (exec.emails_opened / exec.emails_sent) * 100
+      const openRate = exec.emails_delivered > 0
+        ? (exec.emails_opened / exec.emails_delivered) * 100
         : 0
       const bounceRate = exec.emails_sent > 0
         ? (exec.emails_bounced / exec.emails_sent) * 100
