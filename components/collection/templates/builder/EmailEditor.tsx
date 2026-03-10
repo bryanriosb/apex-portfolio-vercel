@@ -238,6 +238,32 @@ export function EmailEditor({
         addAttributes() {
           return {
             ...this.parent?.(),
+            colspan: {
+              default: 1,
+              parseHTML: (element) => {
+                const colspan = element.getAttribute('colspan')
+                return colspan ? parseInt(colspan, 10) : 1
+              },
+              renderHTML: (attributes) => {
+                if (!attributes.colspan || attributes.colspan === 1) {
+                  return {}
+                }
+                return { colspan: attributes.colspan }
+              },
+            },
+            rowspan: {
+              default: 1,
+              parseHTML: (element) => {
+                const rowspan = element.getAttribute('rowspan')
+                return rowspan ? parseInt(rowspan, 10) : 1
+              },
+              renderHTML: (attributes) => {
+                if (!attributes.rowspan || attributes.rowspan === 1) {
+                  return {}
+                }
+                return { rowspan: attributes.rowspan }
+              },
+            },
             style: {
               default: null,
               parseHTML: (element) => element.getAttribute('style'),
@@ -288,6 +314,33 @@ export function EmailEditor({
       TableHeader.extend({
         addAttributes() {
           return {
+            ...this.parent?.(),
+            colspan: {
+              default: 1,
+              parseHTML: (element) => {
+                const colspan = element.getAttribute('colspan')
+                return colspan ? parseInt(colspan, 10) : 1
+              },
+              renderHTML: (attributes) => {
+                if (!attributes.colspan || attributes.colspan === 1) {
+                  return {}
+                }
+                return { colspan: attributes.colspan }
+              },
+            },
+            rowspan: {
+              default: 1,
+              parseHTML: (element) => {
+                const rowspan = element.getAttribute('rowspan')
+                return rowspan ? parseInt(rowspan, 10) : 1
+              },
+              renderHTML: (attributes) => {
+                if (!attributes.rowspan || attributes.rowspan === 1) {
+                  return {}
+                }
+                return { rowspan: attributes.rowspan }
+              },
+            },
             style: {
               default: null,
               parseHTML: (element) => element.getAttribute('style'),
