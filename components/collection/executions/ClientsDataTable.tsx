@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { ColumnDef } from '@tanstack/react-table'
 import { DataTable, FilterConfig } from '@/components/DataTable'
 import { CollectionClient, ClientStatus } from '@/lib/models/collection'
@@ -18,8 +18,66 @@ import {
   MessageSquare,
   Smartphone,
   MousePointerClick,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import { formatDateInTimezone } from '@/lib/utils/date-format'
+
+// Componente para mostrar correos con vista expandible
+function EmailCell({ client }: { client: CollectionClient }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  
+  const emails = client.custom_data?.emails || []
+  
+  if (emails.length === 0) {
+    return <span className="text-muted-foreground text-xs">-</span>
+  }
+  
+  return (
+    <div className="flex flex-col gap-1.5">
+      {/* Contador + Botón */}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          <Mail className="h-3 w-3 text-primary" />
+          <span className="text-xs text-primary font-medium">
+            {emails.length} correo{emails.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5"
+        >
+          {isExpanded ? (
+            <>
+              <ChevronUp className="h-3 w-3" />
+              <span>Ver menos</span>
+            </>
+          ) : (
+            <>
+              <ChevronDown className="h-3 w-3" />
+              <span>Ver todos</span>
+            </>
+          )}
+        </button>
+      </div>
+      
+      {/* Correos (solo cuando está expandido) */}
+      {isExpanded && (
+        <div className="flex flex-wrap gap-1 pt-1">
+          {emails.map((email: string, idx: number) => (
+            <span
+              key={idx}
+              className="text-xs text-primary bg-blue-50 px-2 py-0.5 border border-blue-200"
+              title={email}
+            >
+              {email}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface ClientsDataTableProps {
   executionId: string
@@ -46,6 +104,14 @@ export function ClientsDataTable({
 }: ClientsDataTableProps) {
   const columns = useMemo<ColumnDef<CollectionClient>[]>(
     () => [
+      {
+        id: 'emails',
+        accessorKey: 'custom_data.emails',
+        header: 'Correo',
+        cell: ({ row }) => {
+          return <EmailCell client={row.original} />
+        },
+      },
       {
         accessorKey: 'custom_data.nit',
         header: 'Empresa',
@@ -93,8 +159,6 @@ export function ClientsDataTable({
         cell: ({ row }) => {
           const date = row.original.email_sent_at
           if (!date) return <span className="text-muted-foreground">-</span>
-          // DEBUG: Ver fecha original
-          console.log('email_sent_at raw:', date, 'formatted:', formatDateInTimezone(date, timezone))
           return (
             <div className="flex flex-col">
               <span className="text-xs">
@@ -227,6 +291,25 @@ export function ClientsDataTable({
           )
         },
       },
+      // Columnas ocultas para filtros
+      {
+        id: 'fallback_required',
+        accessorKey: 'fallback_required',
+        header: 'Fallback Requerido',
+        meta: { hidden: true },
+      },
+      {
+        id: 'email_bounce_type',
+        accessorKey: 'email_bounce_type',
+        header: 'Tipo de Rebote',
+        meta: { hidden: true },
+      },
+      {
+        id: 'fallback_type',
+        accessorKey: 'fallback_type',
+        header: 'Tipo de Fallback',
+        meta: { hidden: true },
+      },
       {
         accessorKey: 'retry_count',
         header: 'Reintentos',
@@ -313,8 +396,9 @@ export function ClientsDataTable({
       service={service}
       filters={filters}
       searchConfig={{
-        column: 'custom_data.email',
-        placeholder: 'Buscar por email, nombre o empresa...',
+        column: 'emails',
+        placeholder: 'Buscar por correo, nombre o empresa...',
+        serverField: 'search',
       }}
       defaultQueryParams={{ execution_id: executionId }}
       exportConfig={{

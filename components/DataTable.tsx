@@ -387,8 +387,13 @@ export const DataTable = forwardRef<DataTableRef, DataTableProps<any, any>>(
 
         // Convertir filtros a arrays para QueryParser de Fiber v2
         const arrayFilters: Record<string, string[]> = {}
+        let searchFilter: string | undefined
+        
         Object.entries(filters).forEach(([key, value]) => {
-          if (Array.isArray(value)) {
+          // El search debe ir como string simple, no como array
+          if (key === 'search' && value) {
+            searchFilter = Array.isArray(value) ? value[0] : String(value)
+          } else if (Array.isArray(value)) {
             arrayFilters[key] = value
           } else if (value) {
             arrayFilters[key] = [String(value)]
@@ -408,6 +413,11 @@ export const DataTable = forwardRef<DataTableRef, DataTableProps<any, any>>(
 
         if (Object.keys(arrayFilters).length > 0) {
           queryParams = { ...queryParams, ...arrayFilters }
+        }
+
+        // Agregar search como string simple (no array)
+        if (searchFilter) {
+          queryParams.search = searchFilter
         }
 
         const response = await service.fetchItems(queryParams)

@@ -429,7 +429,7 @@ export default function ExecutionDetailPage() {
                 </Button>
               </CardHeader>
               <CardContent>
-                <EventChart events={events} timezone={businessTimezone} />
+                <EventChart events={events} timezone={businessTimezone} executionStartTime={execution.started_at || execution.created_at} />
               </CardContent>
             </Card>
           )}
@@ -450,7 +450,7 @@ export default function ExecutionDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <EventChart events={events} timezone={businessTimezone} />
+                <EventChart events={events} timezone={businessTimezone} executionStartTime={execution.started_at || execution.created_at} />
               </CardContent>
             </Card>
 

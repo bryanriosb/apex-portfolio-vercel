@@ -9,6 +9,7 @@ import { es } from 'date-fns/locale'
 interface EventChartProps {
   events: CollectionEvent[]
   timezone?: string
+  executionStartTime?: string | Date | null
 }
 
 const eventTypeConfig: Record<string, { label: string; color: string }> = {
@@ -73,7 +74,7 @@ function formatInTimezone(date: Date, timezone: string, formatStr: string): stri
   }
 }
 
-export function EventChart({ events, timezone = 'America/Bogota' }: EventChartProps) {
+export function EventChart({ events, timezone = 'America/Bogota', executionStartTime }: EventChartProps) {
   const { chartRows, timeLabels, startTime, endTime } = useMemo(() => {
     if (!events || events.length === 0) {
       return { chartRows: [], timeLabels: [], startTime: null, endTime: null }
@@ -85,7 +86,10 @@ export function EventChart({ events, timezone = 'America/Bogota' }: EventChartPr
     )
 
     // Obtener rango de tiempo
-    const start = parseEventDate(sortedEvents[0].timestamp)
+    // Usar executionStartTime si está disponible, sino usar el primer evento
+    const start = executionStartTime 
+      ? (executionStartTime instanceof Date ? executionStartTime : parseEventDate(executionStartTime))
+      : parseEventDate(sortedEvents[0].timestamp)
     const end = parseEventDate(sortedEvents[sortedEvents.length - 1].timestamp)
     const duration = end.getTime() - start.getTime()
 
@@ -127,7 +131,7 @@ export function EventChart({ events, timezone = 'America/Bogota' }: EventChartPr
       }))
 
     return { chartRows: rows, timeLabels: labels, startTime: start, endTime: end }
-  }, [events, timezone])
+  }, [events, timezone, executionStartTime])
 
   if (!events || events.length === 0) {
     return (
