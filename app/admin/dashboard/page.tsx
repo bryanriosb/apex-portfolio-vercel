@@ -235,10 +235,10 @@ export default function DashboardPage() {
       <BlacklistMonitor />
 
       {/* Sección de Reputación de Dominios - Ancho completo */}
-      <ReputationOverview
+      {/* <ReputationOverview
         profiles={reputationProfiles}
         loading={reputationLoading}
-      />
+      /> */}
     </div>
   )
 }

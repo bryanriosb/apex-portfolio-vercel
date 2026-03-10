@@ -88,10 +88,8 @@ export const Frame4Plataforma: React.FC<Frame4PlataformaProps> = () => {
       </div>
 
       {/* Grid de dos cards horizontales */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Card 1: Capacidad Enterprise */}
-        <div className="bg-white/95 backdrop-blur-md border-4 border-gray-900 p-4 sm:p-6 lg:p-8 shadow-[10px_10px_0px_#000] lg:shadow-[20px_20px_0px_#000] relative overflow-hidden hover:shadow-[25px_25px_0px_rgba(0,82,255,0.2)] transition-all duration-400">
-          {/* Background gradient */}
+      <div className="grid grid-cols-1 xl:grid-cols-1 gap-6">
+        {/* <div className="bg-white/95 backdrop-blur-md border-4 border-gray-900 p-4 sm:p-6 lg:p-8 shadow-[10px_10px_0px_#000] lg:shadow-[20px_20px_0px_#000] relative overflow-hidden hover:shadow-[25px_25px_0px_rgba(0,82,255,0.2)] transition-all duration-400">
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-[#0052FF]/5 to-transparent animate-pulse [animation-duration:6s]" />
 
           <div className="relative">
@@ -145,7 +143,7 @@ export const Frame4Plataforma: React.FC<Frame4PlataformaProps> = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Card 2: ROADMAP_2026 */}
         <div className="bg-white/95 backdrop-blur-md border-4 border-gray-900 p-4 sm:p-6 lg:p-8 shadow-[10px_10px_0px_#000] lg:shadow-[20px_20px_0px_#000] relative overflow-hidden hover:shadow-[25px_25px_0px_rgba(124,58,237,0.2)] transition-all duration-400">

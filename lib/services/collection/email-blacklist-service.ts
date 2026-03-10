@@ -287,45 +287,30 @@ export class EmailBlacklistService {
     try {
       const supabase = await getSupabaseAdminClient()
 
-      let query = supabase
-        .from('email_blacklist')
-        .select(
-          `*,
-          business_customers:source_customer_id(full_name, company_name, nit)`,
-          { count: 'exact' }
-        )
-        .eq('business_id', businessId)
-
-      if (options?.bounceType) {
-        query = query.eq('bounce_type', options.bounceType)
-      }
-
-      if (options?.search) {
-        query = query.or(`email.ilike.%${options.search}%,business_customers.full_name.ilike.%${options.search}%`)
-      }
-
-      const page = options?.page || 1
-      const pageSize = options?.pageSize || 20
-      const start = (page - 1) * pageSize
-      const end = start + pageSize - 1
-
-      query = query.order('bounced_at', { ascending: false }).range(start, end)
-
-      const { data, error, count } = await query
+      const { data, error } = await supabase.rpc('search_blacklist_with_customer_info', {
+        p_business_id: businessId,
+        p_search: options?.search || null,
+        p_bounce_type: options?.bounceType || null,
+        p_page: options?.page || 1,
+        p_page_size: options?.pageSize || 20,
+      })
 
       if (error) {
         console.error('Error fetching blacklist with customer info:', error)
         return { data: [], total: 0 }
       }
 
+      // Calcular total desde los resultados
+      const total = data && data.length > 0 ? (data[0] as any).total_count : 0
+
       const formattedData = (data || []).map((item: any) => ({
         ...item,
-        customer_name: item.business_customers?.full_name || null,
-        customer_company: item.business_customers?.company_name || null,
-        customer_nit: item.business_customers?.nit || null,
+        customer_name: item.customer_name || null,
+        customer_company: item.customer_company || null,
+        customer_nit: item.customer_nit || null,
       }))
 
-      return { data: formattedData, total: count || 0 }
+      return { data: formattedData, total }
     } catch (error) {
       console.error('Exception fetching blacklist with customer info:', error)
       return { data: [], total: 0 }

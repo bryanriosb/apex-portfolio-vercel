@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { TechnicalTypewriter } from '../apex/TechnicalTypewriter'
+import { CyclingTechnicalTypewriter } from '../apex/CyclingTechnicalTypewriter'
 import { Metric } from '../Metric'
 
 interface Frame0ROIProps {
@@ -28,10 +29,18 @@ export const Frame0ROI: React.FC<Frame0ROIProps> = () => {
 
         <h1 className="grid gap-2 sm:gap-3 text-3xl sm:text-5xl md:text-8xl font-black text-gray-900 mb-6 sm:mb-8 leading-[0.85] tracking-tighter uppercase text-left">
           <span className="animate-bounce slide-in-from-bottom-4 duration-700 fill-mode-forwards">
-            <TechnicalTypewriter text="RECAUDO" delay={500} />
+            <CyclingTechnicalTypewriter
+              texts={['RECAUDO', 'COBRANZA']}
+              delay={500}
+              interval={5000}
+            />
           </span>
           <span className="text-[#0052FF] animate-in slide-in-from-bottom-4 duration-700 delay-300 fill-mode-forwards">
-            <TechnicalTypewriter text="AUTÓNOMO" delay={1500} />
+            <CyclingTechnicalTypewriter
+              texts={['AUTÓNOMO', 'INTELIGENTE']}
+              delay={1500}
+              interval={5000}
+            />
           </span>
         </h1>
 
@@ -42,7 +51,7 @@ export const Frame0ROI: React.FC<Frame0ROIProps> = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 md:gap-12 pt-6 sm:pt-10 border-t-4 border-gray-900 animate-in slide-in-from-bottom-4 duration-700 delay-700 fill-mode-forwards">
           <div className="hover:-translate-y-1 hover:scale-[1.02] transition-transform duration-200">
-            <Metric value="35%+" label="Open Rate Objetivo" />
+            <Metric value="45%+" label="Apertura Objetivo" />
           </div>
           <div className="hover:-translate-y-1 hover:scale-[1.02] transition-transform duration-200">
             <Metric value="ROI" label="Medible Mes 1" />

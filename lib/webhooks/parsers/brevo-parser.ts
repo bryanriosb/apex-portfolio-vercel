@@ -13,6 +13,7 @@ export function parseBrevoEvent(body: any): EmailEvent | null {
 
         // Map Brevo event types to our internal types
         let normalizedEventType: EmailEvent['eventType']
+        let bounceType: 'hard' | 'soft' | undefined
 
         switch (eventType) {
             case 'delivered':
@@ -23,6 +24,7 @@ export function parseBrevoEvent(body: any): EmailEvent | null {
             case 'blocked':
             case 'invalid_email':
                 normalizedEventType = 'email_bounced'
+                bounceType = eventType === 'soft_bounce' ? 'soft' : 'hard'
                 break
             case 'spam':
             case 'unsubscribed':
@@ -85,11 +87,12 @@ export function parseBrevoEvent(body: any): EmailEvent | null {
             email: body.email,
             metadata: {
                 originalEvent: eventType,
+                bounceType,
                 reason: body.reason,
                 tag: body.tag,
                 subject: body.subject,
                 link: body.link,
-                providerTimestamp: providerTimestamp, // Original timestamp from provider (for reference only)
+                providerTimestamp: providerTimestamp,
             },
         }
     } catch (error) {

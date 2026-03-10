@@ -98,7 +98,7 @@ export default function BlacklistPage() {
   const searchConfig: SearchConfig = useMemo(
     () => ({
       column: 'email',
-      placeholder: 'Buscar email...',
+      placeholder: 'Buscar por email, NIT o empresa...',
       serverField: 'search',
     }),
     []
@@ -113,6 +113,7 @@ export default function BlacklistPage() {
           { label: 'Rebote Duro', value: 'hard', icon: MailWarning },
           { label: 'Rebote Suave', value: 'soft' },
           { label: 'Queja', value: 'complaint', icon: AlertTriangle },
+          { label: 'Manual', value: 'manual', icon: Hand },
         ],
       },
     ],
@@ -133,6 +134,7 @@ export default function BlacklistPage() {
             hard: 'Rebote Duro',
             soft: 'Rebote Suave',
             complaint: 'Queja',
+            manual: 'Manual',
           }
           return typeLabels[value] || value
         },

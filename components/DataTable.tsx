@@ -385,18 +385,20 @@ export const DataTable = forwardRef<DataTableRef, DataTableProps<any, any>>(
       try {
         const filters = JSON.parse(serializedFilters)
 
-        // Convertir filtros a arrays para QueryParser de Fiber v2
-        const arrayFilters: Record<string, string[]> = {}
+        // Preparar filtros para el servicio
+        const queryFilters: Record<string, any> = {}
         let searchFilter: string | undefined
         
         Object.entries(filters).forEach(([key, value]) => {
           // El search debe ir como string simple, no como array
           if (key === 'search' && value) {
             searchFilter = Array.isArray(value) ? value[0] : String(value)
-          } else if (Array.isArray(value)) {
-            arrayFilters[key] = value
+          } else if (Array.isArray(value) && value.length > 0) {
+            // Para filtros de array (faceted), tomar el primer valor si es filtro simple
+            // o enviar el array completo si el servicio lo soporta
+            queryFilters[key] = value.length === 1 ? value[0] : value
           } else if (value) {
-            arrayFilters[key] = [String(value)]
+            queryFilters[key] = value
           }
         })
 
@@ -411,8 +413,8 @@ export const DataTable = forwardRef<DataTableRef, DataTableProps<any, any>>(
           ...stableDefaultQueryParams,
         }
 
-        if (Object.keys(arrayFilters).length > 0) {
-          queryParams = { ...queryParams, ...arrayFilters }
+        if (Object.keys(queryFilters).length > 0) {
+          queryParams = { ...queryParams, ...queryFilters }
         }
 
         // Agregar search como string simple (no array)
