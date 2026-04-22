@@ -64,7 +64,7 @@ const MODELS = [
   { name: 'Nemotron-3-Nano', value: 'nvidia/Nemotron-3-Nano-30B-A3B' },
 ]
 
-export function AgentChat() {
+export default function AgentChat() {
   const wsUrl = 'wss://apex-ai.borls.com/ws'
   const apiBaseUrl = 'https://apex-ai.borls.com/api'
   const agentId = 'e10c503d-00fc-4282-9d2e-3f8c4be7b0a0'
@@ -364,5 +364,3 @@ export function AgentChat() {
     </div>
   )
 }
-
-export default AgentChat
