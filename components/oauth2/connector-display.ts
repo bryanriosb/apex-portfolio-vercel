@@ -1,4 +1,4 @@
-import type { AuthStatus } from "@/lib/hooks";
+import type { AuthStatus } from "@/lib/types/oauth2-types";
 
 const AUTH_TYPE_LABELS: Record<string, string> = {
   oauth2: "OAuth 2",

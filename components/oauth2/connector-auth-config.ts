@@ -2,7 +2,7 @@ import type {
   TokenScope,
   ToolExecutionAuth,
   ToolExecutionConfig,
-} from "@/lib/hooks/oauth2-types";
+} from "@/lib/types/oauth2-types";
 
 export type ConnectorAuthType = "none" | "oauth2" | "bearer" | "api_key";
 
