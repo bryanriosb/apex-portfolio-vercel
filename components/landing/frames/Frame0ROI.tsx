@@ -30,14 +30,14 @@ export const Frame0ROI: React.FC<Frame0ROIProps> = () => {
         <h1 className="grid gap-2 sm:gap-3 text-3xl sm:text-5xl md:text-8xl font-black text-gray-900 mb-6 sm:mb-8 leading-[0.85] tracking-tighter uppercase text-left">
           <span className="animate-bounce slide-in-from-bottom-4 duration-700 fill-mode-forwards">
             <CyclingTechnicalTypewriter
-              texts={['RECAUDO', 'COBRANZA']}
+              texts={['AUTOMATIZACIÓN', 'PROCESOS']}
               delay={500}
               interval={5000}
             />
           </span>
           <span className="text-primary animate-in slide-in-from-bottom-4 duration-700 delay-300 fill-mode-forwards">
             <CyclingTechnicalTypewriter
-              texts={['AUTÓNOMO', 'INTELIGENTE']}
+              texts={['AGENTES IA', 'EMPRESARIALES']}
               delay={1500}
               interval={5000}
             />
@@ -46,18 +46,19 @@ export const Frame0ROI: React.FC<Frame0ROIProps> = () => {
 
         <p className="text-base sm:text-lg md:text-xl text-gray-900 max-w-3xl mr-auto text-left font-bold leading-tight mb-8 sm:mb-12 uppercase animate-in slide-in-from-bottom-4 duration-700 delay-500 fill-mode-forwards">
           Potencie la operación de su empresa con agentes IA que planifican y
-          ejecutan procesos críticos de cartera.
+          ejecutan procesos críticos de negocio con supervisión humana
+          integrada.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 md:gap-12 pt-6 sm:pt-10 border-t-4 border-gray-900 animate-in slide-in-from-bottom-4 duration-700 delay-700 fill-mode-forwards">
           <div className="hover:-translate-y-1 hover:scale-[1.02] transition-transform duration-200">
-            <Metric value="45%+" label="Apertura Objetivo" />
+            <Metric value="3-8" label="Días Ahorrados/Mes" />
           </div>
           <div className="hover:-translate-y-1 hover:scale-[1.02] transition-transform duration-200">
-            <Metric value="ROI" label="Medible Mes 1" />
+            <Metric value="ROI" label="Demostrable" />
           </div>
           <div className="hover:-translate-y-1 hover:scale-[1.02] transition-transform duration-200">
-            <Metric value="100%" label="Basado en Datos" />
+            <Metric value="100%" label="Flujos Auditables" />
           </div>
         </div>
       </div>

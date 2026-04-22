@@ -16,61 +16,58 @@ export const Frame4Plataform: React.FC<Frame4PlataformProps> = () => {
   const phases = [
     {
       phase: '01',
-      title: 'Notificaciones',
-      subtitle: 'Fase Actual',
-      desc: 'Recaudo multi-canal inteligente',
+      title: 'Capa Semántica',
+      subtitle: 'La Base',
+      desc: 'Tus sistemas conectados. El agente sabe contexto.',
       active: true,
       features: [
-        'Wizard 3 pasos completo',
-        'Tracking en tiempo real',
-        'Motor de plantillas',
-        'Gestión de adjuntos',
-        'KPI dashboard',
-        'Inbox integrado',
-        'Acuerdos de pago',
-        'Scoring básico ML',
-        'Multi-canal (WhatsApp API)',
-        'Integraciones ERP (Siigo, World Office)',
+        'Conecta Bases de Datos, ERP, CRM, API, correos...',
+        'Interfaz de Chat',
+        'Ejecuciones por eventos',
+        'Ejecuciones programadas',
+        'Ontología de tu negocio',
+        'Entiende relaciones entre datos',
+        'Supervisión humana en críticos',
+        'Trazabilidad completa',
+        'Memoria que no olvida',
+        'Reglas de su negocio codificadas',
+        'Auditoría de cada acción',
+        'Seguridad y cumplimiento',
+        'Metricas de uso y rendimiento',
       ],
-      icon: <Target className="w-5 h-5" />,
+      icon: <Brain className="w-5 h-5" />,
       color: '#1dcd9f',
     },
     {
       phase: '02',
-      title: 'Inteligencia',
-      subtitle: 'En desarrollo',
-      desc: 'Modelos propensión IA + Agentes autónomos',
+      title: 'Cobranza Inteligente',
+      subtitle: 'Primer Módulo',
+      desc: 'Notificaciones que cobran sólas. Seguimiento automático.',
+      active: true,
       features: [
-        'Agente de cobro autónomo',
-        'Modelo de propensión de pago',
-        'Predicción 7/15/30 días',
-        'Dashboard predictivo',
-        'Interfaz conversacional NLP',
-        'Priorización automática',
-        'Secuencia óptima de contacto',
-        'Análisis de comportamiento',
-        'Alertas proactivas',
+        'Multi-canal (WhatsApp, email)',
+        'Plantillas personalizables',
+        'Seguimiento automático',
+        'KPI en tiempo real',
+        'Historial completo por cliente',
+        'KPI en tiempo real',
         'Escalado inteligente',
+        'Inbox unificado',
       ],
-      icon: <Brain className="w-5 h-5" />,
+      icon: <Target className="w-5 h-5" />,
       color: '#7C3AED',
     },
     {
       phase: '03',
-      title: 'Planificación integrada',
-      subtitle: 'Visión futura',
-      desc: 'Tesorería integrada + Planeación financiera',
+      title: 'Proyección 30/60/90',
+      subtitle: 'Visión Futura',
+      desc: 'Decisiones informadas. Tesorería integrada.',
       features: [
-        'Módulo tesorería completo',
-        'Proyección flujo de caja',
-        'Módulo planeación financiera',
-        'Escenarios 30/60/90 días',
-        'Orquestación multi-agentes',
-        'Agente de tesorería',
-        'Agente de alertas',
-        'Marketplace integraciones',
-        'API pública',
-        'Multi-empresa / Grupos',
+        'Tesorería',
+        'Facturación',
+        'Costos',
+        'Compras',
+        'Múltiples escenarios',
       ],
       icon: <Workflow className="w-5 h-5" />,
       color: '#059669',
@@ -168,7 +165,7 @@ export const Frame4Plataform: React.FC<Frame4PlataformProps> = () => {
                       hoveredPhase === index
                         ? 'border-primary bg-blue-50 shadow-md'
                         : phase.active
-                          ? 'border-blue-500'
+                          ? 'border-primary'
                           : 'border-gray-300'
                     }`}
                   >
@@ -182,7 +179,7 @@ export const Frame4Plataform: React.FC<Frame4PlataformProps> = () => {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-black uppercase tracking-widest text-sm text-gray-900">
+                          <span className="font-black uppercase tracking-widest  text-gray-900">
                             {phase.title}
                           </span>
                           <div
@@ -193,28 +190,28 @@ export const Frame4Plataform: React.FC<Frame4PlataformProps> = () => {
                           </div>
                         </div>
 
-                        <div className="text-xs text-gray-500 font-bold uppercase mb-1">
+                        <div className="text-sm text-gray-500 font-bold uppercase mb-1">
                           {phase.subtitle}
                         </div>
 
-                        <p className="text-xs text-gray-600 leading-relaxed mb-2">
+                        <p className="text-sm text-gray-600 leading-relaxed mb-2">
                           {phase.desc}
                         </p>
 
                         {hoveredPhase === index && (
                           <div className="space-y-2 pt-2 border-t border-gray-200 animate-in fade-in duration-300">
                             {phase.active && (
-                              <div className="flex items-center gap-2 text-xs text-green-600 font-bold">
+                              <div className="flex items-center gap-2 text-sm text-green-600 font-bold">
                                 <CheckCircle2 className="w-4 h-4" />
                                 Disponible ahora
                               </div>
                             )}
 
                             <div className="space-y-1.5">
-                              {phase.features.slice(0, 4).map((feature) => (
+                              {phase.features.slice(0, 13).map((feature) => (
                                 <div
                                   key={feature}
-                                  className={`flex items-center gap-2 text-xs ${phase.active ? 'text-gray-600' : 'text-gray-400 italic'}`}
+                                  className={`flex items-center gap-2 text-sm ${phase.active ? 'text-gray-600' : 'text-gray-400 italic'}`}
                                 >
                                   <CheckCircle2
                                     className={`w-3 h-3 shrink-0 ${phase.active ? 'text-green-500' : 'text-gray-400'}`}
@@ -227,11 +224,11 @@ export const Frame4Plataform: React.FC<Frame4PlataformProps> = () => {
                                   )}
                                 </div>
                               ))}
-                              {phase.features.length > 4 && (
+                              {phase.features.length > 13 && (
                                 <div
-                                  className={`text-xs italic ${phase.active ? 'text-gray-400' : 'text-gray-300'}`}
+                                  className={`text-sm italic ${phase.active ? 'text-gray-400' : 'text-gray-300'}`}
                                 >
-                                  +{phase.features.length - 4} más...
+                                  +{phase.features.length - 13} más...
                                 </div>
                               )}
                             </div>
@@ -250,11 +247,12 @@ export const Frame4Plataform: React.FC<Frame4PlataformProps> = () => {
 
             <div className="mt-6 p-4 bg-gray-50 border-2 border-gray-200 hover:border-primary transition-all duration-300">
               <div className="text-sm font-black uppercase text-gray-900 mb-2">
-                Inteligencia que Decide y Ejecuta
+                Agentes que Ejecutan, Tú Supervisas
               </div>
               <div className="text-xs text-gray-600 leading-relaxed">
-                Predicciones precisas y auditables para decisiones críticas de
-                cartera, combinadas con comprensión natural del lenguaje.
+                La plataforma aprende cómo trabaja tu negocio. Conecta tus
+                sistemas, codifica tus reglas y ejecuta procesos mientras tú
+                supervisas.
               </div>
             </div>
           </div>

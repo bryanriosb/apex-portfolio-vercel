@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     template: '%s | APEX',
   },
   description:
-    'Potencie la operación de su empresa con agentes IA que planifican y ejecutan procesos críticos de negocio en LatAm.',
+    'Potencie la operación de su empresa con agentes IA que planifican y ejecutan procesos críticos de negocio con criterio humano en LatAm.',
   applicationName: 'APEX',
   referrer: 'origin-when-cross-origin',
   formatDetection: {

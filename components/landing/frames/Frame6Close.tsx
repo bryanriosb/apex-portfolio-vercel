@@ -12,12 +12,12 @@ interface Frame6CloseProps {
 
 export const Frame6Close: React.FC<Frame6CloseProps> = () => {
   const tags = [
-    'ERP',
-    'WORLD_OFFICE',
-    'AWS_VPC',
     'LATAM_READY',
-    'ML_MODELS',
-    'API_REST',
+    'AUTOMATION',
+    'INTELLIGENCE',
+    'INTEGRATION',
+    'SECURITY',
+    'SCALABILITY',
   ]
   const [hoveredTag, setHoveredTag] = React.useState<string | null>(null)
 
@@ -49,9 +49,9 @@ export const Frame6Close: React.FC<Frame6CloseProps> = () => {
           </div>
 
           <h2 className="text-3xl sm:text-5xl md:text-7xl lg:text-9xl font-black mb-8 sm:mb-12 tracking-tighter uppercase leading-none animate-in slide-in-from-bottom-4 duration-700 delay-200 fill-mode-forwards">
-            Active su{' '}
+            Libere su{' '}
             <span className="text-primary-500 inline-block hover:scale-105 transition-transform duration-300">
-              Liquidez
+              Potencial
             </span>
           </h2>
 

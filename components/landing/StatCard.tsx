@@ -11,12 +11,12 @@ export const StatCard = ({
   title,
   desc,
 }: StatCardProps) => (
-  <div className="border-2 border-gray-900 p-4 sm:p-6 text-left hover:border-primary transition-colors group bg-white text-gray-900 shadow-[4px_4px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">
-    <div className="text-primary w-6 h-6 sm:w-8 sm:h-8 mb-3 sm:mb-4 group-hover:scale-110 transition-transform">
+  <div className="border-2 border-gray-900 p-3 sm:p-4 text-left hover:border-primary transition-colors group bg-white text-gray-900 shadow-[4px_4px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">
+    <div className="text-primary w-5 h-5 sm:w-6 sm:h-6 mb-2 sm:mb-3 group-hover:scale-110 transition-transform">
       {icon}
     </div>
-    <h4 className="font-black uppercase mb-2 text-xs sm:text-sm">{title}</h4>
-    <p className="text-[9px] sm:text-[10px] text-gray-500 uppercase leading-relaxed">
+    <h4 className="font-black uppercase mb-1 text-[10px] sm:text-xs">{title}</h4>
+    <p className="text-[8px] sm:text-[9px] text-gray-500 uppercase leading-relaxed">
       {desc}
     </p>
   </div>

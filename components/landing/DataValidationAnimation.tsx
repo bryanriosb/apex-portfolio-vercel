@@ -33,11 +33,15 @@ export const DataValidationAnimation = () => {
           SYSTEM_INTEGRITY_v2.0
         </div>
         <div className="flex gap-1">
-          {[0, 1, 2].map((i) => (
+          {Array.from({ length: 6 }).map((i) => (
             <motion.div
-              key={i}
+              key={`indicator-integrity-${i}`}
               animate={{ opacity: [0.2, 1, 0.2] }}
-              transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.3 }}
+              transition={{
+                duration: 1.5,
+                repeat: Infinity,
+                delay: (i as number) * 0.3,
+              }}
               className="w-1.5 h-1.5 bg-primary"
             />
           ))}
@@ -47,7 +51,7 @@ export const DataValidationAnimation = () => {
       <div
         className={`grid grid-cols-4 gap-2 mb-6 ${step === 3 ? '' : 'opacity-40'}`}
       >
-        {Array.from({ length: 12 }).map((_, i) => (
+        {Array.from({ length: 20 }).map((_, i) => (
           <motion.div
             key={i}
             animate={{

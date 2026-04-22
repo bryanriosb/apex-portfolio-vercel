@@ -14,24 +14,24 @@ export const Frame5Gobernance: React.FC<Frame5GobernanceProps> = () => {
   const cards = [
     {
       icon: <Scale />,
-      title: 'Deep Compliance',
-      desc: 'Manejo de normativas locales que herramientas globales ignoran.',
-      details: ['Ley 1480', 'Ley 1116', 'Datacrédito', 'DIAN'],
+      title: 'Cumplimiento Regional',
+      desc: 'Protección de datos, sector financiero y gobierno corporativo adaptados a LatAm.',
+      details: ['Protección de datos', 'Sector financiero', 'Gobierno corporativo', 'Normativas locales'],
     },
     {
       icon: <FileCheck />,
-      title: 'Activos Legales',
-      desc: 'Documentos soporte con trazabilidad auditada de envíos. Respaldado para cumplimiento DIAN.',
-      details: ['Certif. bancaria', 'RUT', 'Tracking', 'Adjuntos'],
+      title: 'Datos del Cliente',
+      desc: 'Tus datos son tuyos. Los exportas cuando quieras, sin trabas.',
+      details: ['Exportación completa', 'Sin lock-in', 'Portabilidad', 'Eliminación total'],
     },
     {
       icon: <Shield />,
-      title: 'Infraestructura',
-      desc: 'Seguridad grado bancario sobre AWS con redundancia 24/7.',
+      title: 'Seguridad Enterprise',
+      desc: 'Encriptación, redundancia y backups automáticos. Nivel bancario.',
       details: [
-        'AWS VPC',
-        'Encriptación TLS',
-        'Backups automáticos',
+        'Cifrado AES-256',
+        'Redundancia 24/7',
+        'Backups diarios',
         'SLA 99.9%',
       ],
     },
@@ -51,7 +51,7 @@ export const Frame5Gobernance: React.FC<Frame5GobernanceProps> = () => {
       >
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-        <div
+<div
           className="inline-flex items-center gap-2 px-3 py-1 mb-6 bg-gray-900 text-white font-black text-xs uppercase tracking-widest rounded-none relative overflow-hidden group/btn hover:scale-[1.02] transition-transform duration-200"
         >
           <span className="absolute inset-0 bg-primary translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300" />
@@ -61,19 +61,18 @@ export const Frame5Gobernance: React.FC<Frame5GobernanceProps> = () => {
         <h2
           className="text-3xl sm:text-5xl md:text-7xl font-black text-gray-900 mb-4 sm:mb-6 tracking-tighter uppercase leading-none animate-in slide-in-from-bottom-4 duration-700 fill-mode-forwards"
         >
-          Trazabilidad{' '}
+          Hecho para{' '}
           <span
             className="text-primary inline-block hover:scale-[1.02] transition-transform duration-300"
           >
-            LatAm Nativa
+            Latinoamerica
           </span>
         </h2>
 
         <p
           className="text-gray-900 text-base sm:text-lg font-bold uppercase animate-in slide-in-from-bottom-4 duration-700 delay-200 fill-mode-forwards"
         >
-          Cumplimiento nativo con Ley 1480, Ley 1116 y normativas DIAN /
-          Datacrédito.
+          Normativas de protección de datos, sector financiero y gobierno corporativo incorporadas.
         </p>
       </div>
 
@@ -98,10 +97,10 @@ export const Frame5Gobernance: React.FC<Frame5GobernanceProps> = () => {
         className="mt-8 sm:mt-12 flex flex-wrap gap-2 sm:gap-4 justify-center px-4 sm:px-0 animate-in slide-in-from-bottom-4 duration-700 delay-800 fill-mode-forwards"
       >
         {[
-          'Sin lock-in',
-          'Datos portables',
-          'API abierta',
-          'Open standards',
+          'Datos tuyos',
+          'Exportación libre',
+          'Integraciones estándar',
+          'Estándares internacionales',
         ].map((item) => (
           <div
             key={item}

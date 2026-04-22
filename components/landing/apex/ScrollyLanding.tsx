@@ -71,7 +71,10 @@ export const ScrollyLanding: React.FC = () => {
       // Solo cambiar si se acumuló suficiente scroll
       if (Math.abs(scrollAccumulator) >= SCROLL_THRESHOLD) {
         const direction = scrollAccumulator > 0 ? 1 : -1
-        const newSection = Math.max(0, Math.min(TOTAL_FRAMES - 1, activeSection + direction))
+        const newSection = Math.max(
+          0,
+          Math.min(TOTAL_FRAMES - 1, activeSection + direction)
+        )
 
         if (newSection !== activeSection) {
           isScrolling = true
@@ -86,7 +89,7 @@ export const ScrollyLanding: React.FC = () => {
           // Scroll a la posición exacta de la sección
           window.scrollTo({
             top: newSection * window.innerHeight,
-            behavior: 'smooth'
+            behavior: 'smooth',
           })
 
           // Prevenir múltiples scrolls rápidos
@@ -124,8 +127,13 @@ export const ScrollyLanding: React.FC = () => {
       'INBOX_SUCCESS',
       'COMPLIANCE_OK',
       'ROI_UPDATED',
+      'INBOX_REGISTERED',
+      'COMPLIANCE_CHECK',
+      'PATTERN_ERROR',
+      'MCP_UPDATED',
+      'SKILL_EXECUTED',
     ]
-    const initialLogs = Array.from({ length: 6 }).map(() => ({
+    const initialLogs = Array.from({ length: 10 }).map(() => ({
       time: new Date().toLocaleTimeString(),
       type: types[Math.floor(Math.random() * types.length)],
       id: Math.floor(10000 + Math.random() * 90000).toString(),
@@ -141,7 +149,7 @@ export const ScrollyLanding: React.FC = () => {
           type: types[Math.floor(Math.random() * types.length)],
           id: Math.floor(10000 + Math.random() * 90000).toString(),
         },
-        ...prev.slice(0, 5),
+        ...prev.slice(0, 9),
       ])
     }, intervalTime)
 
@@ -250,30 +258,32 @@ export const ScrollyLanding: React.FC = () => {
                   })
                 }
               }}
-              className={`text-xs font-black transition-all duration-300 uppercase tracking-widest relative group ${(
-                item.index === 1
-                  ? [1, 2, 3].includes(activeSection)
-                  : activeSection === item.index
-              )
-                ? 'text-primary'
-                : 'text-gray-900 hover:text-primary'
-                }`}
-            >
-              {item.label}
-              <span
-                className={`absolute -bottom-1 left-0 h-0.5 bg-primary transition-all duration-300 ${(
+              className={`text-xs font-black transition-all duration-300 uppercase tracking-widest relative group ${
+                (
                   item.index === 1
                     ? [1, 2, 3].includes(activeSection)
                     : activeSection === item.index
                 )
-                  ? 'w-full'
-                  : 'w-0 group-hover:w-full'
-                  }`}
+                  ? 'text-primary'
+                  : 'text-gray-900 hover:text-primary'
+              }`}
+            >
+              {item.label}
+              <span
+                className={`absolute -bottom-1 left-0 h-0.5 bg-primary transition-all duration-300 ${
+                  (
+                    item.index === 1
+                      ? [1, 2, 3].includes(activeSection)
+                      : activeSection === item.index
+                  )
+                    ? 'w-full'
+                    : 'w-0 group-hover:w-full'
+                }`}
               />
             </button>
           ))}
         </div>
-        <div className='flex gap-4'>
+        <div className="flex gap-4">
           <Button
             onClick={goSignUp}
             className="text-white hover:bg-primary hover:text-white font-black text-[10px] sm:text-xs uppercase tracking-widest rounded-none px-4 sm:px-8 py-4 sm:py-6 border-2 border-gray-900 shadow-[3px_3px_0px_#000] sm:shadow-[4px_4px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
@@ -367,8 +377,8 @@ export const ScrollyLanding: React.FC = () => {
       </div>
 
       {/* Scroll Indicator - Desktop only */}
-      {!isMobile && (
-        activeSection < TOTAL_FRAMES - 1 ? (
+      {!isMobile &&
+        (activeSection < TOTAL_FRAMES - 1 ? (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 animate-bounce">
             <span className="text-[10px] font-black text-primary uppercase tracking-widest bg-white/90 backdrop-blur-sm px-3 py-1 border-2 border-primary shadow-[2px_2px_0px_#1dcd9f]">
               Scroll
@@ -413,8 +423,7 @@ export const ScrollyLanding: React.FC = () => {
               </svg>
             </div>
           </button>
-        )
-      )}
+        ))}
 
       {/* Bottom Scroll Progress */}
       <div className="fixed bottom-0 left-0 right-0 h-1 bg-gray-200 z-50">
