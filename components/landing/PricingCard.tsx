@@ -17,7 +17,7 @@ export const PricingCard = ({
   featured = false,
 }: PricingCardProps) => (
   <div
-    className={`p-4 sm:p-6 border-4 ${featured ? 'border-[#0052FF] bg-blue-50 shadow-[10px_10px_0px_#0052FF]' : 'border-gray-900 bg-white shadow-[10px_10px_0px_#000]'} text-left flex flex-col h-full`}
+    className={`p-4 sm:p-6 border-4 ${featured ? 'border-primary bg-blue-50 shadow-[10px_10px_0px_#1dcd9f]' : 'border-gray-900 bg-white shadow-[10px_10px_0px_#000]'} text-left flex flex-col h-full`}
   >
     <div className="text-[9px] sm:text-[10px] font-black uppercase text-gray-400 mb-2">
       {title}
@@ -36,7 +36,7 @@ export const PricingCard = ({
       </div>
     </div>
     {/* <Button
-      className={`w-full rounded-none font-black uppercase text-[9px] sm:text-[10px] border-2 border-gray-900 shadow-[4px_4px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all  ${featured ? 'bg-[#0052FF] text-white hover:bg-blue-600' : 'bg-white text-gray-900 hover:bg-[#0052FF] hover:text-white'}`}
+      className={`w-full rounded-none font-black uppercase text-[9px] sm:text-[10px] border-2 border-gray-900 shadow-[4px_4px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all  ${featured ? 'bg-primary text-white hover:bg-blue-600' : 'bg-white text-gray-900 hover:bg-primary hover:text-white'}`}
     >
       Seleccionar
     </Button> */}

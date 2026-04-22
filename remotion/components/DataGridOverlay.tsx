@@ -53,8 +53,8 @@ export const DataGridOverlay: React.FC<DataGridOverlayProps> = ({opacity = 0.15,
           opacity,
           pointerEvents: 'none',
           backgroundImage: `
-            linear-gradient(to right, #0052FF08 1px, transparent 1px),
-            linear-gradient(to bottom, #0052FF08 1px, transparent 1px)
+            linear-gradient(to right, #1dcd9f08 1px, transparent 1px),
+            linear-gradient(to bottom, #1dcd9f08 1px, transparent 1px)
           `,
           backgroundSize: `${gridSize}px ${gridSize}px`,
         }}
@@ -75,7 +75,7 @@ export const DataGridOverlay: React.FC<DataGridOverlayProps> = ({opacity = 0.15,
             <path
               d={`M ${gridSize} 0 L 0 0 0 ${gridSize}`}
               fill="none"
-              stroke="#0052FF"
+              stroke="#1dcd9f"
               strokeWidth="0.5"
               opacity={0.2}
             />
@@ -91,13 +91,13 @@ export const DataGridOverlay: React.FC<DataGridOverlayProps> = ({opacity = 0.15,
               y={point.y - 1}
               width={3}
               height={3}
-              fill="#0052FF"
+              fill="#1dcd9f"
               opacity={pointOpacities[i]}
             />
             <text
               x={point.x + 10}
               y={point.y + 4}
-              fill="#0052FF"
+              fill="#1dcd9f"
               fontSize={7}
               fontFamily="monospace"
               opacity={pointOpacities[i] * 0.5}

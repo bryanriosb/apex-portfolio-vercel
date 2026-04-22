@@ -14,7 +14,7 @@ export const DashboardShell: React.FC = () => {
   if (!isClient) {
     return (
       <div className="min-h-screen bg-[#F4F7FA] flex items-center justify-center">
-        <div className="text-[#0052FF] font-mono text-xs tracking-[0.2em] animate-pulse">
+        <div className="text-primary font-mono text-xs tracking-[0.2em] animate-pulse">
           INITIATING_APEX_SYSTEM_V1.0...
         </div>
       </div>
@@ -38,22 +38,22 @@ export const DashboardShell: React.FC = () => {
       </div>
 
       {/* UI Overlay Corners (Hard-Edge) */}
-      <div className="absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 border-[#0052FF]/30 z-20 m-6 pointer-events-none" />
-      <div className="absolute top-0 right-0 w-16 h-16 border-t-2 border-r-2 border-[#0052FF]/30 z-20 m-6 pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-16 h-16 border-b-2 border-l-2 border-[#0052FF]/30 z-20 m-6 pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-16 h-16 border-b-2 border-r-2 border-[#0052FF]/30 z-20 m-6 pointer-events-none" />
+      <div className="absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 border-primary/30 z-20 m-6 pointer-events-none" />
+      <div className="absolute top-0 right-0 w-16 h-16 border-t-2 border-r-2 border-primary/30 z-20 m-6 pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-16 h-16 border-b-2 border-l-2 border-primary/30 z-20 m-6 pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-16 h-16 border-b-2 border-r-2 border-primary/30 z-20 m-6 pointer-events-none" />
       
       {/* Content Overlay */}
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Navigation */}
-        <nav className="w-full px-8 py-6 flex items-center justify-between border-b border-[#0052FF]/10 bg-white/50 backdrop-blur-md">
+        <nav className="w-full px-8 py-6 flex items-center justify-between border-b border-primary/10 bg-white/50 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#0052FF] flex items-center justify-center">
+            <div className="w-10 h-10 bg-primary flex items-center justify-center">
               <Crosshair className="text-white w-6 h-6" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[#0052FF] font-black text-xl tracking-tighter leading-none">APEX</span>
-              <span className="text-[10px] text-[#0052FF]/60 font-mono tracking-widest uppercase">Execution Platform</span>
+              <span className="text-primary font-black text-xl tracking-tighter leading-none">APEX</span>
+              <span className="text-[10px] text-primary/60 font-mono tracking-widest uppercase">Execution Platform</span>
             </div>
           </div>
           
@@ -62,7 +62,7 @@ export const DashboardShell: React.FC = () => {
               <a
                 key={item}
                 href="#"
-                className="text-[11px] font-mono uppercase tracking-[0.15em] text-gray-500 hover:text-[#0052FF] transition-all"
+                className="text-[11px] font-mono uppercase tracking-[0.15em] text-gray-500 hover:text-primary transition-all"
               >
                 {item}
               </a>
@@ -72,12 +72,12 @@ export const DashboardShell: React.FC = () => {
           <div className="flex items-center gap-4">
             <Button 
               variant="ghost" 
-              className="text-[#0052FF] font-mono text-xs uppercase tracking-wider rounded-none hover:bg-[#0052FF]/5"
+              className="text-primary font-mono text-xs uppercase tracking-wider rounded-none hover:bg-primary/5"
             >
               [ Acceso ]
             </Button>
             <Button 
-              className="bg-[#0052FF] hover:bg-[#0052FF]/90 text-white font-mono text-xs uppercase tracking-wider rounded-none px-6 shadow-[4px_4px_0px_rgba(0,82,255,0.2)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all"
+              className="bg-primary hover:bg-primary/90 text-white font-mono text-xs uppercase tracking-wider rounded-none px-6 shadow-[4px_4px_0px_rgba(29,205,159,0.2)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all"
             >
               Deploy MVP
             </Button>
@@ -88,19 +88,19 @@ export const DashboardShell: React.FC = () => {
         <div className="flex-1 flex items-center">
           <div className="w-full max-w-7xl mx-auto px-8 py-12">
             <div className="max-w-4xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 mb-8 bg-[#0052FF]/5 border border-[#0052FF]/20">
-                <Terminal className="w-3 h-3 text-[#0052FF]" />
-                <span className="text-[#0052FF] text-[10px] font-mono tracking-[0.2em] uppercase">
+              <div className="inline-flex items-center gap-2 px-3 py-1 mb-8 bg-primary/5 border border-primary/20">
+                <Terminal className="w-3 h-3 text-primary" />
+                <span className="text-primary text-[10px] font-mono tracking-[0.2em] uppercase">
                   System Status: Operational // Latency: 24ms
                 </span>
               </div>
               
               <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-gray-900 mb-8 leading-[0.9] tracking-tighter uppercase">
                 Cartera de <br />
-                <span className="text-[#0052FF]">Alta Precisión</span>
+                <span className="text-primary">Alta Precisión</span>
               </h1>
               
-              <p className="text-lg md:text-xl text-gray-600 mb-10 max-w-2xl font-light leading-relaxed border-l-2 border-[#0052FF] pl-6">
+              <p className="text-lg md:text-xl text-gray-600 mb-10 max-w-2xl font-light leading-relaxed border-l-2 border-primary pl-6">
                 Infraestructura distribuida para el recaudo inteligente. 
                 APEX transforma procesos manuales en flujos de ejecución 
                 automatizados con una tasa de efectividad del 35%+.
@@ -109,7 +109,7 @@ export const DashboardShell: React.FC = () => {
               <div className="flex flex-wrap gap-6 mb-16">
                 <Button 
                   size="lg"
-                  className="bg-[#0052FF] hover:bg-[#0052FF]/95 text-white font-mono text-sm uppercase tracking-widest rounded-none h-14 px-10 group relative overflow-hidden"
+                  className="bg-primary hover:bg-primary/95 text-white font-mono text-sm uppercase tracking-widest rounded-none h-14 px-10 group relative overflow-hidden"
                 >
                   <span className="relative z-10 flex items-center gap-2">
                     Iniciar Secuencia
@@ -120,7 +120,7 @@ export const DashboardShell: React.FC = () => {
                 <Button 
                   size="lg"
                   variant="outline"
-                  className="border-gray-300 text-gray-600 font-mono text-sm uppercase tracking-widest rounded-none h-14 px-10 hover:bg-white hover:text-[#0052FF] hover:border-[#0052FF] transition-all"
+                  className="border-gray-300 text-gray-600 font-mono text-sm uppercase tracking-widest rounded-none h-14 px-10 hover:bg-white hover:text-primary hover:border-primary transition-all"
                 >
                   Whitepaper
                 </Button>
@@ -138,7 +138,7 @@ export const DashboardShell: React.FC = () => {
                     <div className="text-3xl font-black text-gray-900 tabular-nums">
                       {stat.value}
                     </div>
-                    <div className="text-[10px] text-[#0052FF] font-mono uppercase tracking-[0.2em]">
+                    <div className="text-[10px] text-primary font-mono uppercase tracking-[0.2em]">
                       {stat.label}
                     </div>
                   </div>
@@ -149,7 +149,7 @@ export const DashboardShell: React.FC = () => {
         </div>
         
         {/* Bento Grid Features */}
-        <div className="w-full max-w-7xl mx-auto px-8 py-24 border-t border-[#0052FF]/10 bg-white/30 backdrop-blur-sm">
+        <div className="w-full max-w-7xl mx-auto px-8 py-24 border-t border-primary/10 bg-white/30 backdrop-blur-sm">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-1">
             <FeatureCard
               icon={<Zap className="h-5 w-5" />}
@@ -170,7 +170,7 @@ export const DashboardShell: React.FC = () => {
               description="Trazabilidad total desde la carga del Excel hasta el recaudo final."
             />
             
-            <div className="md:col-span-4 bg-[#0052FF] p-10 flex flex-col md:flex-row items-center justify-between gap-8 mt-1">
+            <div className="md:col-span-4 bg-primary p-10 flex flex-col md:flex-row items-center justify-between gap-8 mt-1">
               <div className="max-w-md">
                 <div className="text-white/60 font-mono text-[10px] tracking-[0.3em] uppercase mb-4">Módulo de Integración</div>
                 <h3 className="text-2xl font-bold text-white mb-4 uppercase tracking-tight">
@@ -209,7 +209,7 @@ export const DashboardShell: React.FC = () => {
                 <a
                   key={link}
                   href="#"
-                  className="text-[10px] font-mono uppercase tracking-[0.2em] text-gray-400 hover:text-[#0052FF] transition-colors"
+                  className="text-[10px] font-mono uppercase tracking-[0.2em] text-gray-400 hover:text-primary transition-colors"
                 >
                   {link}
                 </a>
@@ -238,10 +238,10 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
 }) => {
   return (
     <div 
-      className={`bg-white p-8 border border-gray-100 hover:border-[#0052FF]/30 transition-all group flex flex-col justify-between min-h-[280px] ${className}`}
+      className={`bg-white p-8 border border-gray-100 hover:border-primary/30 transition-all group flex flex-col justify-between min-h-[280px] ${className}`}
     >
       <div>
-        <div className="w-12 h-12 bg-gray-50 border border-gray-100 flex items-center justify-center mb-8 text-gray-400 group-hover:bg-[#0052FF] group-hover:text-white group-hover:border-[#0052FF] transition-all">
+        <div className="w-12 h-12 bg-gray-50 border border-gray-100 flex items-center justify-center mb-8 text-gray-400 group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all">
           {icon}
         </div>
         
@@ -255,8 +255,8 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
       </div>
       
       <div className="mt-8 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <span className="text-[10px] font-mono text-[#0052FF] uppercase tracking-widest">Ver Especificaciones</span>
-        <ArrowRight className="w-3 h-3 text-[#0052FF]" />
+        <span className="text-[10px] font-mono text-primary uppercase tracking-widest">Ver Especificaciones</span>
+        <ArrowRight className="w-3 h-3 text-primary" />
       </div>
     </div>
   );

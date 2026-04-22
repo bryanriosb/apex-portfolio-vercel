@@ -81,7 +81,7 @@ function EventLog() {
                     style={{ opacity: Math.max(0.2, 1 - i * 0.18) }}
                 >
                     <span className="text-white/30 flex-shrink-0">{log.time}</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#0052FF] flex-shrink-0 animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0 animate-pulse" />
                     <span className="text-green-400 tracking-wider truncate">{log.event}</span>
                 </div>
             ))}
@@ -105,20 +105,20 @@ export function AuthSidePanel({ mode }: AuthSidePanelProps) {
                 }}
             />
 
-            {/* Blue spotlight */}
+            {/* Primary spotlight */}
             <div
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full pointer-events-none"
                 style={{
-                    background: 'radial-gradient(circle at center, rgba(0,82,255,0.18) 0%, transparent 70%)',
+                    background: 'radial-gradient(circle at center, rgba(29,205,159,0.18) 0%, transparent 70%)',
                     animation: 'pulse 8s ease-in-out infinite',
                 }}
             />
 
             {/* Corner decorations */}
-            <div className="absolute top-0 left-0 w-12 h-12 border-t-2 border-l-2 border-[#0052FF]/50" />
-            <div className="absolute top-0 right-0 w-12 h-12 border-t-2 border-r-2 border-[#0052FF]/50" />
-            <div className="absolute bottom-0 left-0 w-12 h-12 border-b-2 border-l-2 border-[#0052FF]/50" />
-            <div className="absolute bottom-0 right-0 w-12 h-12 border-b-2 border-r-2 border-[#0052FF]/50" />
+            <div className="absolute top-0 left-0 w-12 h-12 border-t-2 border-l-2 border-primary/50" />
+            <div className="absolute top-0 right-0 w-12 h-12 border-t-2 border-r-2 border-primary/50" />
+            <div className="absolute bottom-0 left-0 w-12 h-12 border-b-2 border-l-2 border-primary/50" />
+            <div className="absolute bottom-0 right-0 w-12 h-12 border-b-2 border-r-2 border-primary/50" />
 
             {/* Content — vertically centered */}
             <div className="relative z-10 flex flex-col h-full p-10 gap-10 justify-center">
@@ -127,9 +127,9 @@ export function AuthSidePanel({ mode }: AuthSidePanelProps) {
                 <div className="flex flex-col gap-2 text-center">
                     <h2 className="text-4xl xl:text-5xl font-black text-white tracking-tighter leading-tight uppercase">
                         {mode === 'sign-in' ? (
-                            <>Controla tu<br /><span className="text-[#0052FF]">Cartera</span></>
+                            <>Controla tu<br /><span className="text-primary">Cartera</span></>
                         ) : (
-                            <>Activa tu<br /><span className="text-[#0052FF]">Estrategia</span></>
+                            <>Activa tu<br /><span className="text-primary">Estrategia</span></>
                         )}
                     </h2>
                     <p className="text-white/40 text-sm font-mono leading-relaxed max-w-xs mx-auto">
@@ -166,7 +166,7 @@ export function AuthSidePanel({ mode }: AuthSidePanelProps) {
 
             {/* Animated scan line */}
             <div
-                className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#0052FF]/50 to-transparent pointer-events-none"
+                className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent pointer-events-none"
                 style={{ animation: 'scanline 6s linear infinite' }}
             />
 

@@ -14,6 +14,7 @@ import {
   ClipboardList,
   CreditCard,
   BanknoteArrowDown,
+  BrainCircuit,
 } from 'lucide-react'
 import { USER_ROLES, type UserRole } from './roles'
 
@@ -58,13 +59,34 @@ export const SIDE_APP_MENU_ITEMS: MenuItem[] = [
     ],
     items: [
       {
-        title: 'Cobros',
+        title: 'Cobranza',
         url: '/admin/dashboard',
       },
     ],
   },
   {
-    title: 'Cobros',
+    title: 'Agencia IA',
+    url: '/admin/agentic',
+    icon: BrainCircuit,
+    moduleCode: 'ai_assistant',
+    allowedRoles: [
+      USER_ROLES.COMPANY_ADMIN,
+      USER_ROLES.BUSINESS_ADMIN,
+      USER_ROLES.PROFESSIONAL,
+    ],
+    items: [
+      {
+        title: 'Chat',
+        url: '/admin/agentic/chat',
+      },
+      {
+        title: 'Conectores',
+        url: '/admin/agentic/connectors',
+      },
+    ],
+  },
+  {
+    title: 'Cobranza',
     url: '/admin/collection',
     icon: BanknoteArrowDown,
     moduleCode: 'collection',
@@ -83,6 +105,10 @@ export const SIDE_APP_MENU_ITEMS: MenuItem[] = [
         url: '/admin/collection/executions',
       },
       {
+        title: 'Transacciones',
+        url: '/admin/collection/transactions',
+      },
+      {
         title: 'Plantillas',
         url: '/admin/collection/templates',
       },
@@ -90,10 +116,6 @@ export const SIDE_APP_MENU_ITEMS: MenuItem[] = [
         title: 'Adjuntos',
         url: '/admin/collection/attachments',
       },
-      // {
-      //   title: 'Torre de Control',
-      //   url: '/admin/collection/control-tower',
-      // }, )
     ],
   },
   {
@@ -192,7 +214,7 @@ export const SIDE_SYSTEM_MENU_ITEMS: MenuItem[] = [
         moduleCode: 'whatsapp',
       },
       {
-        title: 'Cobros',
+        title: 'Cobranza',
         url: '/admin/settings/collection',
         allowedRoles: [USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN],
         moduleCode: 'collection',

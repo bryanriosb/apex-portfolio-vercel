@@ -38,7 +38,7 @@ export const DataValidationAnimation = () => {
               key={i}
               animate={{ opacity: [0.2, 1, 0.2] }}
               transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.3 }}
-              className="w-1.5 h-1.5 bg-[#0052FF]"
+              className="w-1.5 h-1.5 bg-primary"
             />
           ))}
         </div>
@@ -51,7 +51,7 @@ export const DataValidationAnimation = () => {
           <motion.div
             key={i}
             animate={{
-              backgroundColor: step >= 2 && i % 3 === 0 ? '#0052FF' : '#E5E7EB',
+              backgroundColor: step >= 2 && i % 3 === 0 ? '#1dcd9f' : '#E5E7EB',
             }}
             className="h-16 border border-gray-300 flex items-center justify-center"
           >
@@ -70,7 +70,7 @@ export const DataValidationAnimation = () => {
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 font-mono text-[10px] font-black text-[#0052FF]">
+          <div className="flex items-center gap-2 font-mono text-[10px] font-black text-primary">
             {steps[step].icon}
             <motion.span
               key={step}
@@ -86,7 +86,7 @@ export const DataValidationAnimation = () => {
         </div>
         <div className="h-2 bg-gray-200 w-full relative">
           <motion.div
-            className="absolute inset-y-0 left-0 bg-[#0052FF]"
+            className="absolute inset-y-0 left-0 bg-primary"
             animate={{ width: `${(step + 1) * 25}%` }}
             transition={{ duration: 0.8, ease: 'easeInOut' }}
           />

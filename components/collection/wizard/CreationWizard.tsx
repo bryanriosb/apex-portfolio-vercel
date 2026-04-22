@@ -11,13 +11,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import {
-  ChevronLeft,
-  ChevronRight,
-  CheckCircle,
-  AlertTriangle,
-  Loader2,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, AlertTriangle, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
@@ -44,8 +38,7 @@ import { Step3Content } from './Step3Content'
 
 // Import types
 import {
-  WizardStep,
-  WIZARD_STEPS,
+  CAMPAIGN_WIZARD_STEPS,
   FileData,
   EmailConfig,
   DatabaseStrategy,
@@ -54,6 +47,7 @@ import {
 // Import utilities
 import { parseInvoiceFile } from './utils'
 import Loading from '@/components/ui/loading'
+import { StepIndicator } from '@/components/ui/step-indicator'
 
 export function CreationWizard() {
   const router = useRouter()
@@ -170,7 +164,7 @@ export function CreationWizard() {
   }, [activeBusiness?.id, activeBusiness?.business_account_id])
 
   const handleNext = async () => {
-    if (currentStep < WIZARD_STEPS.length) {
+    if (currentStep < CAMPAIGN_WIZARD_STEPS.length) {
       setCurrentStep(currentStep + 1)
     } else {
       await handleFinish()
@@ -185,18 +179,22 @@ export function CreationWizard() {
     try {
       // Obtener clientes con umbral asignado desde el store
       const thresholdStore = useWizardThresholdStore.getState()
-      
+
       // Extraer todos los clientes que tienen umbral asignado (excluir blacklisted)
       const clientsWithThreshold: any[] = []
       thresholdStore.previewData.forEach((data) => {
         if (data.threshold) {
-          const validClients = data.clients.filter((client) => client.status === 'found')
+          const validClients = data.clients.filter(
+            (client) => client.status === 'found'
+          )
           clientsWithThreshold.push(...validClients)
         }
       })
 
       if (clientsWithThreshold.length === 0) {
-        toast.error('No hay clientes dentro de los rangos de umbrales configurados')
+        toast.error(
+          'No hay clientes dentro de los rangos de umbrales configurados'
+        )
         toast.dismiss(loadingToast)
         return
       }
@@ -365,7 +363,7 @@ export function CreationWizard() {
   }
 
   const progressPercentage =
-    ((currentStep - 1) / (WIZARD_STEPS.length - 1)) * 100
+    ((currentStep - 1) / (CAMPAIGN_WIZARD_STEPS.length - 1)) * 100
 
   const isMissingRequirements =
     !hasCustomers ||
@@ -548,24 +546,24 @@ export function CreationWizard() {
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
           <span className="font-medium">
-            Paso {currentStep} de {WIZARD_STEPS.length}
+            Paso {currentStep} de {CAMPAIGN_WIZARD_STEPS.length}
           </span>
           <span className="text-muted-foreground">
-            {WIZARD_STEPS[currentStep - 1].title}
+            {CAMPAIGN_WIZARD_STEPS[currentStep - 1].title}
           </span>
         </div>
         <Progress value={progressPercentage} className="h-2" />
       </div>
 
       {/* Steps Indicator */}
-      <StepIndicator currentStep={currentStep} steps={WIZARD_STEPS} />
+      <StepIndicator currentStep={currentStep} steps={CAMPAIGN_WIZARD_STEPS} />
 
       {/* Step Content */}
       <Card>
         <CardHeader>
-          <CardTitle>{WIZARD_STEPS[currentStep - 1].title}</CardTitle>
+          <CardTitle>{CAMPAIGN_WIZARD_STEPS[currentStep - 1].title}</CardTitle>
           <CardDescription>
-            {WIZARD_STEPS[currentStep - 1].description}
+            {CAMPAIGN_WIZARD_STEPS[currentStep - 1].description}
           </CardDescription>
         </CardHeader>
         <CardContent className="min-h-[400px]">
@@ -625,73 +623,12 @@ export function CreationWizard() {
           Anterior
         </Button>
         <Button onClick={handleNext} disabled={!canProceed()}>
-          {currentStep === WIZARD_STEPS.length ? 'Crear Campaña' : 'Siguiente'}
+          {currentStep === CAMPAIGN_WIZARD_STEPS.length
+            ? 'Crear Campaña'
+            : 'Siguiente'}
           <ChevronRight className="ml-2 h-4 w-4" />
         </Button>
       </div>
-    </div>
-  )
-}
-
-// Sub-component: Step Indicator
-function StepIndicator({
-  currentStep,
-  steps,
-}: {
-  currentStep: number
-  steps: WizardStep[]
-}) {
-  return (
-    <div className="flex items-center justify-center gap-4">
-      {steps.map((step, index) => {
-        const isActive = currentStep === step.id
-        const isCompleted = currentStep > step.id
-        const isLast = index === steps.length - 1
-
-        return (
-          <div key={step.id} className="flex items-center">
-            <div className="flex flex-col items-center">
-              <div
-                className={cn(
-                  'w-7 h-7 rounded-full flex items-center justify-center border-2 transition-colors text-xs',
-                  isActive &&
-                    'border-primary bg-primary text-primary-foreground',
-                  isCompleted && 'border-green-500 bg-green-500 text-white',
-                  !isActive &&
-                    !isCompleted &&
-                    'border-gray-300 bg-white text-gray-400'
-                )}
-              >
-                {isCompleted ? (
-                  <CheckCircle className="h-3.5 w-3.5" />
-                ) : (
-                  <span className="font-semibold">{step.id}</span>
-                )}
-              </div>
-              <div className="text-center mt-1.5 hidden sm:block">
-                <p
-                  className={cn(
-                    'text-xs font-medium whitespace-nowrap',
-                    isActive && 'text-primary',
-                    isCompleted && 'text-green-600',
-                    !isActive && !isCompleted && 'text-gray-500'
-                  )}
-                >
-                  {step.title}
-                </p>
-              </div>
-            </div>
-            {!isLast && (
-              <div
-                className={cn(
-                  'h-0.5 w-12 mx-3',
-                  isCompleted ? 'bg-green-500' : 'bg-gray-300'
-                )}
-              />
-            )}
-          </div>
-        )
-      })}
     </div>
   )
 }

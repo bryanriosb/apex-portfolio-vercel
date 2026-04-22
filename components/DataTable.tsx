@@ -104,6 +104,7 @@ interface DataTableProps<TData, TValue> {
   onDeleteSelected?: (ids: string[]) => Promise<void>
   getRowId?: (row: TData) => string
   refreshKey?: string
+  emptyState?: React.ReactNode
 }
 
 export interface DataTableRef {
@@ -132,6 +133,7 @@ export const DataTable = forwardRef<DataTableRef, DataTableProps<any, any>>(
       onDeleteSelected,
       getRowId,
       refreshKey,
+      emptyState,
     }: DataTableProps<TData, TValue>,
     ref: React.Ref<DataTableRef>
   ) {
@@ -715,7 +717,7 @@ export const DataTable = forwardRef<DataTableRef, DataTableProps<any, any>>(
               {loading ? (
                 <TableRow>
                   <TableCell
-                    colSpan={columns.length}
+                    colSpan={tableColumns.length}
                     className="h-24 text-center"
                   >
                     <div className="flex items-center justify-center space-x-2">
@@ -743,10 +745,19 @@ export const DataTable = forwardRef<DataTableRef, DataTableProps<any, any>>(
                     ))}
                   </TableRow>
                 ))
+              ) : emptyState ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={tableColumns.length}
+                    className="h-24 text-center"
+                  >
+                    {emptyState}
+                  </TableCell>
+                </TableRow>
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={columns.length}
+                    colSpan={tableColumns.length}
                     className="h-24 text-center text-muted-foreground"
                   >
                     <div className="flex flex-col items-center justify-center space-y-2">

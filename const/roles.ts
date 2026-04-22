@@ -1,3 +1,5 @@
+import { fa } from 'zod/v4/locales'
+
 export const USER_ROLES = {
   COMPANY_ADMIN: 'company_admin',
   BUSINESS_ADMIN: 'business_admin',
@@ -18,6 +20,7 @@ export const ROLE_PERMISSIONS = {
     canManageBusinessAccounts: true,
     canCreateBusinessAccounts: true,
     canCreateBusinessAccount: true,
+    canManageTrialsInAccount: true,
     canEditBusinessAccount: true,
     canEditAccountContactInfo: true,
     canDeleteBusinessAccount: true,
@@ -34,6 +37,7 @@ export const ROLE_PERMISSIONS = {
     canManageOwnBusiness: true,
     canViewOwnBusinessAccount: true,
     canManageBusinessesInAccount: true,
+    canManageTrialsInAccount: false,
     canCreateBusinessAccount: false,
     canEditBusinessAccount: true,
     canEditAccountContactInfo: true,
@@ -83,11 +87,23 @@ export function hasPermission(role: UserRole, permission: string): boolean {
 
 // Enlaces del sidebar por rol
 export const SIDEBAR_ACCESS = {
-  dashboard: [USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN, USER_ROLES.PROFESSIONAL],
-  collection: [USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN, USER_ROLES.PROFESSIONAL],
+  dashboard: [
+    USER_ROLES.COMPANY_ADMIN,
+    USER_ROLES.BUSINESS_ADMIN,
+    USER_ROLES.PROFESSIONAL,
+  ],
+  collection: [
+    USER_ROLES.COMPANY_ADMIN,
+    USER_ROLES.BUSINESS_ADMIN,
+    USER_ROLES.PROFESSIONAL,
+  ],
   businesses: [USER_ROLES.COMPANY_ADMIN],
   businessAccounts: [USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN],
-  customers: [USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN, USER_ROLES.PROFESSIONAL],
+  customers: [
+    USER_ROLES.COMPANY_ADMIN,
+    USER_ROLES.BUSINESS_ADMIN,
+    USER_ROLES.PROFESSIONAL,
+  ],
   reports: [USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN],
   settings: [USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN],
 } as const

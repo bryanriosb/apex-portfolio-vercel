@@ -11,7 +11,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Pencil, Trash2, Users, Eye, Clock, Mail } from 'lucide-react'
+import {
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Users,
+  Eye,
+  Clock,
+  Mail,
+} from 'lucide-react'
 import BusinessAccountService from '@/lib/services/business-account/business-account-service'
 import { BUSINESS_ACCOUNTS_COLUMNS } from '@/lib/models/business-account/const/data-table/business-accounts-columns'
 import { BusinessAccountModal } from '@/components/business-accounts/BusinessAccountModal'
@@ -57,7 +65,8 @@ export default function BusinessAccountsPage() {
     name: string
   } | null>(null)
   const [emailLimitModalOpen, setEmailLimitModalOpen] = useState(false)
-  const [selectedAccountForEmailLimit, setSelectedAccountForEmailLimit] = useState<BusinessAccount | null>(null)
+  const [selectedAccountForEmailLimit, setSelectedAccountForEmailLimit] =
+    useState<BusinessAccount | null>(null)
 
   const searchConfig: SearchConfig = useMemo(
     () => ({
@@ -202,6 +211,8 @@ export default function BusinessAccountsPage() {
           ...col,
           cell: ({ row }: any) => {
             const account = row.original
+            const canEditTrial =
+              role && hasPermission(role, 'canManageTrialsInAccount')
             const canEditFull =
               role && hasPermission(role, 'canEditBusinessAccount')
             const canEditContact =
@@ -233,7 +244,7 @@ export default function BusinessAccountsPage() {
                       Editar
                     </DropdownMenuItem>
                   )}
-                  {canEditFull && (
+                  {canEditTrial && (
                     <DropdownMenuItem
                       onClick={() => handleManageTrial(account)}
                     >

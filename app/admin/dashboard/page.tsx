@@ -17,6 +17,12 @@ import {
   getExecutionClientsAction,
   getReputationSummaryAction,
 } from '@/lib/actions/collection/email-strategies'
+import {
+  getRecaudoDashboardStatsAction,
+  getRecaudoByBankAction,
+  RecaudoDashboardStats,
+  RecaudoByBank,
+} from '@/lib/actions/bank-transactions/transaction'
 
 import { DashboardHeader } from '@/components/dashboard/collection/DashboardHeader'
 import { StatsCards } from '@/components/dashboard/collection/StatsCards'
@@ -24,6 +30,10 @@ import { ActiveExecutions } from '@/components/dashboard/collection/ActiveExecut
 import { RecentExecutions } from '@/components/dashboard/collection/RecentExecutions'
 import { ReputationOverview } from '@/components/dashboard/collection/ReputationOverview'
 import { BlacklistMonitor } from '@/components/dashboard/collection/BlacklistMonitor'
+import { RecaudoStatsCards } from '@/components/dashboard/collection/RecaudoStatsCards'
+import { RecaudoByBank as RecaudoByBankComponent } from '@/components/dashboard/collection/RecaudoByBank'
+import { RecaudoAlerts } from '@/components/dashboard/collection/RecaudoAlerts'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   DashboardStats,
   ActiveExecution,
@@ -44,10 +54,15 @@ export default function DashboardPage() {
     EmailReputationProfile[]
   >([])
 
+  // Recaudo state
+  const [recaudoStats, setRecaudoStats] = useState<RecaudoDashboardStats | null>(null)
+  const [recaudoByBank, setRecaudoByBank] = useState<RecaudoByBank[]>([])
+
   // Loading states
   const [statsLoading, setStatsLoading] = useState(true)
   const [recentLoading, setRecentLoading] = useState(true)
   const [reputationLoading, setReputationLoading] = useState(true)
+  const [recaudoLoading, setRecaudoLoading] = useState(true)
 
   const activeExecutionsRef = useRef(activeExecutions)
   const realtimeService = useMemo(() => new RealtimeDashboardService(), [])
@@ -113,10 +128,31 @@ export default function DashboardPage() {
     }
   }, [activeBusiness?.id])
 
+  // Recaudo Data Loading
+  const loadRecaudoData = useCallback(async () => {
+    if (!activeBusiness?.id) return
+
+    try {
+      setRecaudoLoading(true)
+      const [statsData, byBankData] = await Promise.all([
+        getRecaudoDashboardStatsAction(activeBusiness.id),
+        getRecaudoByBankAction(activeBusiness.id),
+      ])
+
+      setRecaudoStats(statsData)
+      setRecaudoByBank(byBankData)
+    } catch (error) {
+      console.error('Error loading recaudo data:', error)
+    } finally {
+      setRecaudoLoading(false)
+    }
+  }, [activeBusiness?.id])
+
   useEffect(() => {
     if (!activeBusiness?.id) return
 
     loadData()
+    loadRecaudoData()
 
     setRecentLoading(true)
     getRecentExecutionsAction(activeBusiness.id, 5)
@@ -127,7 +163,7 @@ export default function DashboardPage() {
     getReputationSummaryAction(activeBusiness.id)
       .then(setReputationProfiles)
       .finally(() => setReputationLoading(false))
-  }, [activeBusiness?.id, loadData])
+  }, [activeBusiness?.id, loadData, loadRecaudoData])
 
   useEffect(() => {
     activeExecutionsRef.current = activeExecutions
@@ -179,6 +215,7 @@ export default function DashboardPage() {
 
   const manualRefresh = () => {
     loadData()
+    loadRecaudoData()
     if (activeBusiness?.id) {
       getRecentExecutionsAction(activeBusiness.id, 5).then(setRecentExecutions)
       getReputationSummaryAction(activeBusiness.id).then(setReputationProfiles)
@@ -210,35 +247,55 @@ export default function DashboardPage() {
         statsLoading={statsLoading}
         onManualRefresh={manualRefresh}
       />
-      <StatsCards
-        stats={stats}
-        statsLoading={statsLoading}
-        reputationLoading={reputationLoading}
-        reputationCount={reputationProfiles.length}
-        warmedCount={reputationProfiles.filter((p) => p.is_warmed_up).length}
-        formatDate={formatDate}
-      />
 
-      <ActiveExecutions
-        executions={activeExecutions}
-        getStatusColor={getStatusColor}
-      />
+      <Tabs defaultValue="campana" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="campana">Campaña</TabsTrigger>
+          <TabsTrigger value="recaudo">Recaudo</TabsTrigger>
+        </TabsList>
 
-      {/* Sección de Campañas Recientes - Ancho completo */}
-      <RecentExecutions
-        executions={recentExecutions}
-        loading={recentLoading}
-        formatDate={formatDate}
-        getStatusColor={getStatusColor}
-      />
-      {/* Sección de Lista Negra - Ancho completo */}
-      <BlacklistMonitor />
+        <TabsContent value="campana" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
+          <StatsCards
+            stats={stats}
+            statsLoading={statsLoading}
+            reputationLoading={reputationLoading}
+            reputationCount={reputationProfiles.length}
+            warmedCount={reputationProfiles.filter((p) => p.is_warmed_up).length}
+            formatDate={formatDate}
+          />
 
-      {/* Sección de Reputación de Dominios - Ancho completo */}
-      {/* <ReputationOverview
-        profiles={reputationProfiles}
-        loading={reputationLoading}
-      /> */}
+          <ActiveExecutions
+            executions={activeExecutions}
+            getStatusColor={getStatusColor}
+          />
+
+          <RecentExecutions
+            executions={recentExecutions}
+            loading={recentLoading}
+            formatDate={formatDate}
+            getStatusColor={getStatusColor}
+          />
+
+          <BlacklistMonitor />
+        </TabsContent>
+
+        <TabsContent value="recaudo" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
+          <RecaudoAlerts
+            unidentifiedCount={recaudoStats?.unidentified_count || 0}
+            loading={recaudoLoading}
+          />
+
+          <RecaudoStatsCards
+            stats={recaudoStats}
+            loading={recaudoLoading}
+          />
+
+          <RecaudoByBankComponent
+            data={recaudoByBank}
+            loading={recaudoLoading}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

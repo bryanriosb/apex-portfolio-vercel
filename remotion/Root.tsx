@@ -43,7 +43,7 @@ export const RemotionRoot: React.FC = () => {
         defaultProps={{
           nodeCount: 24,
           showGrid: true,
-          primaryColor: '#0052FF',
+          primaryColor: '#1dcd9f',
           backgroundColor: '#F4F7FA',
         }}
       />

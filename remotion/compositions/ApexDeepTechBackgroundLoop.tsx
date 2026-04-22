@@ -65,9 +65,9 @@ export const ApexDeepTechBackgroundLoop: React.FC<Props> = ({
         left: 0,
         width: '100%',
         height: '1px',
-        backgroundColor: '#0052FF',
+        backgroundColor: '#1dcd9f',
         opacity: 0.04,
-        boxShadow: '0 0 20px #0052FF',
+        boxShadow: '0 0 20px #1dcd9f',
       }} />
     </AbsoluteFill>
   );

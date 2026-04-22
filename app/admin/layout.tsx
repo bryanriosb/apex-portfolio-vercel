@@ -42,14 +42,14 @@ export default async function AdminLayout({
   const businessLogoUrl = businessWithLogo?.logo_url || null
 
   return (
-    <SidebarProvider defaultOpen={sidebarOpen}>
+    <SidebarProvider defaultOpen={sidebarOpen} className="h-full w-full">
       <Suspense fallback={<SidebarSkeleton />}>
         <AppSidebar
           accessibleModules={accessibleModules}
           businessLogoUrl={businessLogoUrl}
         />
       </Suspense>
-      {businessAccountId && (
+      {businessAccountId ? (
         <TrialProviderClient
           businessAccountId={businessAccountId}
           initialData={trialData || undefined}
@@ -57,16 +57,19 @@ export default async function AdminLayout({
           <section className="flex flex-col w-full h-full overflow-hidden min-w-0">
             <PermissionsLoader />
             <TrialBanner />
-            <div className="flex flex-col gap-4 p-4 overflow-y-auto overflow-x-hidden min-w-0 flex-1">
+            <div className="flex flex-col p-4 overflow-hidden min-w-0 flex-1 h-full">
               <AdminHeader />
-              <Suspense fallback={null}>
-                <NavigationLoader>{children}</NavigationLoader>
-              </Suspense>
+              <div className="flex-1 h-full overflow-auto">
+                <Suspense fallback={null}>
+                  <NavigationLoader className="h-full">
+                    {children}
+                  </NavigationLoader>
+                </Suspense>
+              </div>
             </div>
           </section>
         </TrialProviderClient>
-      )}
-      {!businessAccountId && (
+      ) : (
         <section className="flex flex-col w-full h-full overflow-hidden min-w-0">
           <PermissionsLoader />
           <div className="flex flex-col gap-4 p-4 overflow-y-auto overflow-x-hidden min-w-0 flex-1">

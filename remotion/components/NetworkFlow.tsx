@@ -18,7 +18,7 @@ interface NetworkFlowProps {
 
 export const NetworkFlow: React.FC<NetworkFlowProps> = ({
   nodeCount = 20,
-  primaryColor = '#0052FF',
+  primaryColor = '#1dcd9f',
 }) => {
   const frame = useCurrentFrame();
   const {width, height, fps} = useVideoConfig();

@@ -11,16 +11,12 @@ interface DashboardHeaderProps {
   onManualRefresh: () => void
 }
 
-export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
-  today,
-  statsLoading,
-  onManualRefresh,
-}) => {
+export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ today }) => {
   return (
     <div className="shrink-0 flex items-center justify-between">
       <div>
         <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">
-          Tablero - Cobros
+          Tablero - Cobranza
         </h1>
         <p className="text-sm text-muted-foreground capitalize">{today}</p>
       </div>

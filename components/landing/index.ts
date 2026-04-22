@@ -11,10 +11,10 @@ export { TrustCard } from './TrustCard'
 // Apex ScrollyLanding Frames
 export {
   Frame0ROI,
-  Frame1Seguridad,
-  Frame2Telemetria,
-  Frame3Integridad,
-  Frame4Plataforma,
-  Frame5Gobernanza,
-  Frame6Cierre,
+  Frame1Security,
+  Frame2Telemetry,
+  Frame3Integrity,
+  Frame4Plataform,
+  Frame5Gobernance,
+  Frame6Close,
 } from './frames'

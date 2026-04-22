@@ -20,7 +20,7 @@ interface ApexExecutionBackgroundProps {
 export const ApexExecutionBackground: React.FC<ApexExecutionBackgroundProps> = ({
   nodeCount = 24,
   showGrid = true,
-  primaryColor = '#0052FF',
+  primaryColor = '#1dcd9f',
   backgroundColor = '#F4F7FA',
 }) => {
   const frame = useCurrentFrame();

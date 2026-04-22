@@ -7,7 +7,7 @@ export interface WizardStep {
   description: string
 }
 
-export const WIZARD_STEPS: WizardStep[] = [
+export const CAMPAIGN_WIZARD_STEPS: WizardStep[] = [
   {
     id: 1,
     title: 'Cargar Facturas',

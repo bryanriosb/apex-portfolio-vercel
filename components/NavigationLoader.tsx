@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import Loading from './ui/loading'
+import { cn } from '@/lib/utils'
 
-export function NavigationLoader({ children }: { children: React.ReactNode }) {
+export function NavigationLoader({ children, className }: { children: React.ReactNode, className?: string }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [isNavigating, setIsNavigating] = useState(false)
@@ -45,7 +46,7 @@ export function NavigationLoader({ children }: { children: React.ReactNode }) {
   }, [pathname, searchParams])
 
   return (
-    <div className="relative min-h-[calc(100vh-200px)]">
+    <div className={cn("relative h-full w-full", className)}>
       {isNavigating && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
           <div className="flex flex-col items-center gap-3">

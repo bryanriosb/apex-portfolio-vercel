@@ -17,7 +17,7 @@ export const RoadmapStep = ({
     >
       {phase}
     </div>
-    <div className="font-black uppercase tracking-widest text-xs text-gray-900 transition-colors duration-300 group-hover:text-[#0052FF]">
+    <div className="font-black uppercase tracking-widest text-xs text-gray-900 transition-colors duration-300 group-hover:text-primary">
       {title}
     </div>
     

@@ -30,7 +30,7 @@ export type {
 } from './types'
 
 export {
-  WIZARD_STEPS,
+  CAMPAIGN_WIZARD_STEPS,
   REQUIRED_COLUMNS,
   COLUMN_MAPPING,
   COLUMN_LABELS,

@@ -10,10 +10,15 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'example.com',
+        hostname: '*.borls.com',
       },
     ],
   },
+  allowedDevOrigins: [
+    'agentic.borls.com',
+    'apex-ai.borls.com',
+    'apex.borls.com',
+  ],
 }
 
 export default nextConfig

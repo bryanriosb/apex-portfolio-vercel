@@ -69,8 +69,8 @@ export const ApexDeliveryComparison: React.FC = () => {
           position: 'absolute',
           inset: 0,
           backgroundImage: `
-            linear-gradient(rgba(0,82,255,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0,82,255,0.03) 1px, transparent 1px)
+            linear-gradient(rgba(29,205,159,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(29,205,159,0.03) 1px, transparent 1px)
           `,
           backgroundSize: '40px 40px',
         }}
@@ -87,7 +87,7 @@ export const ApexDeliveryComparison: React.FC = () => {
           fontFamily: 'monospace',
           fontSize: '14px',
           fontWeight: 900,
-          color: '#0052FF',
+          color: '#1dcd9f',
           letterSpacing: '0.3em',
           opacity: interpolate(frame, [0, 30], [0, 1]),
         }}
@@ -103,7 +103,7 @@ export const ApexDeliveryComparison: React.FC = () => {
           top: 120,
           fontSize: '18px',
           fontWeight: 900,
-          color: '#0052FF',
+          color: '#1dcd9f',
           fontFamily: 'system-ui',
           opacity: interpolate(frame, [0, 30], [0, 1]),
         }}
@@ -157,10 +157,10 @@ export const ApexDeliveryComparison: React.FC = () => {
               top: lostY,
               width: 24,
               height: 16,
-              backgroundColor: email.isApex ? '#0052FF' : '#666',
+              backgroundColor: email.isApex ? '#1dcd9f' : '#666',
               borderRadius: 2,
               opacity: lostOpacity,
-              boxShadow: email.isApex ? '0 0 10px rgba(0,82,255,0.5)' : 'none',
+              boxShadow: email.isApex ? '0 0 10px rgba(29,205,159,0.5)' : 'none',
             }}
           >
             {/* Envelope detail */}
@@ -186,9 +186,9 @@ export const ApexDeliveryComparison: React.FC = () => {
           top: 130,
           width: 120,
           height: 280,
-          border: '3px solid #0052FF',
+          border: '3px solid #1dcd9f',
           borderRadius: 8,
-          backgroundColor: 'rgba(0,82,255,0.1)',
+          backgroundColor: 'rgba(29,205,159,0.1)',
           opacity: interpolate(frame, [30, 60], [0, 1]),
         }}
       >
@@ -201,7 +201,7 @@ export const ApexDeliveryComparison: React.FC = () => {
             textAlign: 'center',
             fontSize: '12px',
             fontWeight: 700,
-            color: '#0052FF',
+            color: '#1dcd9f',
           }}
         >
           INBOX
@@ -221,7 +221,7 @@ export const ApexDeliveryComparison: React.FC = () => {
             style={{
               fontSize: '32px',
               fontWeight: 900,
-              color: '#0052FF',
+              color: '#1dcd9f',
               fontFamily: 'monospace',
             }}
           >
@@ -230,7 +230,7 @@ export const ApexDeliveryComparison: React.FC = () => {
           <div
             style={{
               fontSize: '10px',
-              color: '#0052FF',
+              color: '#1dcd9f',
               opacity: 0.7,
             }}
           >
@@ -340,7 +340,7 @@ export const ApexDeliveryComparison: React.FC = () => {
           textAlign: 'center',
           fontSize: '16px',
           fontWeight: 700,
-          color: '#0052FF',
+          color: '#1dcd9f',
           opacity: interpolate(frame, [150, 180], [0, 1]),
         }}
       >
