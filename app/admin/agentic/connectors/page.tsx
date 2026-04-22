@@ -33,7 +33,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-export function ConnectorsPage() {
+export default function ConnectorsPage() {
   const {
     tools,
     isLoading,
@@ -421,5 +421,3 @@ export function ConnectorsPage() {
     </div>
   )
 }
-
-export default ConnectorsPage
