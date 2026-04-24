@@ -42,7 +42,7 @@ export const Frame6Close: React.FC<Frame6CloseProps> = () => {
             <div className="animate-spin [animation-duration:3s]">
               <Settings className="w-6 h-6" />
             </div>
-            DEPLOYMENT_READY
+            DESPLIEGUE_LISTO
             <div className="animate-spin [animation-duration:3s]">
               <Settings className="w-6 h-6" />
             </div>

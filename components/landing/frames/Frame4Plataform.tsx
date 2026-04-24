@@ -38,11 +38,11 @@ export const Frame4Plataform: React.FC<Frame4PlataformProps> = () => {
       icon: <Brain className="w-5 h-5" />,
       color: '#1dcd9f',
     },
-    {
+{
       phase: '02',
-      title: 'Cobranza Inteligente',
+      title: 'Automatización IA',
       subtitle: 'Primer Módulo',
-      desc: 'Notificaciones que cobran sólas. Seguimiento automático.',
+      desc: 'Procesos automatizados que se ejecutan sólos. Sin seguimiento manual.',
       active: true,
       features: [
         'Multi-canal (WhatsApp, email)',
@@ -50,9 +50,10 @@ export const Frame4Plataform: React.FC<Frame4PlataformProps> = () => {
         'Seguimiento automático',
         'KPI en tiempo real',
         'Historial completo por cliente',
-        'KPI en tiempo real',
         'Escalado inteligente',
         'Inbox unificado',
+        'Ejecución por eventos',
+        'Programación flexible',
       ],
       icon: <Target className="w-5 h-5" />,
       color: '#7C3AED',

@@ -181,7 +181,7 @@ export const ScrollyLanding: React.FC = () => {
     'CALIDAD',
     'PLANES',
     'GOVERNANZA',
-    'LSITO',
+    'DEMO',
   ]
 
   const goSignUp = (event: React.MouseEvent) => {

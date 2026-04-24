@@ -42,7 +42,7 @@ export const LANDING_FEATURES = (plan: LandingPlan): string[] => {
     has_specialist_assignment && 'Asignación inteligente de especialistas',
     has_dynamic_price && 'Edición de precios en citas',
     has_whatsapp_notifications && 'Notificaciones por WhatsApp',
-    has_portfolio && 'Gestión de abonos y cartera',
+    has_portfolio && 'Gestión de cartera y abonos',
     has_commissions && 'Gestión de comisiones por especialista',
     has_charts_reports && 'Reportes avanzados',
     has_medical_record && 'Historias clínicas con firma digital',
