@@ -17,7 +17,7 @@ export default function SignUpPage() {
           <div className="flex flex-col gap-2">
             <h1 className="text-2xl font-bold">Crea tu cuenta</h1>
             <p className="text-balance text-muted-foreground">
-              Comienza a gestionar de forma inteligente tu negocio
+              Comienza a potenciar tu operación con IA
             </p>
           </div>
 
