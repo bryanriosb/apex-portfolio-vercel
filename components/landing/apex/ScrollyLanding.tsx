@@ -15,6 +15,7 @@ import {
 import { Crosshair } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Loading from '@/components/ui/loading'
+import Link from 'next/link'
 
 interface TelemetryLog {
   time: string
@@ -284,20 +285,36 @@ export const ScrollyLanding: React.FC = () => {
           ))}
         </div>
         <div className="flex gap-4">
-          <Button
-            onClick={goSignUp}
-            className="text-white hover:bg-primary hover:text-white font-black text-[10px] sm:text-xs uppercase tracking-widest rounded-none px-4 sm:px-8 py-4 sm:py-6 border-2 border-gray-900 shadow-[3px_3px_0px_#000] sm:shadow-[4px_4px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
-          >
-            <span className="hidden sm:inline">Iniciar Demo</span>
-            <span className="sm:hidden">Demo</span>
-            {isDemoLoading && <Loading className="w-4 h-4 ml-2 text-white" />}
-          </Button>
+          <div className="flex gap-4 h-8">
+            <Link
+              href="https://wa.me/573245134148?text=Hola%21%20Requiero%20m%C3%A1s%20informaci%C3%B3n%20sobre%20APEX"
+              target="_blank"
+              className="flex items-center justify-center bg-primary hover:text-white font-black tracking-widest rounded-none px-4 sm:px-8 py-4 sm:py-6 border-2 border-gray-900 shadow-[3px_3px_0px_#000] sm:shadow-[4px_4px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+            >
+              <img
+                src="/whatsapp.png"
+                alt="wahtsapp-icon"
+                className="w-6 h-6 sm:w-8 sm:h-8"
+              />
+            </Link>
+            <Link
+              href="https://borls.com/contact"
+              target="_blank"
+              // onClick={goSignUp}
+              className="flex items-center justify-center bg-primary hover:text-white font-black text-[10px] sm:text-xs uppercase tracking-widest rounded-none px-4 sm:px-8 py-4 sm:py-6  border-2 border-gray-900 shadow-[3px_3px_0px_#000] sm:shadow-[4px_4px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+            >
+              <span className="hidden sm:inline">Agendar Demo</span>
+              <span className="sm:hidden">Demo</span>
+              {isDemoLoading && <Loading className="w-4 h-4 ml-2 text-white" />}
+            </Link>
+          </div>
+
           <Button
             onClick={goSignIn}
             className="text-gray-900 hover:text-white bg-transparent hover:bg-primary hover:text-white font-black text-[10px] sm:text-xs uppercase tracking-widest rounded-none px-4 sm:px-8 py-4 sm:py-6 border-2 border-gray-900 shadow-[3px_3px_0px_#000] sm:shadow-[4px_4px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
           >
             <span className="hidden sm:inline">Iniciar Sesión</span>
-            <span className="sm:hidden">Sesion</span>
+            <span className="sm:hidden">Sesión</span>
             {isLoginLoading && <Loading className="w-4 h-4 ml-2 text-white" />}
           </Button>
         </div>

@@ -76,7 +76,8 @@ export const ROLE_PERMISSIONS = {
     canManageSettings: false,
     canManageOwnBusiness: false,
     canManageEmployees: false,
-    canManageOwnProfile: false,
+    canManageOwnProfile: true,
+    canViewCustomerDashboard: true,
   },
 }
 
@@ -92,6 +93,7 @@ export const SIDEBAR_ACCESS = {
     USER_ROLES.BUSINESS_ADMIN,
     USER_ROLES.PROFESSIONAL,
   ],
+  customerDashboard: [USER_ROLES.CUSTOMER],
   collection: [
     USER_ROLES.COMPANY_ADMIN,
     USER_ROLES.BUSINESS_ADMIN,

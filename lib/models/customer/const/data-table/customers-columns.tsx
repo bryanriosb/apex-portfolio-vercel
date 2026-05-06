@@ -6,6 +6,12 @@ import { ColumnDef } from '@tanstack/react-table'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { KeySquare } from 'lucide-react'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 // Función para obtener el nombre de la categoría a partir del ID
 const getCategoryName = (
@@ -35,6 +41,7 @@ const statusVariants: Record<
 }
 
 import { formatInBusinessTimeZone } from '@/lib/utils/date-format'
+import BuildTooltip from '@/components/ui/tooltip/build'
 
 export const getCustomersColumns = (timezone: string = 'America/Bogota'): ColumnDef<BusinessCustomer>[] => [
   {
@@ -106,14 +113,30 @@ export const getCustomersColumns = (timezone: string = 'America/Bogota'): Column
     header: 'Estado',
     cell: ({ row }) => {
       const status = row.original.status
+      const hasAuth = !!row.original.user_id
+      
       return (
-        <Badge
-          variant={statusVariants[status]}
-          className={`block text-center ${status === 'vip' ? 'bg-amber-500 hover:bg-amber-600' : ''
-            }`}
-        >
-          {statusLabels[status]}
-        </Badge>
+        <div className="flex items-center gap-1.5">
+          <Badge
+            variant={statusVariants[status]}
+            className={`block text-center ${status === 'vip' ? 'bg-amber-500 hover:bg-amber-600' : ''
+              }`}
+          >
+            {statusLabels[status]}
+          </Badge>
+          {hasAuth && (
+            <BuildTooltip
+              content="Cliente con cuenta de acceso"
+              trigger={
+                 <div className="flex items-center justify-center h-5.5 w-5.5  bg-primary text-primary-foreground">
+                    <KeySquare className="h-3.5 w-3.5" />
+                  </div>
+              }
+              asChild={false}
+            />
+            
+          )}
+        </div>
       )
     },
     filterFn: (row, id, value) => {
@@ -123,6 +146,7 @@ export const getCustomersColumns = (timezone: string = 'America/Bogota'): Column
   {
     accessorKey: 'tags',
     header: 'Etiquetas',
+
     cell: ({ row }) => {
       const tags = row.original.tags
       if (!tags || tags.length === 0)

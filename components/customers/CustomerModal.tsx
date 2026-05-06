@@ -4,7 +4,18 @@ import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Loader2, Plus, X, ChevronDown, Mail } from 'lucide-react'
+import {
+  Loader2,
+  Plus,
+  X,
+  ChevronDown,
+  Mail,
+  Eye,
+  EyeOff,
+  RefreshCw,
+  KeyRound,
+  DoorClosedLocked,
+} from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -45,6 +56,7 @@ import type {
   CustomerCategory,
 } from '@/lib/models/customer/business-customer'
 import PhoneInput from 'react-phone-number-input'
+import BuildTooltip from '../ui/tooltip/build'
 
 const STATUS_OPTIONS: { value: CustomerStatus; label: string }[] = [
   { value: 'active', label: 'Activo' },
@@ -62,6 +74,11 @@ const formSchema = z.object({
   category: z.string().optional(),
   notes: z.string().optional(),
   preferences: z.string().optional(),
+  create_user_account: z.boolean().optional(),
+  password: z.string().optional(),
+  send_welcome_email: z.boolean().optional(),
+  change_password: z.boolean().optional(),
+  new_password: z.string().optional(),
 })
 
 type CustomerFormValues = z.infer<typeof formSchema>
@@ -76,6 +93,31 @@ interface CustomerModalProps {
     data: CreateCustomerInput | BusinessCustomerUpdate,
     customerId?: string
   ) => Promise<void>
+  onRemoveAccess?: (customer: BusinessCustomer) => void
+}
+
+function generateRandomPassword(length: number = 12): string {
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz'
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  const numbers = '0123456789'
+  const symbols = '!@#$%^&*'
+
+  const allChars = lowercase + uppercase + numbers + symbols
+
+  let password = ''
+  password += lowercase[Math.floor(Math.random() * lowercase.length)]
+  password += uppercase[Math.floor(Math.random() * uppercase.length)]
+  password += numbers[Math.floor(Math.random() * numbers.length)]
+  password += symbols[Math.floor(Math.random() * symbols.length)]
+
+  for (let i = password.length; i < length; i++) {
+    password += allChars[Math.floor(Math.random() * allChars.length)]
+  }
+
+  return password
+    .split('')
+    .sort(() => Math.random() - 0.5)
+    .join('')
 }
 
 function CustomerModal({
@@ -85,12 +127,14 @@ function CustomerModal({
   onOpenChange,
   customer,
   onSave,
+  onRemoveAccess,
 }: CustomerModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [tags, setTags] = useState<string[]>([])
   const [emails, setEmails] = useState<string[]>([''])
   const [emailErrors, setEmailErrors] = useState<(string | null)[]>([null])
-  const [emailsOpen, setEmailsOpen] = useState(false)
+  const [emailsOpen, setEmailsOpen] = useState(true)
+  const [showPassword, setShowPassword] = useState(false)
 
   const isEditing = !!customer
 
@@ -105,6 +149,11 @@ function CustomerModal({
       category: 'none',
       notes: '',
       preferences: '',
+      create_user_account: false,
+      password: '',
+      send_welcome_email: false,
+      change_password: false,
+      new_password: '',
     },
   })
 
@@ -130,6 +179,11 @@ function CustomerModal({
           category: customer.category || 'none',
           notes: customer.notes || '',
           preferences: customer.preferences || '',
+          create_user_account: false,
+          password: '',
+          send_welcome_email: false,
+          change_password: false,
+          new_password: '',
         })
       } else {
         setTags([])
@@ -144,6 +198,11 @@ function CustomerModal({
           category: 'none',
           notes: '',
           preferences: '',
+          create_user_account: false,
+          password: '',
+          send_welcome_email: false,
+          change_password: false,
+          new_password: '',
         })
       }
     }
@@ -209,15 +268,60 @@ function CustomerModal({
       return
     }
 
+    // Validar contraseña si se solicita crear cuenta
+    if (data.create_user_account && !data.password) {
+      form.setError('password', {
+        message: 'La contraseña es requerida para crear la cuenta',
+      })
+      return
+    }
+
+    if (data.password && data.password.length < 8) {
+      form.setError('password', {
+        message: 'La contraseña debe tener al menos 8 caracteres',
+      })
+      return
+    }
+
+    // Validar nueva contraseña si se solicita cambiar
+    if (data.change_password && !data.new_password) {
+      form.setError('new_password', {
+        message: 'La nueva contraseña es requerida',
+      })
+      return
+    }
+
+    if (data.new_password && data.new_password.length < 8) {
+      form.setError('new_password', {
+        message: 'La contraseña debe tener al menos 8 caracteres',
+      })
+      return
+    }
+
+    // Normalizar phone: quitar el símbolo + del inicio
+    const normalizePhone = (
+      phone: string | null | undefined
+    ): string | null => {
+      if (!phone) return null
+      const trimmed = phone.trim()
+      if (!trimmed) return null
+      return trimmed.startsWith('+') ? trimmed.substring(1) : trimmed
+    }
+
     setIsSubmitting(true)
     try {
       if (isEditing && customer) {
-        const updateData: BusinessCustomerUpdate = {
+        const updateData: BusinessCustomerUpdate & { 
+          new_password?: string
+          create_user_account?: boolean
+          password?: string
+          send_welcome_email?: boolean
+        } = {
           company_name: data.company_name?.trim() || null,
           nit: data.nit.trim(),
           full_name: data.full_name?.trim() || null,
           emails: validEmails.map((email) => email.trim()),
-          phone: data.phone?.trim() || null,
+          phone: normalizePhone(data.phone),
           status: data.status,
           category:
             data.category === 'none' ? null : data.category?.trim() || null,
@@ -225,6 +329,19 @@ function CustomerModal({
           preferences: data.preferences?.trim() || null,
           tags: tags,
         }
+
+        // Incluir nueva contraseña si se solicita cambiar
+        if (data.change_password && data.new_password) {
+          updateData.new_password = data.new_password
+        }
+
+        // Incluir creación de cuenta si se solicita (customer sin user_id)
+        if (!customer.user_id && data.create_user_account) {
+          updateData.create_user_account = true
+          updateData.password = data.password
+          updateData.send_welcome_email = data.send_welcome_email
+        }
+
         await onSave(updateData, customer.id)
       } else {
         const createData: CreateCustomerInput = {
@@ -233,13 +350,16 @@ function CustomerModal({
           nit: data.nit.trim(),
           full_name: data.full_name?.trim() || null,
           emails: validEmails.map((email) => email.trim()),
-          phone: data.phone?.trim() || null,
+          phone: normalizePhone(data.phone),
           status: data.status,
           category:
             data.category === 'none' ? null : data.category?.trim() || null,
           notes: data.notes?.trim() || null,
           preferences: data.preferences?.trim() || null,
           tags: tags,
+          create_user_account: data.create_user_account,
+          password: data.password,
+          send_welcome_email: data.send_welcome_email,
         }
         await onSave(createData)
       }
@@ -367,7 +487,7 @@ function CustomerModal({
                         className="h-7 px-2 text-xs hover:bg-background"
                       >
                         <Plus className="h-3 w-3 mr-1" />
-                        Agregar
+                        Agregar otro
                       </Button>
                     </div>
                   </CollapsibleTrigger>
@@ -378,7 +498,7 @@ function CustomerModal({
                           <div className="flex-1">
                             <Input
                               type="email"
-                              placeholder="maria@empresaabc.com"
+                              placeholder="Escribir correo aquí..."
                               disabled={isSubmitting}
                               value={email}
                               onChange={(e) =>
@@ -536,6 +656,348 @@ function CustomerModal({
                   </FormItem>
                 )}
               />
+
+              {!isEditing && (
+                <div className="space-y-4 border rounded-md p-4 bg-muted/30">
+                  <FormField
+                    control={form.control}
+                    name="create_user_account"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            disabled={isSubmitting}
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="cursor-pointer">
+                            Crear cuenta de usuario para este cliente
+                          </FormLabel>
+                          <p className="text-xs text-muted-foreground">
+                            El cliente podrá iniciar sesión con el primer correo
+                            electrónico registrado
+                          </p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  {form.watch('create_user_account') && (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Contraseña</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input
+                                  type={showPassword ? 'text' : 'password'}
+                                  placeholder="Dejar vacío para generar automáticamente"
+                                  disabled={isSubmitting}
+                                  className="pr-20"
+                                  {...field}
+                                />
+                                <div className="absolute right-0 top-0 h-full flex items-center gap-1 pr-1">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2"
+                                    onClick={() =>
+                                      form.setValue(
+                                        'password',
+                                        generateRandomPassword()
+                                      )
+                                    }
+                                    disabled={isSubmitting}
+                                    title="Generar contraseña aleatoria"
+                                  >
+                                    <RefreshCw className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs"
+                                    onClick={() =>
+                                      setShowPassword(!showPassword)
+                                    }
+                                    disabled={isSubmitting}
+                                  >
+                                    {showPassword ? 'Ocultar' : 'Ver'}
+                                  </Button>
+                                </div>
+                              </div>
+                            </FormControl>
+                            <p className="text-xs text-muted-foreground">
+                              Si no especificas una contraseña, se generará
+                              automáticamente
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="send_welcome_email"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <input
+                                type="checkbox"
+                                checked={field.value}
+                                onChange={field.onChange}
+                                disabled={isSubmitting}
+                                className="h-4 w-4 rounded border-gray-300"
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel className="cursor-pointer">
+                                Enviar correo de bienvenida con credenciales
+                              </FormLabel>
+                              <p className="text-xs text-muted-foreground">
+                                Se enviará un email al cliente con sus
+                                credenciales de acceso
+                              </p>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Sección de cambio de contraseña para clientes con cuenta existente */}
+              {isEditing && customer?.user_id && (
+                <div className="space-y-4 border rounded-md p-4 bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Mail className="h-4 w-4" />
+                      <span>Este cliente tiene cuenta de usuario</span>
+                    </div>
+                    {onRemoveAccess && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-amber-600 border-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                        onClick={() => onRemoveAccess(customer)}
+                        disabled={isSubmitting}
+                      >
+                        <KeyRound className="h-3.5 w-3.5 mr-1.5" />
+                        Remover Acceso
+                      </Button>
+                    )}
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="change_password"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            disabled={isSubmitting}
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="cursor-pointer">
+                            Cambiar contraseña
+                          </FormLabel>
+                          <p className="text-xs text-muted-foreground">
+                            Establecer una nueva contraseña para este usuario
+                          </p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  {form.watch('change_password') && (
+                    <FormField
+                      control={form.control}
+                      name="new_password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nueva contraseña</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input
+                                type={showPassword ? 'text' : 'password'}
+                                placeholder="Mínimo 8 caracteres"
+                                disabled={isSubmitting}
+                                className="pr-20"
+                                {...field}
+                              />
+                              <div className="absolute right-0 top-0 h-full flex items-center gap-1 pr-1">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2"
+                                  onClick={() =>
+                                    form.setValue(
+                                      'new_password',
+                                      generateRandomPassword()
+                                    )
+                                  }
+                                  disabled={isSubmitting}
+                                  title="Generar contraseña aleatoria"
+                                >
+                                  <RefreshCw className="h-3.5 w-3.5" />
+                                </Button>
+                                <BuildTooltip
+                                  content="Ver/Ocultar"
+                                  trigger={
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 px-2 text-xs"
+                                      onClick={() =>
+                                        setShowPassword(!showPassword)
+                                      }
+                                      disabled={isSubmitting}
+                                    >
+                                      {showPassword ? <EyeOff /> : <Eye />}
+                                    </Button>
+                                  }
+                                />
+                              </div>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Sección para crear cuenta en edición cuando NO tiene user_id */}
+              {isEditing && !customer?.user_id && customer?.emails && customer.emails.length > 0 && (
+                <div className="space-y-4 border rounded-md p-4 bg-muted/30">
+                  <FormField
+                    control={form.control}
+                    name="create_user_account"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            disabled={isSubmitting}
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="cursor-pointer">
+                            Crear cuenta de usuario para este cliente
+                          </FormLabel>
+                          <p className="text-xs text-muted-foreground">
+                            El cliente podrá iniciar sesión con el correo electrónico registrado
+                          </p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  {form.watch('create_user_account') && (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Contraseña</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input
+                                  type={showPassword ? 'text' : 'password'}
+                                  placeholder="Dejar vacío para generar automáticamente"
+                                  disabled={isSubmitting}
+                                  className="pr-20"
+                                  {...field}
+                                />
+                                <div className="absolute right-0 top-0 h-full flex items-center gap-1 pr-1">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2"
+                                    onClick={() => form.setValue('password', generateRandomPassword())}
+                                    disabled={isSubmitting}
+                                    title="Generar contraseña aleatoria"
+                                  >
+                                    <RefreshCw className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <BuildTooltip
+                                    content="Ver/Ocultar"
+                                    trigger={
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 px-2 text-xs"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        disabled={isSubmitting}
+                                      >
+                                        {showPassword ? <EyeOff /> : <Eye />}
+                                      </Button>
+                                    }
+                                  />
+                                </div>
+                              </div>
+                            </FormControl>
+                            <p className="text-xs text-muted-foreground">
+                              Si no especificas una contraseña, se generará automáticamente
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="send_welcome_email"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <input
+                                type="checkbox"
+                                checked={field.value}
+                                onChange={field.onChange}
+                                disabled={isSubmitting}
+                                className="h-4 w-4 rounded border-gray-300"
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel className="cursor-pointer">
+                                Enviar correo de bienvenida con credenciales
+                              </FormLabel>
+                              <p className="text-xs text-muted-foreground">
+                                Se enviará un email al cliente con sus credenciales de acceso
+                              </p>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             <DialogFooter className="shrink-0 px-6 py-4 border-t">

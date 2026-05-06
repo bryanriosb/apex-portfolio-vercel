@@ -56,11 +56,22 @@ export const SIDE_APP_MENU_ITEMS: MenuItem[] = [
       USER_ROLES.COMPANY_ADMIN,
       USER_ROLES.BUSINESS_ADMIN,
       USER_ROLES.PROFESSIONAL,
+      USER_ROLES.CUSTOMER,
     ],
     items: [
       {
         title: 'Cobranza',
         url: '/admin/dashboard',
+        allowedRoles: [
+          USER_ROLES.COMPANY_ADMIN,
+          USER_ROLES.BUSINESS_ADMIN,
+          USER_ROLES.PROFESSIONAL,
+        ],
+      },
+      {
+        title: 'Cliente',
+        url: '/admin/customer-dashboard',
+        allowedRoles: [USER_ROLES.CUSTOMER],
       },
     ],
   },

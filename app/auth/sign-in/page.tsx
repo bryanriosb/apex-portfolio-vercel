@@ -23,7 +23,10 @@ import { LogIn } from 'lucide-react'
 import Link from 'next/link'
 import Logo from '@/components/Logo'
 import { AuthSidePanel } from '@/components/auth/AuthSidePanel'
-import { TurnstileWidget, type TurnstileWidgetRef } from '@/components/auth/TurnstileWidget'
+import {
+  TurnstileWidget,
+  type TurnstileWidgetRef,
+} from '@/components/auth/TurnstileWidget'
 
 const formSchema = z.object({
   username: z
@@ -168,12 +171,12 @@ export default function SignInPage() {
                 disabled={isLoading || isTurnstileLoading || !turnstileToken}
               >
                 {isLoading ? <Loading className="text-white" /> : <LogIn />}
-                {isLoading 
-                  ? 'Iniciando sesión' 
+                {isLoading
+                  ? 'Iniciando sesión'
                   : isTurnstileLoading
                     ? 'Preparando seguridad'
-                    : !turnstileToken 
-                      ? 'Completa la verificación de seguridad' 
+                    : !turnstileToken
+                      ? 'Completa la verificación de seguridad'
                       : 'Iniciar sesión'}
               </Button>
             </form>
@@ -182,10 +185,11 @@ export default function SignInPage() {
           <div className="text-center text-sm">
             ¿No tienes una cuenta?{' '}
             <Link
-              href="/auth/sign-up"
+              href="https://wa.me/573245134148?text=Hola%21%20Requiero%20m%C3%A1s%20informaci%C3%B3n%20sobre%20APEX"
+              target="_blank"
               className="font-medium underline underline-offset-4"
             >
-              Regístrate
+              Contáctanos para una demo
             </Link>
           </div>
 

@@ -12,6 +12,7 @@ export interface CustomerCategory {
 export interface BusinessCustomer {
   id: string
   business_id: string
+  user_id?: string | null
   company_name?: string | null
   nit: string
   full_name: string
@@ -30,6 +31,7 @@ export interface BusinessCustomer {
 export class BusinessCustomerModel implements BusinessCustomer {
   id: string
   business_id: string
+  user_id?: string | null
   company_name?: string | null
   nit: string
   full_name: string
@@ -47,6 +49,7 @@ export class BusinessCustomerModel implements BusinessCustomer {
   constructor(data: BusinessCustomer) {
     this.id = data.id
     this.business_id = data.business_id
+    this.user_id = data.user_id
     this.company_name = data.company_name
     this.nit = data.nit
     this.full_name = data.full_name
@@ -73,6 +76,7 @@ export class BusinessCustomerModel implements BusinessCustomer {
 
 export interface BusinessCustomerInsert {
   business_id: string
+  user_id?: string | null
   company_name?: string | null
   nit: string
   full_name: string
@@ -100,6 +104,7 @@ export interface BusinessCustomerUpdate {
 
 export interface CreateCustomerInput {
   business_id: string
+  user_id?: string | null
   company_name?: string | null
   nit: string
   full_name?: string | null
@@ -110,4 +115,7 @@ export interface CreateCustomerInput {
   notes?: string | null
   preferences?: string | null
   tags?: string[] | null
+  create_user_account?: boolean
+  password?: string
+  send_welcome_email?: boolean
 }

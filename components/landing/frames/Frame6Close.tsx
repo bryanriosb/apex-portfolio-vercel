@@ -55,26 +55,40 @@ export const Frame6Close: React.FC<Frame6CloseProps> = () => {
             </span>
           </h2>
 
-          <Link
-            href="/auth/sign-up"
-            className="animate-in slide-in-from-bottom-4 duration-700 delay-400 fill-mode-forwards"
-          >
-            <div className="hover:scale-105 active:scale-98 transition-transform duration-200">
-              <Button className="bg-primary text-white font-black text-xs sm:text-sm uppercase tracking-widest rounded-none h-14 sm:h-20 px-8 sm:px-16 border-2 border-white shadow-[4px_4px_0px_#000] sm:shadow-[8px_8px_0px_#000] hover:shadow-none hover:bg-white hover:text-gray-900 transition-all group relative overflow-hidden">
-                <span className="absolute inset-0 bg-white -translate-x-full group-hover:translate-x-0 transition-transform duration-400 ease-in-out" />
-                <span className="relative z-10 flex items-center gap-2">
-                  Iniciar Ahora
-                  <div className="group-hover:translate-x-2 transition-transform duration-200">
-                    <ArrowRight className="w-5 h-5" />
-                  </div>
-                </span>
-              </Button>
-            </div>
+          <div className="flex items-center justify-center gap-6 sm:gap-8 md:gap-12 animate-in slide-in-from-bottom-4 duration-700 delay-400 fill-mode-forwards">
+            <Link
+              href="https://borls.com/contact"
+              target="_blank"
+              className="animate-in slide-in-from-bottom-4 duration-700 delay-400 fill-mode-forwards"
+            >
+              <div className="hover:scale-105 active:scale-98 transition-transform duration-200">
+                <Button className="bg-primary text-white font-black text-xs sm:text-sm uppercase tracking-widest rounded-none h-14 sm:h-20 px-8 sm:px-16 border-2 border-white shadow-[4px_4px_0px_#000] sm:shadow-[8px_8px_0px_#000] hover:shadow-none hover:bg-white hover:text-gray-900 transition-all group relative overflow-hidden">
+                  <span className="absolute inset-0 bg-white -translate-x-full group-hover:translate-x-0 transition-transform duration-400 ease-in-out" />
+                  <span className="relative z-10 flex items-center gap-2">
+                    Agendar Demo
+                    <div className="group-hover:translate-x-2 transition-transform duration-200">
+                      <ArrowRight className="w-5 h-5" />
+                    </div>
+                  </span>
+                </Button>
+              </div>
 
-            <p className="mt-6 text-gray-400 text-sm font-medium animate-in fade-in duration-500 delay-1000 fill-mode-forwards">
+              {/* <p className="mt-6 text-gray-400 text-sm font-medium animate-in fade-in duration-500 delay-1000 fill-mode-forwards">
               Demo gratuita · Sin tarjeta de crédito · Setup en 10 minutos
-            </p>
-          </Link>
+            </p> */}
+            </Link>
+            <Link
+              href="https://wa.me/573245134148?text=Hola%21%20Requiero%20m%C3%A1s%20informaci%C3%B3n%20sobre%20APEX"
+              target="_blank"
+              className="flex items-center justify-center bg-primary text-white font-black text-xs sm:text-sm uppercase tracking-widest rounded-none h-14 sm:h-20 px-2  border-2 border-white shadow-[4px_4px_0px_#000] sm:shadow-[8px_8px_0px_#000] hover:shadow-none hover:bg-white hover:text-gray-900 transition-all group relative overflow-hidden"
+            >
+              <img
+                src="/whatsapp.png"
+                alt="wahtsapp-icon"
+                className="w-14 h-14"
+              />
+            </Link>
+          </div>
 
           <div className="mt-12 sm:mt-24 flex flex-wrap gap-3 sm:gap-8 justify-center px-2 sm:px-0">
             {tags.map((tag, i) => (

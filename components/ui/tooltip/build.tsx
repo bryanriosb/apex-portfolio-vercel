@@ -5,9 +5,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '.'
 interface BuildTooltipProps {
   trigger: React.ReactNode
   content: string
+  asChild?: boolean
 }
 
-export default function BuildTooltip({ trigger, content }: BuildTooltipProps) {
+export default function BuildTooltip({ trigger, content, asChild = true }: BuildTooltipProps) {
   if (!content) {
     return trigger
   }
@@ -15,7 +16,7 @@ export default function BuildTooltip({ trigger, content }: BuildTooltipProps) {
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>
+        <TooltipTrigger asChild={asChild}>
           {trigger}
         </TooltipTrigger>
         <TooltipContent>{content}</TooltipContent>

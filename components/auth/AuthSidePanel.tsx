@@ -3,20 +3,20 @@
 import { useEffect, useState } from 'react'
 
 const METRICS = [
-    { label: 'Cartera Recuperada', value: 94, suffix: '%', color: '#60efb0' },
-    { label: 'Días Promedio Cobro', value: 18, suffix: 'd', color: '#93c5fd' },
-    { label: 'Clientes Activos', value: 1247, suffix: '', color: '#94a3b8' },
+    { label: 'Tareas Automatizadas', value: 847, suffix: '', color: '#60efb0' },
+    { label: 'Horas/Ahorradas', value: 320, suffix: 'h', color: '#93c5fd' },
+    { label: 'Procesos Activos', value: 124, suffix: '', color: '#94a3b8' },
 ]
 
 const EVENTS = [
-    'COLLECTION_EXECUTED',
-    'TEMPLATE_SENT',
-    'PAYMENT_REGISTERED',
-    'THRESHOLD_MATCHED',
-    'CLIENT_UPDATED',
-    'BATCH_COMPLETE',
-    'ROI_UPDATED',
+    'TASK_COMPLETED',
+    'AGENT_EXECUTED',
+    'WORKFLOW_TRIGGERED',
     'STRATEGY_APPLIED',
+    'INSIGHT_GENERATED',
+    'ANALYSIS_COMPLETE',
+    'DECISION_PROCESSED',
+    'OPTIMIZATION_RUN',
 ]
 
 function useCounter(target: number, duration = 1600) {
@@ -123,19 +123,19 @@ export function AuthSidePanel({ mode }: AuthSidePanelProps) {
             {/* Content — vertically centered */}
             <div className="relative z-10 flex flex-col h-full p-10 gap-10 justify-center">
 
-                {/* Headline */}
+{/* Headline */}
                 <div className="flex flex-col gap-2 text-center">
                     <h2 className="text-4xl xl:text-5xl font-black text-white tracking-tighter leading-tight uppercase">
                         {mode === 'sign-in' ? (
-                            <>Controla tu<br /><span className="text-primary">Cartera</span></>
+                            <>Controla tu<br /><span className="text-primary">Negocio</span></>
                         ) : (
-                            <>Activa tu<br /><span className="text-primary">Estrategia</span></>
+                            <>Activa tu<br /><span className="text-primary">Productividad</span></>
                         )}
                     </h2>
                     <p className="text-white/40 text-sm font-mono leading-relaxed max-w-xs mx-auto">
                         {mode === 'sign-in'
-                            ? 'Monitorea cobros, recupera cartera y automatiza la gestión de tus clientes en tiempo real.'
-                            : 'Conecta tus datos, define umbrales y ejecuta estrategias de cobro con inteligencia'}
+                            ? 'Automatiza procesos, optimiza recursos y toma decisiones inteligentes con IA.'
+                            : 'Despliega agentes IA que ejecutan estrategias y potencian tu operación'}
                     </p>
                 </div>
 

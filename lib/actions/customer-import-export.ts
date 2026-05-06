@@ -2,6 +2,7 @@
 
 import * as XLSX from 'xlsx'
 import { getSupabaseAdminClient } from '@/lib/actions/supabase'
+import { createCustomerAuthUser } from '@/lib/actions/customer-auth'
 
 /**
  * Normaliza un nombre de columna para facilitar el mapeo
@@ -188,6 +189,8 @@ export async function importCustomersWithProgress(
     const file = formData.get('file') as File
     const sessionId = formData.get('sessionId') as string
     const businessId = formData.get('businessId') as string
+    const createUserAccounts = formData.get('createUserAccounts') === 'true'
+    const sendWelcomeEmails = formData.get('sendWelcomeEmails') === 'true'
 
     if (!sessionId) {
       throw new Error('Session ID requerido')
@@ -501,6 +504,22 @@ export async function importCustomersWithProgress(
         return rest as CreateCustomerInput
       })
 
+      // Si se solicita crear cuentas de usuario, preparar datos
+      let usersToCreate: Array<{ email: string; fullName: string; businessId: string }> = []
+      if (createUserAccounts) {
+        usersToCreate = finalCustomersToInsert
+          .filter(c => c.emails && c.emails.length > 0)
+          .map(c => ({
+            email: c.emails[0],
+            fullName: c.full_name || '',
+            businessId: c.business_id
+          }))
+        
+        if (usersToCreate.length > 0) {
+          warnings.push(`Se crearán cuentas de usuario para ${usersToCreate.length} clientes.`)
+        }
+      }
+
       // Actualizar progreso para fase de guardado - empezar desde 0
       importService.updateProgress(sessionId, {
         current: 0,
@@ -554,10 +573,111 @@ export async function importCustomersWithProgress(
         warnings.push(`Se omitieron ${totalDuplicatesRemoved} registros duplicados dentro de los lotes de procesamiento.`)
       }
 
+      // Crear cuentas de usuario si se solicitó
+      let usersCreated = 0
+      let usersReused = 0
+      let emailsSent = 0
+      if (createUserAccounts && usersToCreate.length > 0) {
+        importService.updateProgress(sessionId, {
+          current: processedCount,
+          total: finalCustomersToInsert.length,
+          status: 'processing',
+          message: `Creando ${usersToCreate.length} cuentas de usuario...`,
+          errors: [...errors, ...warnings]
+        })
+
+        // Obtener los clientes creados para vincular user_id
+        const { data: createdCustomers } = await supabase
+          .from('business_customers')
+          .select('id, emails, business_id, full_name, company_name')
+          .eq('business_id', businessId)
+
+        const customerEmailMap = new Map<string, { id: string; fullName: string; companyName: string | null }>()
+        createdCustomers?.forEach(c => {
+          if (c.emails && c.emails.length > 0) {
+            customerEmailMap.set(c.emails[0].toLowerCase(), {
+              id: c.id,
+              fullName: c.full_name || '',
+              companyName: c.company_name,
+            })
+          }
+        })
+
+        for (let i = 0; i < usersToCreate.length; i++) {
+          const userData = usersToCreate[i]
+          try {
+            const authResult = await createCustomerAuthUser({
+              email: userData.email,
+              fullName: userData.fullName,
+              businessId: userData.businessId,
+              generatePassword: true,
+            })
+
+            if (authResult.success && authResult.userId) {
+              // Vincular el user_id al business_customer
+              const customerInfo = customerEmailMap.get(userData.email.toLowerCase())
+              if (customerInfo) {
+                await supabase
+                  .from('business_customers')
+                  .update({ user_id: authResult.userId })
+                  .eq('id', customerInfo.id)
+              }
+
+              if (authResult.isNewUser) {
+                usersCreated++
+                
+                // Enviar email de bienvenida si se solicitó
+                if (sendWelcomeEmails && authResult.generatedPassword) {
+                  const { sendCustomerWelcomeEmail } = await import('./customer-auth')
+                  const emailResult = await sendCustomerWelcomeEmail({
+                    email: userData.email,
+                    fullName: userData.fullName,
+                    password: authResult.generatedPassword,
+                    businessName: customerInfo?.companyName || undefined,
+                  })
+                  if (emailResult.success) {
+                    emailsSent++
+                  }
+                }
+              } else {
+                usersReused++
+              }
+            }
+          } catch (authError: any) {
+            warnings.push(`No se pudo crear cuenta para ${userData.email}: ${authError.message}`)
+          }
+
+          // Reportar progreso cada 50 usuarios
+          if (i > 0 && i % 50 === 0) {
+            importService.updateProgress(sessionId, {
+              current: processedCount,
+              total: finalCustomersToInsert.length,
+              status: 'processing',
+              message: `Cuentas de usuario creadas: ${usersCreated}...`,
+              errors: [...errors, ...warnings]
+            })
+          }
+        }
+
+        if (usersCreated > 0) {
+          warnings.push(`Se crearon ${usersCreated} nuevas cuentas de usuario.`)
+        }
+        if (usersReused > 0) {
+          warnings.push(`Se vincularon ${usersReused} cuentas de usuario existentes.`)
+        }
+        if (emailsSent > 0) {
+          warnings.push(`Se enviaron ${emailsSent} correos de bienvenida.`)
+        }
+      }
+
       const finalStatus = errors.length > 0 && processedCount === 0 ? 'error' : 'completed'
-      const finalMessage = totalDuplicatesRemoved > 0 
-        ? `Importación completada: ${processedCount} guardados, ${totalDuplicatesRemoved} duplicados omitidos, ${errors.length} errores.`
-        : `Importación completada: ${processedCount} guardados, ${errors.length} errores.`
+      let finalMessage = `Importación completada: ${processedCount} guardados, ${errors.length} errores.`
+      if (totalDuplicatesRemoved > 0) {
+        finalMessage = `Importación completada: ${processedCount} guardados, ${totalDuplicatesRemoved} duplicados omitidos, ${errors.length} errores.`
+      }
+      if (usersCreated > 0 || usersReused > 0) {
+        finalMessage += ` Cuentas: ${usersCreated} nuevas, ${usersReused} vinculadas.`
+      }
       
       importService.updateProgress(sessionId, {
         status: finalStatus,

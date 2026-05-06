@@ -25,10 +25,13 @@ import {
   UserX,
   Crown,
   Ban,
+  KeySquare,
+  DoorClosedLocked,
 } from 'lucide-react'
 import BusinessCustomerService from '@/lib/services/customer/business-customer-service'
 import { getCustomersColumns } from '@/lib/models/customer/const/data-table/customers-columns'
 import { CustomerModal } from '@/components/customers/CustomerModal'
+import { CreateAccessModal } from '@/components/customers/CreateAccessModal'
 import { useRef, useMemo, useState, useEffect } from 'react'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
@@ -50,7 +53,13 @@ export default function CustomersPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false)
+  const [createAccessModalOpen, setCreateAccessModalOpen] = useState(false)
+  const [removeAccessDialogOpen, setRemoveAccessDialogOpen] = useState(false)
   const [selectedCustomer, setSelectedCustomer] =
+    useState<BusinessCustomer | null>(null)
+  const [customerToCreateAccess, setCustomerToCreateAccess] =
+    useState<BusinessCustomer | null>(null)
+  const [customerToRemoveAccess, setCustomerToRemoveAccess] =
     useState<BusinessCustomer | null>(null)
   const [customerToDelete, setCustomerToDelete] = useState<string | null>(null)
   const [customersToDelete, setCustomersToDelete] = useState<string[]>([])
@@ -172,6 +181,41 @@ export default function CustomersPage() {
     setDeleteDialogOpen(true)
   }
 
+  const handleCreateAccess = (customer: BusinessCustomer) => {
+    setCustomerToCreateAccess(customer)
+    setCreateAccessModalOpen(true)
+  }
+
+  const handleRemoveAccess = (customer: BusinessCustomer) => {
+    if (!customer.user_id) return
+    setCustomerToRemoveAccess(customer)
+    setRemoveAccessDialogOpen(true)
+  }
+
+  const confirmRemoveAccess = async () => {
+    if (!customerToRemoveAccess) return
+    
+    try {
+      const { removeCustomerAccessAction } = await import('@/lib/actions/customer-auth')
+      const result = await removeCustomerAccessAction({ customerId: customerToRemoveAccess.id })
+      
+      if (result.success) {
+        toast.success('Acceso removido correctamente')
+        // Cerrar el modal de edición si está abierto
+        setModalOpen(false)
+        setSelectedCustomer(null)
+        dataTableRef.current?.refreshData()
+      } else {
+        toast.error(result.error || 'Error al remover el acceso')
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Error inesperado')
+    } finally {
+      setRemoveAccessDialogOpen(false)
+      setCustomerToRemoveAccess(null)
+    }
+  }
+
   const confirmDelete = async () => {
     if (!customerToDelete) return
 
@@ -218,12 +262,66 @@ export default function CustomersPage() {
   ) => {
     try {
       if (customerId) {
+        const updateData = data as BusinessCustomerUpdate & { 
+          new_password?: string
+          create_user_account?: boolean
+          password?: string
+          send_welcome_email?: boolean
+        }
+        const newPassword = updateData.new_password
+        const createUserAccount = updateData.create_user_account
+        const password = updateData.password
+        const sendWelcomeEmail = updateData.send_welcome_email
+        
+        delete updateData.new_password
+        delete updateData.create_user_account
+        delete updateData.password
+        delete updateData.send_welcome_email
+        
         const result = await customerService.updateItem(
           customerId,
-          data as BusinessCustomerUpdate
+          updateData
         )
         if (!result.success) throw new Error(result.error)
-        toast.success('Cliente actualizado correctamente')
+        
+        // Si se solicitó cambio de contraseña
+        if (newPassword) {
+          const { changeCustomerPassword } = await import('@/lib/actions/customer-auth')
+          const customer = await customerService.getById(customerId)
+          
+          if (customer?.user_id) {
+            const passwordResult = await changeCustomerPassword({
+              userId: customer.user_id,
+              newPassword: newPassword,
+            })
+            
+            if (!passwordResult.success) {
+              toast.warning('Cliente actualizado, pero hubo un error al cambiar la contraseña: ' + passwordResult.error)
+            } else {
+              toast.success('Cliente y contraseña actualizados correctamente')
+            }
+          } else {
+            toast.success('Cliente actualizado correctamente')
+          }
+        }
+        // Si se solicitó crear cuenta de usuario (customer sin user_id)
+        else if (createUserAccount) {
+          const { activateCustomerAccountAction } = await import('@/lib/actions/customer-auth')
+          const authResult = await activateCustomerAccountAction({
+            customerId: customerId,
+            businessId: activeBusinessId || '',
+            password: password || undefined,
+            sendWelcomeEmail: sendWelcomeEmail,
+          })
+          
+          if (!authResult.success) {
+            toast.warning('Cliente actualizado, pero hubo un error al crear la cuenta: ' + authResult.error)
+          } else {
+            toast.success('Cliente actualizado y cuenta creada correctamente')
+          }
+        } else {
+          toast.success('Cliente actualizado correctamente')
+        }
       } else {
         const result = await customerService.createFullCustomer(
           data as CreateCustomerInput
@@ -324,12 +422,30 @@ export default function CustomersPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         {canEdit && (
-                          <DropdownMenuItem
-                            onClick={() => handleEditCustomer(customer)}
-                          >
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Editar
-                          </DropdownMenuItem>
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => handleEditCustomer(customer)}
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            {!customer.user_id && customer.emails?.length > 0 && (
+                              <DropdownMenuItem
+                                onClick={() => handleCreateAccess(customer)}
+                              >
+                                <KeySquare className="mr-2 h-4 w-4" />
+                                Crear Acceso
+                              </DropdownMenuItem>
+                            )}
+                            {customer.user_id && (
+                              <DropdownMenuItem
+                                onClick={() => handleRemoveAccess(customer)}
+                              >
+                                <DoorClosedLocked className="mr-2 h-4 w-4" />
+                                Remover Acceso
+                              </DropdownMenuItem>
+                            )}
+                          </>
                         )}
                         {canDelete && (
                           <>
@@ -368,6 +484,7 @@ export default function CustomersPage() {
         onOpenChange={setModalOpen}
         customer={selectedCustomer}
         onSave={handleSaveCustomer}
+        onRemoveAccess={handleRemoveAccess}
       />
 
       <ConfirmDeleteDialog
@@ -384,6 +501,24 @@ export default function CustomersPage() {
         itemName="cliente"
         count={customersToDelete.length}
         variant="outline"
+      />
+
+      <CreateAccessModal
+        open={createAccessModalOpen}
+        onOpenChange={setCreateAccessModalOpen}
+        customer={customerToCreateAccess}
+        businessId={activeBusinessId || ''}
+        onSuccess={() => dataTableRef.current?.refreshData()}
+      />
+
+      <ConfirmDeleteDialog
+        open={removeAccessDialogOpen}
+        onOpenChange={setRemoveAccessDialogOpen}
+        onConfirm={confirmRemoveAccess}
+        itemName={`acceso de ${customerToRemoveAccess?.full_name || 'este cliente'}`}
+        title="Remover Acceso"
+        description="El cliente perderá la capacidad de iniciar sesión en la plataforma."
+        confirmLabel="Remover"
       />
     </div>
   )

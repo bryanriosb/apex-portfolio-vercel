@@ -182,8 +182,6 @@
 | open_rate | NUMERIC(5,2) | NO | 0.00 | Calculated open rate % |
 | bounce_rate | NUMERIC(5,2) | NO | 0.00 | Calculated bounce rate % |
 | delivery_rate | NUMERIC(5,2) | NO | 0.00 | Calculated delivery rate % |
-| sqs_queue_url | TEXT | YES | NULL | AWS SQS queue URL |
-| lambda_execution_arn | TEXT | YES | NULL | Lambda execution ARN |
 | started_at | TIMESTAMPTZ | YES | NULL | When execution started |
 | completed_at | TIMESTAMPTZ | YES | NULL | When execution completed |
 | created_at | TIMESTAMPTZ | NO | NOW() | - |

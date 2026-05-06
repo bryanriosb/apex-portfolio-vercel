@@ -3,10 +3,11 @@
 import {
   getRecordById,
   insertRecord,
-  updateRecord,
-  deleteRecord,
   getSupabaseAdminClient,
 } from '@/lib/actions/supabase'
+import {
+  createCustomerAuthUser,
+} from '@/lib/actions/customer-auth'
 import type {
   BusinessCustomer,
   BusinessCustomerInsert,
@@ -68,8 +69,6 @@ export async function fetchBusinessCustomersAction(params?: {
     const { data, error, count } = await query
 
     if (error) throw error
-
-    console.log('data', data)
 
     return {
       data: data || [],
@@ -228,10 +227,16 @@ export async function createFullCustomerAction(
   data?: BusinessCustomer
   error?: string
   isNew?: boolean
+  authCreated?: boolean
 }> {
-  try {
-    const supabase = await getSupabaseAdminClient()
+  const supabase = await getSupabaseAdminClient()
+  
+  let userId: string | null = null
+  let isNewUser = false
+  let generatedPassword: string | null = null
 
+  try {
+    // Verificar si ya existe el cliente
     const { data: existingCustomer } = await supabase
       .from('business_customers')
       .select('*')
@@ -247,6 +252,7 @@ export async function createFullCustomerAction(
       }
     }
 
+    // 1. Crear el business_customer primero (sin user_id aún)
     const { data: businessCustomer, error: customerError } = await supabase
       .from('business_customers')
       .insert({
@@ -265,14 +271,74 @@ export async function createFullCustomerAction(
       .select('*')
       .single()
 
-    if (customerError) throw customerError
+    if (customerError || !businessCustomer) {
+      throw customerError || new Error('Error al crear el cliente')
+    }
+
+    // 2. Si se solicita crear cuenta de usuario y hay email
+    if (input.create_user_account && input.emails && input.emails.length > 0) {
+      const primaryEmail = input.emails[0]
+      
+      const authResult = await createCustomerAuthUser({
+        email: primaryEmail,
+        password: input.password,
+        fullName: input.full_name || '',
+        businessId: input.business_id,
+        businessCustomerId: businessCustomer.id,
+        phone: input.phone,
+        generatePassword: !input.password,
+      })
+      
+      if (authResult.success && authResult.userId) {
+        userId = authResult.userId
+        isNewUser = authResult.isNewUser || false
+        generatedPassword = authResult.generatedPassword || input.password || null
+        
+        // 3. Actualizar el business_customer con el user_id
+        const { error: updateError } = await supabase
+          .from('business_customers')
+          .update({ user_id: userId })
+          .eq('id', businessCustomer.id)
+        
+        if (updateError) {
+          console.warn('[createFullCustomer] Error actualizando user_id:', updateError.message)
+        }
+        
+        // Enviar email de bienvenida si se solicitó y es usuario nuevo
+        if (input.send_welcome_email && isNewUser && generatedPassword) {
+          const { sendCustomerWelcomeEmail } = await import('./customer-auth')
+          await sendCustomerWelcomeEmail({
+            email: primaryEmail,
+            fullName: input.full_name || '',
+            password: generatedPassword,
+            businessName: input.company_name || undefined,
+          })
+        }
+      } else if (!authResult.success) {
+        // Si falla la creación del usuario, loguear pero continuar sin cuenta
+        console.warn('[createFullCustomer] No se pudo crear cuenta de usuario:', authResult.error)
+      }
+    }
+
+    // 4. Obtener el customer actualizado
+    const { data: updatedCustomer } = await supabase
+      .from('business_customers')
+      .select('*')
+      .eq('id', businessCustomer.id)
+      .single()
 
     return {
       success: true,
-      data: businessCustomer,
+      data: updatedCustomer || businessCustomer,
       isNew: true,
+      authCreated: !!userId,
     }
   } catch (error: any) {
+    // Rollback en caso de error
+    if (userId && isNewUser) {
+      await supabase.auth.admin.deleteUser(userId)
+    }
+    
     console.error('Error in createFullCustomer:', error)
     return { success: false, error: error.message || 'Error desconocido' }
   }
@@ -283,14 +349,44 @@ export async function updateBusinessCustomerAction(
   data: BusinessCustomerUpdate
 ): Promise<{ success: boolean; data?: BusinessCustomer; error?: string }> {
   try {
-    const customer = await updateRecord<BusinessCustomer>(
-      'business_customers',
-      id,
-      data
-    )
+    const supabase = await getSupabaseAdminClient()
+    
+    // 1. Obtener el customer actual para verificar si tiene user_id
+    const { data: existingCustomer, error: fetchError } = await supabase
+      .from('business_customers')
+      .select('id, user_id, emails')
+      .eq('id', id)
+      .single()
+    
+    if (fetchError || !existingCustomer) {
+      return { success: false, error: 'Cliente no encontrado' }
+    }
+    
+    // 2. Actualizar el business_customer
+    const { data: customer, error: updateError } = await supabase
+      .from('business_customers')
+      .update(data)
+      .eq('id', id)
+      .select()
+      .single()
 
-    if (!customer) {
-      return { success: false, error: 'Error al actualizar el cliente' }
+    if (updateError || !customer) {
+      return { success: false, error: updateError?.message || 'Error al actualizar el cliente' }
+    }
+    
+    // 3. Si tiene usuario auth, sincronizar datos
+    if (existingCustomer.user_id) {
+      const { updateCustomerAuthUser } = await import('./customer-auth')
+      
+      const primaryEmail = data.emails?.[0] || existingCustomer.emails?.[0]
+      
+      await updateCustomerAuthUser({
+        userId: existingCustomer.user_id,
+        email: primaryEmail,
+        fullName: data.full_name ?? undefined,
+        phone: data.phone,
+        businessCustomerId: id,
+      })
     }
 
     return { success: true, data: customer }
@@ -304,7 +400,42 @@ export async function deleteBusinessCustomerAction(
   id: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await deleteRecord('business_customers', id)
+    const supabase = await getSupabaseAdminClient()
+    
+    // 1. Obtener el customer para verificar si tiene user_id
+    const { data: customer, error: fetchError } = await supabase
+      .from('business_customers')
+      .select('user_id')
+      .eq('id', id)
+      .single()
+    
+    if (fetchError) {
+      console.error('Error fetching customer for deletion:', fetchError)
+      return { success: false, error: 'Error al obtener el cliente' }
+    }
+    
+    // 2. Eliminar el registro de business_customers
+    const { error: deleteError } = await supabase
+      .from('business_customers')
+      .delete()
+      .eq('id', id)
+    
+    if (deleteError) {
+      console.error('Error deleting business customer:', deleteError)
+      return { success: false, error: deleteError.message || 'Error al eliminar el cliente' }
+    }
+    
+    // 3. Si tenía usuario auth, eliminarlo también
+    if (customer?.user_id) {
+      const { deleteCustomerAuthUser } = await import('./customer-auth')
+      const authResult = await deleteCustomerAuthUser(customer.user_id)
+      
+      if (!authResult.success) {
+        console.warn(`[deleteBusinessCustomer] Cliente eliminado pero falló la eliminación del usuario auth: ${authResult.error}`)
+        // No retornamos error porque el customer ya fue eliminado
+      }
+    }
+    
     return { success: true }
   } catch (error: any) {
     console.error('Error deleting business customer:', error)
@@ -390,13 +521,48 @@ export async function deleteBusinessCustomersAction(
 ): Promise<{ success: boolean; deletedCount: number; error?: string }> {
   try {
     const supabase = await getSupabaseAdminClient()
-
-    const { error } = await supabase
+    
+    // 1. Obtener los customers para verificar user_ids
+    const { data: customers, error: fetchError } = await supabase
+      .from('business_customers')
+      .select('id, user_id')
+      .in('id', ids)
+    
+    if (fetchError) {
+      console.error('Error fetching customers for batch deletion:', fetchError)
+      return { success: false, deletedCount: 0, error: 'Error al obtener los clientes' }
+    }
+    
+    // 2. Eliminar los registros de business_customers
+    const { error: deleteError } = await supabase
       .from('business_customers')
       .delete()
       .in('id', ids)
 
-    if (error) throw error
+    if (deleteError) {
+      console.error('Error batch deleting business customers:', deleteError)
+      return { success: false, deletedCount: 0, error: deleteError.message }
+    }
+    
+    // 3. Eliminar los usuarios auth asociados
+    const userIds = customers
+      ?.filter(c => c.user_id)
+      .map(c => c.user_id) || []
+    
+    if (userIds.length > 0) {
+      const { deleteCustomerAuthUser } = await import('./customer-auth')
+      
+      for (const userId of userIds) {
+        if (userId) {
+          try {
+            await deleteCustomerAuthUser(userId)
+          } catch (authError) {
+            console.warn(`[deleteBusinessCustomers] Error eliminando usuario auth ${userId}:`, authError)
+            // Continuar con los demás usuarios
+          }
+        }
+      }
+    }
 
     return { success: true, deletedCount: ids.length }
   } catch (error: any) {

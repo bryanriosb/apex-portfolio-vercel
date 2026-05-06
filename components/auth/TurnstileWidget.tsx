@@ -1,7 +1,7 @@
 'use client'
 
 import { Turnstile } from '@marsidev/react-turnstile'
-import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react'
+import { useEffect, useRef, useImperativeHandle, forwardRef, useState } from 'react'
 
 export interface TurnstileWidgetRef {
   reset: () => void
@@ -34,6 +34,7 @@ export const TurnstileWidget = forwardRef<
 >(function TurnstileWidget({ onSuccess, onError, onLoad, className }, ref) {
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
   const turnstileRef = useRef<any>(null)
+  const [isLocal, setIsLocal] = useState<boolean | null>(null)
 
   useImperativeHandle(ref, () => ({
     reset: () => {
@@ -43,22 +44,25 @@ export const TurnstileWidget = forwardRef<
     },
   }))
 
-  // Bypass para desarrollo local
   useEffect(() => {
-    if (isLocalhost()) {
-      // Llamar onLoad inmediatamente para simular inicio de carga
+    setIsLocal(isLocalhost())
+  }, [])
+
+  useEffect(() => {
+    if (isLocal) {
       onLoad?.()
-      // Llamar onSuccess con un token dummy después de un pequeño delay
-      // para simular la carga del widget
       const timer = setTimeout(() => {
         onSuccess('localhost-bypass-token')
       }, 500)
       return () => clearTimeout(timer)
     }
-  }, [onSuccess, onLoad])
+  }, [isLocal, onSuccess, onLoad])
 
-  // Si es localhost, no mostrar el widget
-  if (isLocalhost()) {
+  if (isLocal === null) {
+    return null
+  }
+
+  if (isLocal) {
     return (
       <div className={className}>
         <div className="text-xs text-muted-foreground text-center py-2">

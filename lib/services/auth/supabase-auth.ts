@@ -88,17 +88,29 @@ export async function authenticateWithSupabase(
     // Obtener role desde metadata del usuario de Supabase Auth
     const userRole = authData.user.user_metadata?.role || 'customer'
 
-    // Bloquear acceso a usuarios con rol customer
-    if (userRole === 'customer') {
-
-      return null // Retornar null simula credenciales inválidas
-    }
-
     // Ya no usamos tablas legacy. Extraemos todo de user_metadata (o app_metadata)
     const { user_metadata } = authData.user || {}
-    let businesses = user_metadata?.businesses || null
+    
+    // Obtener business_id desde user_metadata o desde business_customers si es customer
     let businessId = user_metadata?.business_id || null
     let businessAccountId = user_metadata?.business_account_id || null
+    
+    // Si es customer y no tiene business_id en metadata, buscarlo en business_customers
+    if (userRole === 'customer' && !businessId) {
+      const { data: customerData } = await supabase
+        .from('business_customers')
+        .select('business_id, businesses!inner(business_account_id)')
+        .eq('user_id', authData.user.id)
+        .eq('status', 'active')
+        .single()
+      
+      if (customerData) {
+        businessId = customerData.business_id
+        businessAccountId = (customerData.businesses as any)?.business_account_id || null
+      }
+    }
+
+    let businesses = user_metadata?.businesses || null
     let businessType = user_metadata?.business_type || null
     let subscriptionPlan = user_metadata?.subscription_plan || null
     let tenantName = user_metadata?.tenant_name || null
