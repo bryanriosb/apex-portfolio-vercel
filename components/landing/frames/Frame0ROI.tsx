@@ -29,14 +29,14 @@ export const Frame0ROI: React.FC<Frame0ROIProps> = () => {
         <h1 className="grid gap-2 sm:gap-3 text-3xl sm:text-5xl md:text-8xl font-black text-gray-900 mb-6 sm:mb-8 leading-[0.85] tracking-tighter uppercase text-left">
           <span className="animate-bounce slide-in-from-bottom-4 duration-700 fill-mode-forwards">
             <CyclingTechnicalTypewriter
-              texts={['AUTOMATIZACIÓN', 'PROCESOS']}
+              texts={['AUTOMATIZACIÓN', 'TRAZABILIDAD', 'CONTROL']}
               delay={500}
               interval={5000}
             />
           </span>
           <span className="text-primary animate-in slide-in-from-bottom-4 duration-700 delay-300 fill-mode-forwards">
             <CyclingTechnicalTypewriter
-              texts={['AGENTES IA', 'EMPRESARIALES']}
+              texts={['AGENTES IA', 'OPERACIONES', 'EMPRESARIAL']}
               delay={1500}
               interval={5000}
             />
