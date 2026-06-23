@@ -80,7 +80,7 @@ export const Frame6Close: React.FC<Frame6CloseProps> = () => {
             <Link
               href="https://wa.me/573245134148?text=Hola%21%20Requiero%20m%C3%A1s%20informaci%C3%B3n%20sobre%20APEX"
               target="_blank"
-              className="flex items-center justify-center bg-primary text-white font-black text-xs sm:text-sm uppercase tracking-widest rounded-none h-14 sm:h-20 px-2  border-2 border-white shadow-[4px_4px_0px_#000] sm:shadow-[8px_8px_0px_#000] hover:shadow-none hover:bg-white hover:text-gray-900 transition-all group relative overflow-hidden"
+              className="flex items-center justify-center bg-primary text-white font-black text-xs sm:text-sm uppercase tracking-widest rounded-none h-14 sm:h-20 px-2  border-2 border-white shadow-[4px_4px_0px_#000] sm:shadow-[8px_8px_0px_#000] hover:shadow-none hover:text-gray-900 transition-all group relative overflow-hidden"
             >
               <img
                 src="/whatsapp.png"
