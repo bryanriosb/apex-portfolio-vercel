@@ -49,7 +49,7 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
           </div>
         </div>
 
-        <p className="text-sm text-gray-600 font-bold leading-relaxed mb-4">
+        <p className="text-sm text-gray-600 font-semibold leading-relaxed mb-4">
           {description}
         </p>
 
@@ -58,7 +58,7 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
             {features.map((f) => (
               <span
                 key={f}
-                className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600 border border-gray-200"
+                className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider bg-gray-100 text-gray-600 border border-gray-200"
               >
                 {f}
               </span>

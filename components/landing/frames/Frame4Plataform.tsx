@@ -61,7 +61,7 @@ export const Frame4Plataform: React.FC<Frame4PlataformProps> = () => {
               <span className="text-primary">EXecution</span> Platform
             </h2>
 
-            <p className="text-sm sm:text-base text-gray-600 font-bold leading-relaxed mb-6 max-w-3xl">
+            <p className="text-sm sm:text-base text-gray-600 font-semibold leading-relaxed mb-6 max-w-3xl">
               APEX no es un software estático. Es una plataforma viva que conecta cualquier fuente de datos
               existente — ERP, CRM, bases de datos, correos, extractos bancarios — eliminando silos y ejecutando
               procesos críticos sin reemplazar el sistema actual.
@@ -110,7 +110,7 @@ export const Frame4Plataform: React.FC<Frame4PlataformProps> = () => {
               features={['Cobro Multicanal', 'Conciliación HITL', 'Plantillas IA', 'KPIs Tiempo Real']}
             />
 
-            <div className="bg-gray-50/80 backdrop-blur-md border-4 border-dashed border-gray-300 p-5 sm:p-6 opacity-60">
+            {/* <div className="bg-gray-50/80 backdrop-blur-md border-4 border-dashed border-gray-300 p-5 sm:p-6 opacity-60">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 bg-gray-300 flex items-center justify-center border-2 border-gray-400">
                   <TrendingUp className="text-white w-5 h-5" />
@@ -165,7 +165,7 @@ export const Frame4Plataform: React.FC<Frame4PlataformProps> = () => {
               <p className="text-sm text-gray-400 font-bold leading-relaxed">
                 Requisiciones, órdenes de compra y seguimiento de proveedores con IA.
               </p>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
