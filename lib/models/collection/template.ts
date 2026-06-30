@@ -58,4 +58,5 @@ export const DEFAULT_TEMPLATE_VARIABLES = {
     numero_factura: 'Número de factura',
     fecha_vencimiento: 'Fecha de vencimiento',
     dias_mora: 'Días de mora',
+    agent_message: 'Mensaje generado por el agente de IA',
 } as const

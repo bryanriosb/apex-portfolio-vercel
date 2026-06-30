@@ -25,6 +25,7 @@ const GENERIC_VARIABLES = [
   { key: 'total_amount_due', label: 'Deuda Total' },
   { key: 'total_days_overdue', label: 'Total Días Mora' },
   { key: 'total_invoices', label: 'Total de Facturas' },
+  { key: 'agent_message', label: 'Mensaje Agente IA' },
 ]
 
 // Special snippet variables that insert HTML structures

@@ -90,14 +90,14 @@ export const SIDE_APP_MENU_ITEMS: MenuItem[] = [
       USER_ROLES.PROFESSIONAL,
     ],
     items: [
-      {
-        title: 'Campaña',
-        url: '/admin/collection/campaing',
-      },
-      {
-        title: 'Ejecuciones',
-        url: '/admin/collection/executions',
-      },
+      // {
+      //   title: 'Campaña',
+      //   url: '/admin/collection/campaing',
+      // },
+      // {
+      //   title: 'Ejecuciones',
+      //   url: '/admin/collection/executions',
+      // },
       {
         title: 'Sincronizaciones',
         url: '/admin/collection/sync-jobs',

@@ -20,6 +20,7 @@ const SAMPLE_DATA = {
     phone: '+57 300 123 4567',
     total_days_overdue: '56',
     total_amount_due: '$4,350,000',
+    agent_message: 'Estimado cliente, le recordamos que tiene facturas pendientes por un valor total de $4,350,000. Por favor regularice su situación a la brevedad posible.',
     invoices: [
         {
             invoice_number: 'INV-001',
