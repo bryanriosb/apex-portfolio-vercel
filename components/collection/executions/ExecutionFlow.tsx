@@ -1,6 +1,6 @@
 'use client'
 
-import { CollectionExecution } from '@/lib/models/collection'
+import { CollectionExecution } from '@/lib/models/collection/execution'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {

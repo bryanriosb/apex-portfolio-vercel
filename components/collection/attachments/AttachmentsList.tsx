@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { DataTable } from '@/components/DataTable'
 import { attachmentColumns } from './attachment-columns'
-import { AttachmentService } from '@/lib/services/collection'
+import { AttachmentService } from '@/lib/services/collection/attachment-service'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import type { FilterConfig } from '@/components/DataTable'
 import { deleteAttachmentAction } from '@/lib/actions/collection/attachment'

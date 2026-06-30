@@ -16,11 +16,11 @@ interface SpeechRecognition extends EventTarget {
   onstart: ((this: SpeechRecognition, ev: Event) => void) | null;
   onend: ((this: SpeechRecognition, ev: Event) => void) | null;
   onresult:
-    | ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void)
-    | null;
+  | ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void)
+  | null;
   onerror:
-    | ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void)
-    | null;
+  | ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void)
+  | null;
 }
 
 interface SpeechRecognitionEvent extends Event {
@@ -314,7 +314,7 @@ export const SpeechInput = ({
         onClick={toggleListening}
         {...props}
       >
-        {isProcessing && <Spinner />}
+        {isProcessing && <Spinner className="size-8" />}
         {!isProcessing && isListening && <SquareIcon className="size-4" />}
         {!(isProcessing || isListening) && <MicIcon className="size-4" />}
       </Button>

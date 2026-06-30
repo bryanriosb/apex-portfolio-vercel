@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAuthenticatedSupabaseClient } from '@/lib/supabase/client'
-import { CollectionExecution, CollectionClient } from '@/lib/models/collection'
+import { CollectionExecution } from '@/lib/models/collection/execution'
+import { CollectionClient } from '@/lib/models/collection/client'
 
 interface ClientStats {
     total: number

@@ -173,7 +173,7 @@ export const getCustomersColumns = (timezone: string = 'America/Bogota'): Column
     cell: ({ row }) => {
       const date = row.original.created_at
       return (
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground font-mono">
           {formatInBusinessTimeZone(date, 'dd MMM yyyy, HH:mm', timezone)}
         </div>
       )

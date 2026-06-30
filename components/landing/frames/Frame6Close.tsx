@@ -13,11 +13,12 @@ interface Frame6CloseProps {
 export const Frame6Close: React.FC<Frame6CloseProps> = () => {
   const tags = [
     'LATAM_READY',
-    'AUTOMATION',
-    'INTELLIGENCE',
-    'INTEGRATION',
-    'SECURITY',
-    'SCALABILITY',
+    'AUTOMATIZACIÓN',
+    'CONTROL',
+    'INTEGRACIÓN',
+    'SEGURIDAD',
+    'ESCALABILIDAD',
+    'TRAZABILIDAD'
   ]
   const [hoveredTag, setHoveredTag] = React.useState<string | null>(null)
 
@@ -38,22 +39,20 @@ export const Frame6Close: React.FC<Frame6CloseProps> = () => {
         <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-primary/10 rounded-full blur-[100px] animate-pulse [animation-duration:12s]" />
 
         <div className="relative z-10">
-          <div className="text-primary-500 font-mono text-xs mb-8 tracking-[0.5em] uppercase font-black flex items-center justify-center gap-3 animate-in slide-in-from-bottom-4 duration-700 fill-mode-forwards">
-            <div className="animate-spin [animation-duration:3s]">
-              <Settings className="w-6 h-6" />
-            </div>
-            DESPLIEGUE_LISTO
-            <div className="animate-spin [animation-duration:3s]">
-              <Settings className="w-6 h-6" />
-            </div>
-          </div>
 
-          <h2 className="text-3xl sm:text-5xl md:text-7xl lg:text-9xl font-black mb-8 sm:mb-12 tracking-tighter uppercase leading-none animate-in slide-in-from-bottom-4 duration-700 delay-200 fill-mode-forwards">
-            Libere su{' '}
+          <h2 className="text-3xl sm:text-5xl md:text-7xl lg:text-9xl font-black mb-4 sm:mb-6 tracking-tighter uppercase leading-none animate-in slide-in-from-bottom-4 duration-700 delay-200 fill-mode-forwards">
+            Cuéntenos su{' '}
             <span className="text-primary-500 inline-block hover:scale-105 transition-transform duration-300">
-              Potencial
+              Desafío
             </span>
           </h2>
+
+          <p className="text-sm sm:text-base md:text-lg text-gray-400  max-w-2xl mx-auto mb-8 sm:mb-12 animate-in slide-in-from-bottom-4 duration-700 delay-300 fill-mode-forwards">
+            Cada empresa tiene retos únicos. Cuéntenos qué está complicando su
+            operación — Cobranza, tesorería, facturación, Compras, Costos, Inventario, Comex o
+            cualquier proceso crítico — y le ayudamos a resolverlo con agentes
+            IA que ejecutan procesos reales con control humano.
+          </p>
 
           <div className="flex items-center justify-center gap-6 sm:gap-8 md:gap-12 animate-in slide-in-from-bottom-4 duration-700 delay-400 fill-mode-forwards">
             <Link
@@ -65,7 +64,7 @@ export const Frame6Close: React.FC<Frame6CloseProps> = () => {
                 <Button className="bg-primary text-white font-black text-xs sm:text-sm uppercase tracking-widest rounded-none h-14 sm:h-20 px-8 sm:px-16 border-2 border-white shadow-[4px_4px_0px_#000] sm:shadow-[8px_8px_0px_#000] hover:shadow-none hover:bg-white hover:text-gray-900 transition-all group relative overflow-hidden">
                   <span className="absolute inset-0 bg-white -translate-x-full group-hover:translate-x-0 transition-transform duration-400 ease-in-out" />
                   <span className="relative z-10 flex items-center gap-2">
-                    Agendar Demo
+                    Hablemos
                     <div className="group-hover:translate-x-2 transition-transform duration-200">
                       <ArrowRight className="w-5 h-5" />
                     </div>
@@ -80,7 +79,7 @@ export const Frame6Close: React.FC<Frame6CloseProps> = () => {
             <Link
               href="https://wa.me/573245134148?text=Hola%21%20Requiero%20m%C3%A1s%20informaci%C3%B3n%20sobre%20APEX"
               target="_blank"
-              className="flex items-center justify-center bg-primary text-white font-black text-xs sm:text-sm uppercase tracking-widest rounded-none h-14 sm:h-20 px-2  border-2 border-white shadow-[4px_4px_0px_#000] sm:shadow-[8px_8px_0px_#000] hover:shadow-none hover:text-gray-900 transition-all group relative overflow-hidden"
+              className="flex items-center justify-center bg-primary text-white font-black text-xs sm:text-sm uppercase tracking-widest rounded-none h-14 sm:h-20 px-2  border-2 border-white shadow-[4px_4px_0px_#000] sm:shadow-[8px_8px_0px_#000] hover:shadow-none hover:bg-white hover:text-gray-900 transition-all group relative overflow-hidden"
             >
               <img
                 src="/whatsapp.png"

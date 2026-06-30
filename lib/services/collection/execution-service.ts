@@ -1,4 +1,4 @@
-import { fetchExecutionsAction, type ExecutionListResponse } from '@/lib/actions/collection'
+import { fetchExecutionsAction, type ExecutionListResponse } from '@/lib/actions/collection/execution'
 
 export interface ExecutionServiceParams {
     page?: number

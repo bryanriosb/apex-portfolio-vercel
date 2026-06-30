@@ -1,70 +1,78 @@
 export interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  reasoning?: string;
-  createdAt: Date;
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  reasoning?: string
+  createdAt: Date
 }
 
 export interface AgentState {
-  messages: ChatMessage[];
-  isStreaming: boolean;
-  isConnected: boolean;
-  error: string | null;
-  currentContent: string;
-  currentReasoning: string;
-  sessionId: string | null;
+  messages: ChatMessage[]
+  isStreaming: boolean
+  isConnected: boolean
+  error: string | null
+  currentContent: string
+  currentReasoning: string
+  sessionId: string | null
+  reconnectAttempt: number
+  reconnectCountdown: number
+  maxRetries: number
 }
 
-export type ChatRole = "user" | "assistant" | "system";
+export type ChatRole = 'user' | 'assistant' | 'system'
 
 export interface SendMessageOptions {
-  content: string;
-  userId: string;
-  sessionId?: string;
-  model?: string;
-  baseUrl?: string;
-  provider?: string;
+  content: string
+  userId: string
+  sessionId?: string
+  model?: string
+  baseUrl?: string
+  provider?: string
+  provider_options?: Record<string, any>
 }
 
 export interface AgentCallbacks {
-  onStateChange: (state: AgentState) => void;
-  onSessionCreated?: (sessionId: string) => void;
+  onStateChange: (state: AgentState) => void
+  onSessionCreated?: (sessionId: string) => void
 }
 
 export type WebSocketIncomingMessage =
-  | { type: "done"; payload: { session_id: string } }
-  | { type: "chunk"; payload: { content: string } }
-  | { type: "reasoning_delta"; payload: { content: string } }
-  | { type: "session"; payload: { session_id: string } };
+  | { type: 'done'; payload: { session_id: string } }
+  | { type: 'chunk'; payload: { content: string } }
+  | { type: 'reasoning_delta'; payload: { content: string } }
+  | { type: 'session'; payload: { session_id: string } }
+  | { type: 'workflow_node_start'; payload: { node_id: string, thread_id: string } }
+  | { type: 'workflow_node_end'; payload: { node_id: string, thread_id: string } }
+  | { type: 'ping'; payload?: Record<string, never> }
+  | { type: 'pong'; payload?: Record<string, never> }
 
 export interface SessionSummary {
-  session_id: string;
-  app_name: string;
-  updated_at: string;
-  event_count: number;
-  preview: string;
+  session_id: string
+  app_name: string
+  updated_at: string
+  event_count: number
+  preview: string
 }
 
 export interface SessionsListResponse {
-  sessions: SessionSummary[];
-  total: number;
-  has_more: boolean;
+  sessions: SessionSummary[]
+  total: number
+  has_more: boolean
 }
 
 export interface EventSummary {
-  id: string;
-  author: string;
-  timestamp: string;
-  content: string;
+  id: string
+  author: string
+  timestamp: string
+  content: string
 }
 
 export interface SessionDetailResponse {
-  session_id: string;
-  app_name: string;
-  user_id: string;
-  state: Record<string, unknown>;
-  events: EventSummary[];
-  created_at: string;
-  updated_at: string;
+  session_id: string
+  app_name: string
+  user_id: string
+  state: Record<string, unknown>
+  events: EventSummary[]
+  created_at: string
+  updated_at: string
 }

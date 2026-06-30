@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { CollectionEvent } from '@/lib/models/collection'
+import { CollectionEvent } from '@/lib/models/collection/event'
 import { format } from 'date-fns'
 import { toZonedTime } from 'date-fns-tz'
 import { es } from 'date-fns/locale'

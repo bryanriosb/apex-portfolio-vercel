@@ -90,7 +90,7 @@ export const BUSINESSES_COLUMNS: ColumnDef<BusinessWithAccount>[] = [
       const date = row.getValue('created_at') as string
       const timezone = row.original.timezone || 'America/Bogota'
       return (
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground font-mono">
           {format(new Date(date), 'dd MMM yyyy, HH:mm', { locale: es })}
           <span className="ml-1 text-[10px] opacity-50">({timezone})</span>
         </div>

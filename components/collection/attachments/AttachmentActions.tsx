@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { Download, MoreHorizontal, Pencil, Trash2, Settings } from 'lucide-react'
-import { CollectionAttachment } from '@/lib/models/collection'
+import { CollectionAttachment } from '@/lib/models/collection/attachment'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { AttachmentEditDialog } from './AttachmentEditDialog'
 import { AttachmentRulesDialog } from './AttachmentRulesDialog'

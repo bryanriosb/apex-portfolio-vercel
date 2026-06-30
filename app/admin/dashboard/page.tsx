@@ -223,6 +223,12 @@ export default function DashboardPage() {
     toast.success('Tablero actualizado')
   }
 
+  const hydrated = useActiveBusinessStore((state) => state.hydrated)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   if (!activeBusiness) {
     return (
       <div className="flex flex-col gap-6 w-full overflow-auto">
@@ -231,7 +237,7 @@ export default function DashboardPage() {
             Tablero
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground">
-            {!useActiveBusinessStore.getState().hydrated
+            {(!mounted || !hydrated)
               ? 'Cargando datos...'
               : 'Selecciona una sucursal para ver el tablero'}
           </p>

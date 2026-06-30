@@ -1,6 +1,6 @@
 // Utility for date formatting using business timezone with date-fns
 import { format } from 'date-fns'
-import { toZonedTime } from 'date-fns-tz'
+import { toZonedTime, formatInTimeZone } from 'date-fns-tz'
 import { es } from 'date-fns/locale'
 
 /**
@@ -14,11 +14,24 @@ function parseDate(date: string | Date | number): Date {
         // If timestamp is less than 10 billion, it's in seconds
         return new Date(date < 10000000000 ? date * 1000 : date)
     } else if (typeof date === 'string') {
+        let cleanDate = date.trim()
+        
+        // Match ClickHouse/Rust date format: "YYYY-MM-DD HH:MM:SS.S +HH:MM:SS" or "YYYY-MM-DD HH:MM:SS"
+        const clickHouseMatch = cleanDate.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})(?:\.\d+)?\s+([+-]\d{2}:\d{2})(?::\d{2})?$/)
+        if (clickHouseMatch) {
+            cleanDate = `${clickHouseMatch[1]}T${clickHouseMatch[2]}${clickHouseMatch[3]}`
+        } else {
+            const simpleMatch = cleanDate.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})(?:\.\d+)?$/)
+            if (simpleMatch) {
+                cleanDate = `${simpleMatch[1]}T${simpleMatch[2]}Z`
+            }
+        }
+
         // Supabase returns dates in ISO format without timezone (e.g., "2024-03-03T15:00:00")
         // These should be interpreted as UTC. Append 'Z' to force UTC interpretation.
-        const isoString = date.includes('T') && !date.endsWith('Z') && !date.match(/[+-]\d{2}:?\d{2}$/)
-            ? date + 'Z'
-            : date
+        const isoString = cleanDate.includes('T') && !cleanDate.endsWith('Z') && !cleanDate.match(/[+-]\d{2}:?\d{2}$/)
+            ? cleanDate + 'Z'
+            : cleanDate
         return new Date(isoString)
     } else {
         return date
@@ -83,4 +96,41 @@ export function formatDateInTimezone(
         console.error('Error formatting date:', error)
         return d.toLocaleString()
     }
+}
+
+export function formatSQLDate(dateInput?: any, timezone?: string) {
+  if (!dateInput) return '';
+  
+  let d: Date;
+  if (typeof dateInput === 'string') {
+    const match = dateInput.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{1,2}:\d{2}:\d{2})/);
+    if (match) {
+      const timeParts = match[2].split(':');
+      const paddedTime = timeParts[0].padStart(2, '0') + ':' + timeParts[1] + ':' + timeParts[2];
+      d = new Date(`${match[1]}T${paddedTime}Z`);
+    } else {
+      const num = Number(dateInput);
+      if (!isNaN(num) && num > 0) {
+        d = new Date(num < 10000000000 ? num * 1000 : num);
+      } else {
+        d = new Date(dateInput);
+      }
+    }
+  } else if (typeof dateInput === 'number') {
+    d = new Date(dateInput < 10000000000 ? dateInput * 1000 : dateInput);
+  } else {
+    d = new Date(dateInput);
+  }
+
+  if (isNaN(d.getTime())) return String(dateInput);
+
+  if (timezone) {
+    try {
+      return formatInTimeZone(d, timezone, "d 'de' MMM, HH:mm:ss", { locale: es });
+    } catch {
+      // fallback if timezone is invalid
+    }
+  }
+
+  return format(d, "d 'de' MMM, HH:mm:ss", { locale: es });
 }

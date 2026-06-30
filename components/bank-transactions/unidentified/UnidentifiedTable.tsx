@@ -118,7 +118,11 @@ export function UnidentifiedTable() {
         ),
         cell: ({ row }) => {
           const date = row.getValue('transaction_date') as string
-          return format(new Date(date), 'dd/MM/yyyy', { locale: es })
+          return (
+            <span className="font-mono">
+              {format(new Date(date), 'dd/MM/yyyy', { locale: es })}
+            </span>
+          )
         },
       },
       {

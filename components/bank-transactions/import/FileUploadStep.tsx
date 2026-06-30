@@ -179,7 +179,7 @@ export function FileUploadStep({
               <p className="text-sm text-amber-700 mt-1">
                 Debe configurar el formato de fecha en{' '}
                 <a
-                  href="/admin/settings/collection?tab=general"
+                  href="/admin/collection/settings?tab=general"
                   className="underline font-medium hover:text-amber-900"
                 >
                   Configuración de Cobros
@@ -192,7 +192,7 @@ export function FileUploadStep({
                 className="mt-3"
                 onClick={() =>
                   (window.location.href =
-                    '/admin/settings/collection?tab=general')
+                    '/admin/collection/settings?tab=general')
                 }
               >
                 Ir a Configuración

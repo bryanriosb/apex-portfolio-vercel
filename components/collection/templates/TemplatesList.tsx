@@ -3,10 +3,10 @@
 import { useMemo } from 'react'
 import { DataTable } from '@/components/DataTable'
 import { templateColumns } from './template-columns'
-import { TemplateService } from '@/lib/services/collection'
+import { TemplateService } from '@/lib/services/collection/template-service'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import type { FilterConfig } from '@/components/DataTable'
-import { deleteTemplateAction } from '@/lib/actions/collection'
+import { deleteTemplateAction } from '@/lib/actions/collection/template'
 
 const typeFilters: FilterConfig = {
     column: 'template_type',

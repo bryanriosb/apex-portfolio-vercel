@@ -146,7 +146,7 @@ export const PLANS_COLUMNS: ColumnDef<Plan>[] = [
     cell: ({ row }) => {
       const date = row.getValue('created_at') as string
       return (
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm text-muted-foreground font-mono">
           {format(new Date(date), 'dd MMM yyyy', { locale: es })}
         </span>
       )

@@ -2,6 +2,11 @@ import type {
   SessionsListResponse,
   SessionDetailResponse,
 } from '@/lib/services/agent/types'
+import {
+  listSessions as listSessionsAction,
+  getSession as getSessionAction,
+  deleteSession as deleteSessionAction,
+} from '@/lib/actions/api/sessions'
 
 export interface SessionServiceOptions {
   baseUrl: string
@@ -20,25 +25,7 @@ export class SessionService {
     limit = 20,
     offset = 0
   ): Promise<SessionsListResponse> {
-    const params = new URLSearchParams({
-      user_id: userId,
-      app_name: appName,
-      limit: String(limit),
-      offset: String(offset),
-    })
-
-    const response = await fetch(`${this.baseUrl}/sessions?${params}`)
-
-    if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ error: 'Unknown error' }))
-      throw new Error(
-        error.error || `Failed to list sessions: ${response.status}`
-      )
-    }
-
-    return response.json()
+    return listSessionsAction({ userId, appName, limit, offset })
   }
 
   async getSession(
@@ -46,25 +33,7 @@ export class SessionService {
     userId: string,
     appName: string
   ): Promise<SessionDetailResponse> {
-    const params = new URLSearchParams({
-      user_id: userId,
-      app_name: appName,
-    })
-
-    const response = await fetch(
-      `${this.baseUrl}/sessions/${sessionId}?${params}`
-    )
-
-    if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ error: 'Unknown error' }))
-      throw new Error(
-        error.error || `Failed to get session: ${response.status}`
-      )
-    }
-
-    return response.json()
+    return getSessionAction({ sessionId, userId, appName })
   }
 
   async deleteSession(
@@ -72,25 +41,7 @@ export class SessionService {
     userId: string,
     appName: string
   ): Promise<boolean> {
-    const params = new URLSearchParams({ user_id: userId, app_name: appName })
-
-    const response = await fetch(
-      `${this.baseUrl}/sessions/${sessionId}?${params}`,
-      {
-        method: 'DELETE',
-      }
-    )
-
-    if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ error: 'Unknown error' }))
-      throw new Error(
-        error.error || `Failed to delete session: ${response.status}`
-      )
-    }
-
-    const result = await response.json()
+    const result = await deleteSessionAction({ sessionId, userId, appName })
     return result.success
   }
 }

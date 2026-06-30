@@ -156,10 +156,10 @@ export function FeedbackDialog({
   }
 
   const getTypeOptions = [
-    { value: 'bug_report', label: '🐛 Reportar Error' },
-    { value: 'feature_request', label: '💡 Sugerencia' },
-    { value: 'general_feedback', label: '💬 Comentario' },
-    { value: 'complaint', label: '⚠️ Queja' },
+    { value: 'bug_report', label: 'Reportar Error' },
+    { value: 'feature_request', label: 'Sugerencia' },
+    { value: 'general_feedback', label: 'Comentario' },
+    { value: 'complaint', label: 'Queja' },
   ]
 
   const getSeverityOptions = [
@@ -215,7 +215,7 @@ export function FeedbackDialog({
                     <FormLabel>Tipo de Reporte</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder="Selecciona un tipo" />
                         </SelectTrigger>
                       </FormControl>
@@ -275,7 +275,7 @@ export function FeedbackDialog({
                     <FormLabel>Severidad</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder="Selecciona severidad" />
                         </SelectTrigger>
                       </FormControl>
@@ -360,6 +360,7 @@ export function FeedbackDialog({
                 <Button
                   type="button"
                   variant="outline"
+                  size="sm"
                   onClick={() => {
                     resetForm()
                     onOpenChange(false)
@@ -367,7 +368,7 @@ export function FeedbackDialog({
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
+                <Button type="submit" disabled={isSubmitting} size="sm">
                   {isSubmitting ? (
                     <span className="flex items-center gap-2">
                       <Loading className="text-white" />

@@ -4,7 +4,11 @@ import * as React from 'react'
 import { ChevronRight, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import * as TooltipPrimitive from '@radix-ui/react-tooltip'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 import {
   Collapsible,
@@ -112,12 +116,12 @@ function CollapsedMenuItem({
         open={dropdownOpen}
         onOpenChange={setDropdownOpen}
       >
-        <TooltipPrimitive.Root
+        <Tooltip
           delayDuration={0}
           open={dropdownOpen ? false : undefined}
         >
           <DropdownMenuTrigger asChild>
-            <TooltipPrimitive.Trigger asChild>
+            <TooltipTrigger asChild>
               <button
                 className={cn(
                   'peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 h-8',
@@ -131,21 +135,16 @@ function CollapsedMenuItem({
                   {item.title}
                 </span>
               </button>
-            </TooltipPrimitive.Trigger>
+            </TooltipTrigger>
           </DropdownMenuTrigger>
-          <TooltipPrimitive.Portal>
-            <TooltipPrimitive.Content
-              side="right"
-              align="center"
-              sideOffset={4}
-              className={cn(
-                'bg-foreground text-background animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-fit origin-(--radix-tooltip-content-transform-origin) rounded-md px-3 py-1.5 text-xs text-balance'
-              )}
-            >
-              {item.title}
-            </TooltipPrimitive.Content>
-          </TooltipPrimitive.Portal>
-        </TooltipPrimitive.Root>
+          <TooltipContent
+            side="right"
+            align="center"
+            sideOffset={4}
+          >
+            {item.title}
+          </TooltipContent>
+        </Tooltip>
         <DropdownMenuContent
           side="right"
           align="start"

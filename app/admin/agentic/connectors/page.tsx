@@ -22,6 +22,9 @@ import {
   useOAuth2Discover,
 } from '@/hooks/use-oauth2-tools'
 import { isMcpTool, ToolWithAuthStatus } from '@/lib/types/oauth2-types'
+import { useCurrentUser } from '@/hooks/use-current-user'
+import { useActiveBusinessStore } from '@/lib/store/active-business-store'
+import Loading from '@/components/ui/loading'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
@@ -45,12 +48,15 @@ export default function ConnectorsPage() {
   const { startOAuthFlow, refresh, disconnect } = useOAuth2Tools()
   const { discover: discoverTool } = useOAuth2Discover()
   const deleteTool = useDeleteTool()
+  const { user, isLoading: userLoading } = useCurrentUser()
+  const { activeBusiness, isLoading: businessLoading } = useActiveBusinessStore()
+
   const apiBaseUrl =
     process.env.PUBLIC_APEX_API_URL || 'http://localhost:3000/api'
   const agentId =
     process.env.PUBLIC_AGENT_ID || 'e10c503d-00fc-4282-9d2e-3f8c4be7b0a0'
-  const userId = 'usr_123456'
-  const businessAccountId = 'ba-12345678-1234-1234-1234-123456789012'
+  const userId = user?.id || ''
+  const businessAccountId = activeBusiness?.business_account_id || ''
 
   const [searchQuery, setSearchQuery] = useState('')
   const [formOpen, setFormOpen] = useState(false)
@@ -98,10 +104,12 @@ export default function ConnectorsPage() {
     : mcpTools
 
   const loadTools = () => {
+    if (!userId || !businessAccountId) return
     fetchTools({ agentId, userId, businessAccountId, apiBaseUrl })
   }
 
   useEffect(() => {
+    if (!userId || !businessAccountId) return
     loadTools()
   }, [agentId, userId, businessAccountId, apiBaseUrl, fetchTools])
 
@@ -247,6 +255,17 @@ export default function ConnectorsPage() {
     } finally {
       setDeleteLoading(false)
     }
+  }
+
+  if (userLoading || businessLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-white dark:bg-muted py-24">
+        <div className="flex flex-col items-center gap-4">
+          <Loading className="h-8 w-8 text-primary" />
+          <span className="text-sm text-muted-foreground">Cargando conectores...</span>
+        </div>
+      </div>
+    )
   }
 
   return (

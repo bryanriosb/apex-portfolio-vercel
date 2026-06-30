@@ -123,7 +123,7 @@ export function AuthSidePanel({ mode }: AuthSidePanelProps) {
             {/* Content — vertically centered */}
             <div className="relative z-10 flex flex-col h-full p-10 gap-10 justify-center">
 
-{/* Headline */}
+                {/* Headline */}
                 <div className="flex flex-col gap-2 text-center">
                     <h2 className="text-4xl xl:text-5xl font-black text-white tracking-tighter leading-tight uppercase">
                         {mode === 'sign-in' ? (
@@ -155,7 +155,7 @@ export function AuthSidePanel({ mode }: AuthSidePanelProps) {
                         <div className="h-px flex-1 bg-white/10" />
                     </div>
                     <div className="flex gap-2 flex-wrap justify-center">
-                        {['ERP', 'AWS_VPC', 'LATAM_READY', 'ML_MODELS'].map(tag => (
+                        {['ERP', 'CRM', 'AGENTES', 'LATAM_READY', 'MODELOS_ML', 'CONTROL'].map(tag => (
                             <span key={tag} className="text-[9px] font-mono font-black uppercase tracking-widest text-white/20 border border-white/10 px-2 py-0.5">
                                 {tag}
                             </span>

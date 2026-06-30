@@ -20,14 +20,10 @@ import {
   Settings,
 } from 'lucide-react'
 import Link from 'next/link'
-import {
-  getExecutionByIdAction,
-  fetchEventsByExecutionAction,
-} from '@/lib/actions/collection'
-import type {
-  CollectionExecution,
-  CollectionEvent,
-} from '@/lib/models/collection'
+import { getExecutionByIdAction } from '@/lib/actions/collection/execution'
+import { fetchEventsByExecutionAction } from '@/lib/actions/collection/event'
+import type { CollectionExecution } from '@/lib/models/collection/execution'
+import type { CollectionEvent } from '@/lib/models/collection/event'
 import {
   StatusBadge,
   MetricCard,

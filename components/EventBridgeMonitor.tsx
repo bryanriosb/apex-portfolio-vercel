@@ -28,6 +28,8 @@ export default function EventBridgeMonitor({
     switch (status) {
       case 'connected':
         return 'text-green-600'
+      case 'connecting':
+        return 'text-yellow-600'
       case 'disconnected':
         return 'text-red-600'
       case 'reconnecting':

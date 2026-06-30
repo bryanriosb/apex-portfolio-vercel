@@ -31,8 +31,6 @@ export function ChatHistory({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const hasLoadedRef = useRef(false)
-
   const sessionService = new SessionService({ baseUrl: apiBaseUrl })
 
   const loadSessions = useCallback(async () => {
@@ -51,10 +49,9 @@ export function ChatHistory({
   }, [userId, appName])
 
   useEffect(() => {
-    if (hasLoadedRef.current) return
-    hasLoadedRef.current = true
+    if (!userId || !appName) return
     loadSessions()
-  }, [loadSessions])
+  }, [loadSessions, userId, appName])
 
   const handleDelete = useCallback(
     async (sessionId: string, e: React.MouseEvent) => {

@@ -26,7 +26,7 @@ import { getActiveTemplatesByTypeAction } from '@/lib/actions/collection/templat
 import { fetchThresholdsAction } from '@/lib/actions/collection/notification-threshold'
 import { getCollectionConfigAction } from '@/lib/actions/collection/config'
 import { getCustomerCountAction } from '@/lib/actions/business-customer'
-import { CollectionTemplate } from '@/lib/models/collection'
+import { CollectionTemplate } from '@/lib/models/collection/template'
 import { CollectionConfig } from '@/lib/models/collection/config'
 import * as XLSX from 'xlsx'
 import Link from 'next/link'
@@ -439,7 +439,7 @@ export function CreationWizard() {
               <div className="flex-1 space-y-1">
                 <div className="flex justify-between items-center">
                   <Link
-                    href="/admin/settings/collection?tab=general"
+                    href="/admin/collection/settings?tab=general"
                     className="font-semibold text-base text-primary hover:underline"
                   >
                     Formatos de Fecha
@@ -507,7 +507,7 @@ export function CreationWizard() {
               <div className="flex-1 space-y-1">
                 <div className="flex justify-between items-center">
                   <Link
-                    href="/admin/settings/collection?tab=thresholds"
+                    href="/admin/collection/settings?tab=thresholds"
                     className="font-semibold text-base text-primary hover:underline"
                   >
                     Umbrales de Notificación

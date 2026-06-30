@@ -1,7 +1,7 @@
 'use client'
 
 import { ColumnDef } from '@tanstack/react-table'
-import { CollectionTemplate } from '@/lib/models/collection'
+import { CollectionTemplate } from '@/lib/models/collection/template'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,7 +19,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { PreviewDialog } from './builder/PreviewDialog'
-import { createTemplateAction, deleteTemplateAction } from '@/lib/actions/collection'
+import { createTemplateAction, deleteTemplateAction } from '@/lib/actions/collection/template'
 import { useDataRefreshStore } from '@/lib/store/data-refresh-store'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
@@ -100,7 +100,7 @@ export const templateColumns: ColumnDef<CollectionTemplate>[] = [
         cell: ({ row }) => {
             const date = new Date(row.original.created_at)
             return (
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-muted-foreground font-mono">
                     {formatDistanceToNow(date, { addSuffix: true, locale: es })}
                 </div>
             )

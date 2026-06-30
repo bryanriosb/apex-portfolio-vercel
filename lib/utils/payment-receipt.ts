@@ -1,4 +1,3 @@
-import { jsPDF } from 'jspdf'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { PaymentMethod } from '@/lib/types/enums'
@@ -24,7 +23,8 @@ export interface PaymentReceiptData {
   balanceDueCents: number
 }
 
-export function generatePaymentReceiptPDF(data: PaymentReceiptData): jsPDF {
+export async function generatePaymentReceiptPDF(data: PaymentReceiptData) {
+  const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -227,8 +227,8 @@ export function generatePaymentReceiptPDF(data: PaymentReceiptData): jsPDF {
   return doc
 }
 
-export function downloadPaymentReceiptPDF(data: PaymentReceiptData): void {
-  const doc = generatePaymentReceiptPDF(data)
+export async function downloadPaymentReceiptPDF(data: PaymentReceiptData): Promise<void> {
+  const doc = await generatePaymentReceiptPDF(data)
   const filename = `comprobante_${data.payment.id.slice(0, 8)}_${format(
     new Date(data.payment.payment_date),
     'yyyyMMdd'

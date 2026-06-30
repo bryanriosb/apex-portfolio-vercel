@@ -102,7 +102,7 @@ export function ThresholdPreview({ clients }: ThresholdPreviewProps) {
             )}
             <p className="text-sm mt-3">
               <a
-                href="/admin/settings/collection"
+                href="/admin/collection/settings"
                 className="underline font-medium hover:text-yellow-900"
               >
                 Configurar umbrales adicionales →

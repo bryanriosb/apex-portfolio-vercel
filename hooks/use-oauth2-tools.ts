@@ -11,27 +11,14 @@ import type {
   OAuthDisconnectResponse,
   ToolWithAuthStatus,
 } from '../lib/types/oauth2-types'
-
-async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({
-      error: `Request failed (${response.status} ${response.statusText})`,
-    }))
-    throw new Error(
-      error.error || error.message || `API error: ${response.status}`
-    )
-  }
-
-  return response.json()
-}
+import {
+  listTools,
+  toggleToolActive as toggleToolActiveAction,
+  authorizeOAuth2,
+  refreshOAuth2,
+  disconnectOAuth2,
+  discoverOAuth2,
+} from '@/lib/actions/api/tools'
 
 export function useAgentTools() {
   const [tools, setTools] = useState<ToolWithAuthStatus[]>([])
@@ -43,20 +30,14 @@ export function useAgentTools() {
       options: UseAgentToolsOptions,
       extraParams?: Record<string, any>
     ): Promise<ToolListResponse> => {
-      const params = new URLSearchParams({
-        user_id: options.userId,
-        business_account_id: options.businessAccountId,
+      const response = await listTools({
+        agentId: options.agentId,
+        userId: options.userId,
+        businessAccountId: options.businessAccountId,
+        ...extraParams,
       })
 
-      if (extraParams) {
-        Object.entries(extraParams).forEach(([key, value]) => {
-          params.set(key, value)
-        })
-      }
-
-      return fetchApi<ToolListResponse>(
-        `${options.apiBaseUrl}/agents/${options.agentId}/tools?${params}`
-      )
+      return { tools: response.tools as any }
     },
     []
   )
@@ -67,27 +48,25 @@ export function useAgentTools() {
       setError(null)
 
       try {
-        const baseData = await fetchToolList(options)
+        const timeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout fetching tools')), 5000)
+        )
+
+        const [baseData, extraData1, extraData2] = await Promise.all([
+          Promise.race([fetchToolList(options), timeout]),
+          Promise.race([fetchToolList(options, { includeInactive: true }), timeout]),
+          Promise.race([fetchToolList(options, { isActive: false }), timeout]),
+        ])
+
         const mergedTools = [...baseData.tools]
         const seenToolIds = new Set(baseData.tools.map((tool) => tool.id))
 
-        const optionalQueries = [
-          { include_inactive: 'true' },
-          { is_active: 'false' },
-        ]
-
-        for (const query of optionalQueries) {
-          try {
-            const extraData = await fetchToolList(options, query)
-            for (const tool of extraData.tools) {
-              if (!seenToolIds.has(tool.id)) {
-                seenToolIds.add(tool.id)
-                mergedTools.push(tool)
-              }
+        for (const extraData of [extraData1, extraData2]) {
+          for (const tool of extraData.tools) {
+            if (!seenToolIds.has(tool.id)) {
+              seenToolIds.add(tool.id)
+              mergedTools.push(tool)
             }
-          } catch {
-            // Algunos backends no soportan estos filtros opcionales.
-            // Ignoramos el error y usamos el resultado base.
           }
         }
 
@@ -117,30 +96,22 @@ export function useAgentTools() {
   )
 
   const toggleToolActive = useCallback(
-    async (toolId: string, isActive: boolean, apiBaseUrl?: string) => {
+    async (toolId: string, isActive: boolean, _apiBaseUrl?: string) => {
       setTools((prev) =>
         prev.map((tool) =>
           tool.id === toolId ? { ...tool, is_active: isActive } : tool
         )
       )
 
-      if (apiBaseUrl) {
-        try {
-          await fetchApi<{ success: boolean }>(
-            `${apiBaseUrl}/tools/${toolId}`,
-            {
-              method: 'PATCH',
-              body: JSON.stringify({ is_active: isActive }),
-            }
+      try {
+        await toggleToolActiveAction({ toolId, isActive })
+      } catch (err) {
+        setTools((prev) =>
+          prev.map((tool) =>
+            tool.id === toolId ? { ...tool, is_active: !isActive } : tool
           )
-        } catch (err) {
-          setTools((prev) =>
-            prev.map((tool) =>
-              tool.id === toolId ? { ...tool, is_active: !isActive } : tool
-            )
-          )
-          throw err
-        }
+        )
+        throw err
       }
     },
     []
@@ -165,18 +136,13 @@ export function useOAuth2Authorize() {
     setError(null)
 
     try {
-      const data = await fetchApi<OAuthAuthorizeResponse>(
-        `${options.apiBaseUrl}/tools/${options.toolId}/oauth2/authorize`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            owner_type: options.ownerType,
-            owner_id: options.ownerId,
-          }),
-        }
-      )
+      const data = await authorizeOAuth2({
+        toolId: options.toolId,
+        ownerType: options.ownerType,
+        ownerId: options.ownerId,
+      })
 
-      return data
+      return data as OAuthAuthorizeResponse
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to authorize'
       setError(message)
@@ -199,17 +165,8 @@ export function useOAuth2Status() {
     setError(null)
 
     try {
-      const params = new URLSearchParams({
-        owner_type: options.ownerType,
-        owner_id: options.ownerId,
-      })
-
-      const data = await fetchApi<OAuthStatusResponse>(
-        `${options.apiBaseUrl}/tools/${options.toolId}/oauth2/status?${params}`
-      )
-
-      setStatus(data)
-      return data
+      // TODO: Implement getStatus server action if needed
+      throw new Error('OAuth2 status not implemented as server action yet')
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to get status'
@@ -232,17 +189,13 @@ export function useOAuth2Disconnect() {
     setError(null)
 
     try {
-      const params = new URLSearchParams({
-        owner_type: options.ownerType,
-        owner_id: options.ownerId,
+      const data = await disconnectOAuth2({
+        toolId: options.toolId,
+        ownerType: options.ownerType,
+        ownerId: options.ownerId,
       })
 
-      const data = await fetchApi<OAuthDisconnectResponse>(
-        `${options.apiBaseUrl}/tools/${options.toolId}/oauth2?${params}`,
-        { method: 'DELETE' }
-      )
-
-      return data
+      return data as OAuthDisconnectResponse
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to disconnect'
@@ -265,17 +218,13 @@ export function useOAuth2Refresh() {
     setError(null)
 
     try {
-      const params = new URLSearchParams({
-        owner_type: options.ownerType,
-        owner_id: options.ownerId,
+      const data = await refreshOAuth2({
+        toolId: options.toolId,
+        ownerType: options.ownerType,
+        ownerId: options.ownerId,
       })
 
-      const data = await fetchApi<OAuthRefreshResponse>(
-        `${options.apiBaseUrl}/tools/${options.toolId}/oauth2/refresh?${params}`,
-        { method: 'POST' }
-      )
-
-      return data
+      return data as OAuthRefreshResponse
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to refresh'
       setError(message)
@@ -301,17 +250,14 @@ export function useOAuth2Discover() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const discover = useCallback(async (toolId: string, apiBaseUrl: string) => {
+  const discover = useCallback(async (toolId: string, _apiBaseUrl: string) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const data = await fetchApi<DiscoverResponse>(
-        `${apiBaseUrl}/tools/${toolId}/oauth2/discover`,
-        { method: 'POST' }
-      )
+      const data = await discoverOAuth2({ toolId })
 
-      return data
+      return data as DiscoverResponse
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to discover'
       setError(message)

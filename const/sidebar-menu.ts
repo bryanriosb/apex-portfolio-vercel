@@ -15,6 +15,9 @@ import {
   CreditCard,
   BanknoteArrowDown,
   BrainCircuit,
+  Zap,
+  Unplug,
+  Puzzle,
 } from 'lucide-react'
 import { USER_ROLES, type UserRole } from './roles'
 
@@ -30,6 +33,7 @@ export type ModuleCode =
 export interface MenuSubItem {
   title: string
   url: string
+  icon?: any
   allowedRoles?: UserRole[]
   moduleCode?: ModuleCode
   targetTutorialStep?: string
@@ -76,27 +80,6 @@ export const SIDE_APP_MENU_ITEMS: MenuItem[] = [
     ],
   },
   {
-    title: 'Agencia IA',
-    url: '/admin/agentic',
-    icon: BrainCircuit,
-    moduleCode: 'ai_assistant',
-    allowedRoles: [
-      USER_ROLES.COMPANY_ADMIN,
-      USER_ROLES.BUSINESS_ADMIN,
-      USER_ROLES.PROFESSIONAL,
-    ],
-    items: [
-      {
-        title: 'Chat',
-        url: '/admin/agentic/chat',
-      },
-      {
-        title: 'Conectores',
-        url: '/admin/agentic/connectors',
-      },
-    ],
-  },
-  {
     title: 'Cobranza',
     url: '/admin/collection',
     icon: BanknoteArrowDown,
@@ -116,6 +99,14 @@ export const SIDE_APP_MENU_ITEMS: MenuItem[] = [
         url: '/admin/collection/executions',
       },
       {
+        title: 'Sincronizaciones',
+        url: '/admin/collection/sync-jobs',
+      },
+      {
+        title: 'Facturas',
+        url: '/admin/collection/invoices',
+      },
+      {
         title: 'Transacciones',
         url: '/admin/collection/transactions',
       },
@@ -126,6 +117,11 @@ export const SIDE_APP_MENU_ITEMS: MenuItem[] = [
       {
         title: 'Adjuntos',
         url: '/admin/collection/attachments',
+      },
+      {
+        title: 'Configuración',
+        url: '/admin/collection/settings',
+        allowedRoles: [USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN],
       },
     ],
   },
@@ -156,6 +152,32 @@ export const SIDE_APP_MENU_ITEMS: MenuItem[] = [
     icon: BarChart3,
     moduleCode: 'reports',
     allowedRoles: [USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN],
+  },
+]
+
+export const SIDE_AGENCY_MENU_ITEMS: MenuItem[] = [
+  {
+    title: 'Conectores',
+    url: '/admin/agentic/connectors',
+    icon: Unplug,
+    moduleCode: 'ai_assistant',
+    allowedRoles: [
+      USER_ROLES.COMPANY_ADMIN,
+      USER_ROLES.BUSINESS_ADMIN,
+      USER_ROLES.PROFESSIONAL,
+    ],
+  },
+
+  {
+    title: 'Integraciones',
+    url: '/admin/agentic/integrations',
+    icon: Puzzle,
+    moduleCode: 'ai_assistant',
+    allowedRoles: [
+      USER_ROLES.COMPANY_ADMIN,
+      USER_ROLES.BUSINESS_ADMIN,
+      USER_ROLES.PROFESSIONAL,
+    ],
   },
 ]
 
@@ -223,12 +245,6 @@ export const SIDE_SYSTEM_MENU_ITEMS: MenuItem[] = [
         url: '/admin/settings/whatsapp',
         allowedRoles: [USER_ROLES.COMPANY_ADMIN],
         moduleCode: 'whatsapp',
-      },
-      {
-        title: 'Cobranza',
-        url: '/admin/settings/collection',
-        allowedRoles: [USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN],
-        moduleCode: 'collection',
       },
     ],
   },

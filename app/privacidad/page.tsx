@@ -12,7 +12,7 @@ import {
 
 export const metadata: Metadata = {
   title:
-    'Política de Privacidad | APEX (Adaptive Planning & Execution Platform)',
+    'Política de Privacidad | APEX (Agentic AI Planning & Execution Platform)',
   description:
     'Política de privacidad y protección de datos personales de APEX, conforme a la Ley 1581 de 2012 de Colombia.',
   robots: 'index, follow',

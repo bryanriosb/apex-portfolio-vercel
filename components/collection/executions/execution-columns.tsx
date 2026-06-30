@@ -1,8 +1,7 @@
 'use client'
 
 import { ColumnDef } from '@tanstack/react-table'
-import { CollectionExecution } from '@/lib/models/collection'
-import { StatusBadge } from '../shared/StatusBadge'
+import { CollectionExecution, ExecutionStatus } from '@/lib/models/collection/execution'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -43,7 +42,16 @@ export const getExecutionColumns = (timezone: string = 'America/Bogota'): Column
   {
     accessorKey: 'status',
     header: 'Estado',
-    cell: ({ row }) => <StatusBadge status={row.original.status} />,
+    cell: ({ row }) => {
+      const statusLabels: Record<ExecutionStatus, string> = {
+        pending: 'Pendiente',
+        processing: 'Procesando',
+        completed: 'Completado',
+        failed: 'Error',
+        paused: 'Pausado',
+      }
+      return <Badge>{statusLabels[row.original.status]}</Badge>
+    },
   },
   {
     accessorKey: 'total_clients',
@@ -74,7 +82,7 @@ export const getExecutionColumns = (timezone: string = 'America/Bogota'): Column
           <div className="flex items-center gap-2">
             <div className="h-1.5 w-16 bg-gray-200 rounded-full overflow-hidden">
               <div
-                className="h-full bg-blue-500"
+                className="h-full bg-primary"
                 style={{ width: `${percentage}%` }}
               />
             </div>
@@ -124,7 +132,7 @@ export const getExecutionColumns = (timezone: string = 'America/Bogota'): Column
     cell: ({ row }) => {
       const date = row.original.created_at
       return (
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground font-mono">
           {formatInBusinessTimeZone(date, 'MMM d, yyyy HH:mm', timezone)}
         </div>
       )

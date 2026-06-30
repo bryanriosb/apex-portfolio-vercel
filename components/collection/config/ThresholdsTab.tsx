@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
-import { NotificationThresholdService } from '@/lib/services/collection'
+import { NotificationThresholdService } from '@/lib/services/collection/notification-threshold-service'
 import type { NotificationThreshold } from '@/lib/models/collection/notification-threshold'
 import { Button } from '@/components/ui/button'
 import { Plus, RefreshCw, Pencil, Trash2, MoreHorizontal } from 'lucide-react'

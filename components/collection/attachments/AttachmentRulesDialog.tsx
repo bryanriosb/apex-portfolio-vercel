@@ -22,9 +22,10 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { Loader2, Plus, Trash2, Settings } from 'lucide-react'
-import { AttachmentRulesService, NotificationThresholdService } from '@/lib/services/collection'
+import { AttachmentRulesService } from '@/lib/services/collection/attachment-rules-service'
+import { NotificationThresholdService } from '@/lib/services/collection/notification-threshold-service'
 import type { AttachmentRule, AttachmentRuleType } from '@/lib/models/collection/attachment-rule'
-import type { CollectionAttachment } from '@/lib/models/collection'
+import type { CollectionAttachment } from '@/lib/models/collection/attachment'
 import type { NotificationThreshold } from '@/lib/models/collection/notification-threshold'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 

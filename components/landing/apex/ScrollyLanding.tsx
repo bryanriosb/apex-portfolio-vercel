@@ -2,20 +2,28 @@
 
 import * as React from 'react'
 import { AnimatePresence } from 'framer-motion'
-import { Button } from '@/components/ui/button'
 import {
   Frame0ROI,
+} from '@/components/landing/frames/Frame0ROI'
+import {
   Frame1Security,
+} from '@/components/landing/frames/Frame1Security'
+import {
   Frame2Telemetry,
+} from '@/components/landing/frames/Frame2Telemetry'
+import {
   Frame3Integrity,
+} from '@/components/landing/frames/Frame3Integrity'
+import {
   Frame4Plataform,
+} from '@/components/landing/frames/Frame4Plataform'
+import {
   Frame5Gobernance,
+} from '@/components/landing/frames/Frame5Gobernance'
+import {
   Frame6Close,
-} from '@/components/landing'
-import { Crosshair } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import Loading from '@/components/ui/loading'
-import Link from 'next/link'
+} from '@/components/landing/frames/Frame6Close'
+import { LandingHeader } from '../LandingHeader'
 
 interface TelemetryLog {
   time: string
@@ -30,9 +38,6 @@ export const ScrollyLanding: React.FC = () => {
   const [activeSection, setActiveSection] = React.useState(0)
   const [isMobile, setIsMobile] = React.useState(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
-  const router = useRouter()
-  const [isDemoLoading, setIsDemoLoading] = React.useState(false)
-  const [isLoginLoading, setIsLoginLoading] = React.useState(false)
 
   const TOTAL_FRAMES = 7
 
@@ -172,6 +177,10 @@ export const ScrollyLanding: React.FC = () => {
     { label: 'ROI', index: 0 },
     { label: 'Estrategia', index: 1 },
     { label: 'Plataforma', index: 4 },
+    {
+      label: 'Soluciones',
+      dropdown: [{ label: 'APEX Collection', href: '/modules/collection' }],
+    },
     { label: 'Valor', index: 5 },
   ]
 
@@ -184,18 +193,6 @@ export const ScrollyLanding: React.FC = () => {
     'GOVERNANZA',
     'DEMO',
   ]
-
-  const goSignUp = (event: React.MouseEvent) => {
-    event.preventDefault()
-    setIsDemoLoading(true)
-    router.push('/auth/sign-up')
-  }
-
-  const goSignIn = (event: React.MouseEvent) => {
-    event.preventDefault()
-    setIsLoginLoading(true)
-    router.push('/auth/sign-in')
-  }
 
   return (
     <div
@@ -230,95 +227,21 @@ export const ScrollyLanding: React.FC = () => {
       </div>
 
       {/* Navbar */}
-      <nav className="fixed top-0 w-full z-50 px-4 sm:px-6 md:px-12 py-4 sm:py-6 flex items-center justify-between border-b-2 border-gray-900 bg-white/90 backdrop-blur-md">
-        <div className="flex items-center gap-3 sm:gap-4 text-left">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary flex items-center justify-center shadow-[3px_3px_0px_#000] sm:shadow-[4px_4px_0px_#000] border-2 border-gray-900">
-            <Crosshair className="text-white w-5 h-5 sm:w-7 sm:h-7" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-gray-900 font-black text-lg sm:text-xl tracking-tighter leading-none uppercase">
-              APEX
-            </span>
-            <span className="text-[8px] sm:text-[10px] text-gray-500 font-mono tracking-tighter uppercase font-bold hidden sm:block">
-              Adaptive Planning & Execution
-            </span>
-          </div>
-        </div>
-        <div className="hidden lg:flex gap-10">
-          {navItems.map((item) => (
-            <button
-              key={item.label}
-              onClick={() => {
-                setActiveSection(item.index)
-                const progress = item.index / (TOTAL_FRAMES - 1)
-                setScrollProgress(progress)
-                if (!isMobile) {
-                  window.scrollTo({
-                    top: item.index * window.innerHeight,
-                    behavior: 'smooth',
-                  })
-                }
-              }}
-              className={`text-xs font-black transition-all duration-300 uppercase tracking-widest relative group ${
-                (
-                  item.index === 1
-                    ? [1, 2, 3].includes(activeSection)
-                    : activeSection === item.index
-                )
-                  ? 'text-primary'
-                  : 'text-gray-900 hover:text-primary'
-              }`}
-            >
-              {item.label}
-              <span
-                className={`absolute -bottom-1 left-0 h-0.5 bg-primary transition-all duration-300 ${
-                  (
-                    item.index === 1
-                      ? [1, 2, 3].includes(activeSection)
-                      : activeSection === item.index
-                  )
-                    ? 'w-full'
-                    : 'w-0 group-hover:w-full'
-                }`}
-              />
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-4">
-          <div className="flex gap-4 h-8">
-            <Link
-              href="https://wa.me/573245134148?text=Hola%21%20Requiero%20m%C3%A1s%20informaci%C3%B3n%20sobre%20APEX"
-              target="_blank"
-              className="flex items-center justify-center bg-primary hover:text-white font-black tracking-widest rounded-none px-4 sm:px-8 py-4 sm:py-6 border-2 border-gray-900 shadow-[3px_3px_0px_#000] sm:shadow-[4px_4px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
-            >
-              <img
-                src="/whatsapp.png"
-                alt="wahtsapp-icon"
-                className="w-6 h-6 sm:w-8 sm:h-8"
-              />
-            </Link>
-            <Link
-              href="https://borls.com/contact"
-              target="_blank"
-              // onClick={goSignUp}
-              className="flex items-center justify-center bg-primary hover:text-white font-black text-[10px] sm:text-xs uppercase tracking-widest rounded-none px-4 sm:px-8 py-4 sm:py-6  border-2 border-gray-900 shadow-[3px_3px_0px_#000] sm:shadow-[4px_4px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
-            >
-              <span className="hidden sm:inline">Agendar Demo</span>
-              <span className="sm:hidden">Demo</span>
-              {isDemoLoading && <Loading className="w-4 h-4 ml-2 text-white" />}
-            </Link>
-          </div>
-
-          <Button
-            onClick={goSignIn}
-            className="text-gray-900 hover:text-white bg-transparent hover:bg-primary hover:text-white font-black text-[10px] sm:text-xs uppercase tracking-widest rounded-none px-4 sm:px-8 py-4 sm:py-6 border-2 border-gray-900 shadow-[3px_3px_0px_#000] sm:shadow-[4px_4px_0px_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
-          >
-            <span className="hidden sm:inline">Iniciar Sesión</span>
-            <span className="sm:hidden">Sesión</span>
-            {isLoginLoading && <Loading className="w-4 h-4 ml-2 text-white" />}
-          </Button>
-        </div>
-      </nav>
+      <LandingHeader
+        navItems={navItems}
+        activeSection={activeSection}
+        onNavClick={(index) => {
+          setActiveSection(index)
+          const progress = index / (TOTAL_FRAMES - 1)
+          setScrollProgress(progress)
+          if (!isMobile) {
+            window.scrollTo({
+              top: index * window.innerHeight,
+              behavior: 'smooth',
+            })
+          }
+        }}
+      />
 
       {/* Main Content - Desktop: Fixed sections, Mobile: Stacked sections */}
       {isMobile ? (
@@ -398,7 +321,7 @@ export const ScrollyLanding: React.FC = () => {
         (activeSection < TOTAL_FRAMES - 1 ? (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 animate-bounce">
             <span className="text-[10px] font-black text-primary uppercase tracking-widest bg-white/90 backdrop-blur-sm px-3 py-1 border-2 border-primary shadow-[2px_2px_0px_#1dcd9f]">
-              Scroll
+              HAZ SCROLL PARA DESCUBRIR
             </span>
             <div className="w-8 h-8 bg-primary flex items-center justify-center shadow-[2px_2px_0px_#000] border-2 border-gray-900">
               <svg
@@ -418,7 +341,11 @@ export const ScrollyLanding: React.FC = () => {
           </div>
         ) : (
           <button
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            onClick={() => {
+              setActiveSection(0)
+              setScrollProgress(0)
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 group cursor-pointer"
           >
             <span className="text-[10px] font-black text-white uppercase tracking-widest bg-primary px-3 py-1 border-2 border-gray-900 shadow-[2px_2px_0px_#000] group-hover:shadow-none group-hover:translate-x-[2px] group-hover:translate-y-[2px] transition-all">

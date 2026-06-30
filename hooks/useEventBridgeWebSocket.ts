@@ -3,80 +3,72 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type {
   EventBridgeEvent,
-  ConnectionStatus,
   UseEventBridgeWebSocketReturn,
 } from '../types/eventbridge'
 import { getEnv } from '@/lib/actions/getenv'
+import { WebSocketService, type ConnectionStatus } from '@/lib/services/websocket'
 
 export function useEventBridgeWebSocket(): UseEventBridgeWebSocketReturn {
   const [events, setEvents] = useState<EventBridgeEvent[]>([])
-  const [isConnected, setIsConnected] = useState<boolean>(false)
-  const [connectionStatus, setConnectionStatus] =
-    useState<ConnectionStatus>('disconnected')
-  const wsRef = useRef<WebSocket | null>(null)
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [isConnected, setIsConnected] = useState(false)
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected')
+  const [reconnectAttempt, setReconnectAttempt] = useState(0)
+  const [reconnectCountdown, setReconnectCountdown] = useState(0)
+  const [maxRetries, setMaxRetries] = useState(10)
+  const serviceRef = useRef<WebSocketService | null>(null)
 
-  const connect = useCallback(async () => {
-    const url = await getEnv('WEBSOCKET_URL')
-    const apiKey = await getEnv('WEBSOCKET_API_KEY')
-    const wsUrl = `${url}?x-api-key=${apiKey}`
-    if (wsRef.current?.readyState === WebSocket.OPEN) return
-
-    if (!wsUrl) {
-      console.error('WEBSOCKET_URL no está configurado')
+  const connect = useCallback(() => {
+    if (serviceRef.current) {
       return
     }
 
-    wsRef.current = new WebSocket(wsUrl)
+    const service = new WebSocketService({
+      urlBuilder: async () => {
+        const url = await getEnv('WEBSOCKET_URL')
+        const apiKey = await getEnv('WEBSOCKET_API_KEY')
+        if (!url) {
+          throw new Error('WEBSOCKET_URL no está configurado')
+        }
+        return `${url}?x-api-key=${apiKey}`
+      },
+      heartbeatInterval: 25000,
+      reconnection: { maxRetries: 10, countdownSeconds: 10 },
+      callbacks: {
+        onMessage: (data) => {
+          try {
+            const eventData: EventBridgeEvent = JSON.parse(data)
 
-    wsRef.current.onopen = () => {
-      setIsConnected(true)
-      setConnectionStatus('connected')
+            if (eventData.type === 'pong') {
+              return
+            }
 
-      // Limpiar timeout de reconexión
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current)
-        reconnectTimeoutRef.current = null
-      }
-    }
+            setEvents((prev) => [eventData, ...prev.slice(0, 99)])
+          } catch {
+            // Ignore parsing errors
+          }
+        },
+        onStatusChange: (status) => {
+          setConnectionStatus(status)
+          setIsConnected(status === 'connected')
+        },
+        onReconnectAttempt: (attempt, countdown) => {
+          setReconnectAttempt(attempt)
+          setReconnectCountdown(countdown)
+          if (serviceRef.current) {
+            setMaxRetries(serviceRef.current.getMaxRetries())
+          }
+        },
+      },
+    })
 
-    wsRef.current.onmessage = (event: MessageEvent) => {
-      try {
-        const eventData: EventBridgeEvent = JSON.parse(event.data)
-        console.log('Evento recibido:', eventData)
-
-        setEvents((prev) => [eventData, ...prev.slice(0, 99)]) // Mantener últimos 100
-      } catch (error) {
-        console.error('Error parsing message:', error)
-      }
-    }
-
-    wsRef.current.onclose = () => {
-      setIsConnected(false)
-      setConnectionStatus('disconnected')
-
-      // Reconectar automáticamente después de 3 segundos
-      reconnectTimeoutRef.current = setTimeout(() => {
-        setConnectionStatus('reconnecting')
-        connect()
-      }, 3000)
-    }
-
-    wsRef.current.onerror = (error: Event) => {
-      console.error('WebSocket error:', error)
-      setConnectionStatus('error')
-    }
+    serviceRef.current = service
+    service.connect()
   }, [])
 
   const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-      reconnectTimeoutRef.current = null
-    }
-
-    if (wsRef.current) {
-      wsRef.current.close()
-      wsRef.current = null
+    if (serviceRef.current) {
+      serviceRef.current.disconnect()
+      serviceRef.current = null
     }
   }, [])
 
@@ -92,6 +84,9 @@ export function useEventBridgeWebSocket(): UseEventBridgeWebSocketReturn {
     events,
     isConnected,
     connectionStatus,
+    reconnectAttempt,
+    reconnectCountdown,
+    maxRetries,
     reconnect: connect,
     disconnect,
     setEvents,

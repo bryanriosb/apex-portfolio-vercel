@@ -33,6 +33,7 @@ import {
 } from '@/components/oauth2/connector-display'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { Spinner } from '../ui/spinner'
 
 interface PromptInputConnectorMenuProps {
   agentId: string
@@ -41,6 +42,8 @@ interface PromptInputConnectorMenuProps {
   apiBaseUrl: string
   isOpen: boolean
   handleConnectors: (value: boolean) => void
+  isConnected?: boolean
+  reconnectAttempt?: number
 }
 
 const AUTH_STATUS_ICONS: Record<AuthStatus, React.ElementType> = {
@@ -57,6 +60,8 @@ export function PromptInputConnectorMenu({
   apiBaseUrl,
   isOpen,
   handleConnectors,
+  isConnected,
+  reconnectAttempt,
 }: PromptInputConnectorMenuProps) {
   const [tools, setTools] = useState<ToolWithAuthStatus[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -89,6 +94,8 @@ export function PromptInputConnectorMenu({
   }, [agentId, userId, businessAccountId, apiBaseUrl, fetchTools])
 
   const loadTools = useCallback(() => {
+    if (!userId || !businessAccountId) return
+
     setIsLoading(true)
     fetchTools({ agentId, userId, businessAccountId, apiBaseUrl })
       .then((data) => {
@@ -99,8 +106,10 @@ export function PromptInputConnectorMenu({
   }, [agentId, userId, businessAccountId, apiBaseUrl, fetchTools])
 
   useEffect(() => {
-    loadTools()
-  }, [loadTools])
+    if (isConnected || isConnected === undefined || (reconnectAttempt && reconnectAttempt > 0)) {
+      loadTools()
+    }
+  }, [loadTools, isConnected, reconnectAttempt])
 
   const handleToggle = async (toolId: string, isActive: boolean) => {
     try {
@@ -198,7 +207,7 @@ export function PromptInputConnectorMenu({
   }
 
   const handleNavigateToConnectors = () => {
-    router.push('/connectors')
+    router.push('/admin/agentic/connectors')
   }
 
   const connectedCount = tools.filter((t) =>
@@ -245,7 +254,7 @@ export function PromptInputConnectorMenu({
         {!isLoading && tools.length === 0 && (
           <div className="px-3 py-4 text-center">
             <p className="text-xs text-muted-foreground">
-              No hay conectores disponibles
+              No hay conectores disponibles para este agente
             </p>
           </div>
         )}
@@ -300,9 +309,9 @@ export function PromptInputConnectorMenu({
                           onClick={() => handleDiscover(tool.id)}
                         >
                           {isConnecting ? (
-                            <Loader2Icon className="h-3 w-3 animate-spin" />
+                            <Spinner className="h-3 w-3" />
                           ) : (
-                            'Discover'
+                            'Descubrir'
                           )}
                         </Button>
                       )}
@@ -315,7 +324,7 @@ export function PromptInputConnectorMenu({
                           onClick={() => handleConnect(tool)}
                         >
                           {isConnecting ? (
-                            <Loader2Icon className="h-3 w-3 animate-spin" />
+                            <Spinner className="h-3 w-3" />
                           ) : (
                             'Autenticar'
                           )}
@@ -324,13 +333,13 @@ export function PromptInputConnectorMenu({
                       {canReconnect && (
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="secondary"
                           className="h-6 px-2 text-xs"
                           disabled={isConnecting}
                           onClick={() => handleReconnect(tool)}
                         >
                           {isConnecting ? (
-                            <Loader2Icon className="h-3 w-3 animate-spin" />
+                            <Spinner className="h-3 w-3" />
                           ) : (
                             'Reconectar'
                           )}

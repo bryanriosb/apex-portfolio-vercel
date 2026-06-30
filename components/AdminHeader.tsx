@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import NotificationPanel from './notifications/NotificationPanel'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { FeedbackDialog } from './feedback/FeedbackDialog'
+import { AutomationSheet } from './automation/AutomationSheet'
 
 export default function AdminHeader() {
   const [feedbackOpen, setFeedbackOpen] = useState(false)
@@ -21,17 +22,21 @@ export default function AdminHeader() {
 
   return (
     <>
-      <header className="flex items-center justify-between">
-        <div className="flex gap-4 items-center">
+      <header className="flex items-center mb-3">
+        <div className="flex items-center">
           <SidebarTrigger />
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex-1 min-w-0 mx-4">
+          <AutomationSheet />
+        </div>
+        <div className="flex gap-2 items-center shrink-0">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 size="sm"
+                variant="secondary"
                 onClick={() => setFeedbackOpen(true)}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 rounded-none"
               >
                 <LifeBuoy className="!h-4.5 !w-4.5" />
                 <span className="hidden sm:inline">Reportar Novedad</span>

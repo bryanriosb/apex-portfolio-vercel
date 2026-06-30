@@ -1,9 +1,11 @@
 'use client'
 
-import ReactECharts from 'echarts-for-react'
+import dynamic from 'next/dynamic'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { HourlyDistribution, DailyDistribution } from '@/lib/actions/reports'
+
+const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false })
 
 interface HourlyChartProps {
   data: HourlyDistribution[]

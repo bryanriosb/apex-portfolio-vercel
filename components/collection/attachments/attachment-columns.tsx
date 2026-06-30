@@ -1,7 +1,7 @@
 'use client'
 
 import { ColumnDef } from '@tanstack/react-table'
-import { CollectionAttachment } from '@/lib/models/collection'
+import { CollectionAttachment } from '@/lib/models/collection/attachment'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -130,7 +130,7 @@ export const attachmentColumns: ColumnDef<CollectionAttachment>[] = [
         cell: ({ row }) => {
             const date = new Date(row.original.created_at)
             return (
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-muted-foreground font-mono">
                     {formatDistanceToNow(date, { addSuffix: true, locale: es })}
                 </div>
             )

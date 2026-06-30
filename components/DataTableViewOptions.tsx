@@ -1,6 +1,5 @@
 'use client'
 
-import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu'
 import { Table } from '@tanstack/react-table'
 import { RefreshCcw, Settings2 } from 'lucide-react'
 import {
@@ -9,6 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from './ui/dropdown-menu'
 import { Button } from './ui/button'
 import {

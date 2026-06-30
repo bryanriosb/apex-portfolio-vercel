@@ -11,7 +11,7 @@ import type {
   CollectionAttachment,
   CollectionAttachmentInsert,
   CollectionAttachmentUpdate,
-} from '@/lib/models/collection'
+} from '@/lib/models/collection/attachment'
 
 export interface AttachmentListResponse {
   data: CollectionAttachment[]

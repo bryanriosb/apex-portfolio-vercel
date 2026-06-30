@@ -5,7 +5,7 @@ import {
   CollectionEvent,
   EventType,
   EventStatus,
-} from '@/lib/models/collection'
+} from '@/lib/models/collection/event'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'

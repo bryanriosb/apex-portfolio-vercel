@@ -1,7 +1,7 @@
 'use server'
 
 import { getSupabaseAdminClient } from '@/lib/actions/supabase'
-import { CollectionExecutionInsert } from '@/lib/models/collection'
+import { CollectionExecutionInsert } from '@/lib/models/collection/execution'
 import { CollectionClientInsert } from '@/lib/models/collection/client'
 import { BatchStrategyService } from '@/lib/services/collection/batch-strategy-service'
 import { EmailReputationService } from '@/lib/services/collection/email-reputation-service'

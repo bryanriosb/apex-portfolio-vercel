@@ -1,4 +1,4 @@
-import { fetchAttachmentsAction, type AttachmentListResponse } from '@/lib/actions/collection'
+import { fetchAttachmentsAction, type AttachmentListResponse } from '@/lib/actions/collection/attachment'
 
 export interface AttachmentServiceParams {
     business_account_id: string

@@ -20,12 +20,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import {
-  NotificationThresholdService,
-  TemplateService,
-} from '@/lib/services/collection'
+import { NotificationThresholdService } from '@/lib/services/collection/notification-threshold-service'
+import { TemplateService } from '@/lib/services/collection/template-service'
 import type { NotificationThreshold } from '@/lib/models/collection/notification-threshold'
-import type { CollectionTemplate } from '@/lib/models/collection'
+import type { CollectionTemplate } from '@/lib/models/collection/template'
 
 interface ThresholdFormDialogProps {
   open: boolean

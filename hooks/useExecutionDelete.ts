@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Table } from '@tanstack/react-table'
-import { CollectionExecution } from '@/lib/models/collection'
+import { CollectionExecution } from '@/lib/models/collection/execution'
 
 interface UseExecutionDeleteOptions {
     onSuccess?: () => void

@@ -5,6 +5,9 @@ import { CopyIcon, RefreshCcwIcon, HistoryIcon } from 'lucide-react'
 import type { ChatStatus } from 'ai'
 
 import { useAgentChat } from '@/lib/services/agent'
+import { useCurrentUser } from '@/hooks/use-current-user'
+import { useActiveBusinessStore } from '@/lib/store/active-business-store'
+import Loading from '@/components/ui/loading'
 import { PromptInputConnectorMenu } from '@/components/oauth2/PromptInputConnectorMenu'
 import {
   Conversation,
@@ -45,33 +48,93 @@ import { cn } from '@/lib/utils'
 
 const MODELS = [
   {
+    id: crypto.randomUUID(),
+    name: 'Gemma 4 26B A4B-it',
+    value: 'google/gemma-4-26B-A4B-it',
+    provider: 'deepinfra',
+    base_url: 'https://api.deepinfra.com/v1',
+  },
+  {
+    id: crypto.randomUUID(),
+    name: 'Gemma 4 31B-it',
+    value: 'google/gemma-4-31B-it',
+    provider: 'deepinfra',
+    base_url: 'https://api.deepinfra.com/v1',
+  },
+  {
+    id: crypto.randomUUID(),
+    name: 'Gemma 4 31B-it-turbo',
+    value: 'google/gemma-4-31B-it-turbo',
+    provider: 'deepinfra',
+    base_url: 'https://api.deepinfra.com/v1',
+  },
+  {
+    id: crypto.randomUUID(),
+    name: 'Nemotron-3-Super-120B-A12B (OpenRouter)',
+    value: 'nvidia/nemotron-3-super-120b-a12b:free',
+    provider: 'openrouter',
+    provider_options: {
+      reasoning_effort: 'low',
+    },
+  },
+  {
+    id: crypto.randomUUID(),
+    name: 'Trinity Large Thinking',
+    value: 'arcee-ai/trinity-large-thinking:free',
+    provider: 'openrouter',
+    provider_options: {
+      reasoning_effort: 'medium',
+    },
+  },
+  {
+    id: crypto.randomUUID(),
+    name: 'GPT OSS 120B (OpenRouter)',
+    value: 'openai/gpt-oss-120b',
+    provider: 'openrouter',
+  },
+  {
+    id: crypto.randomUUID(),
     name: 'GPT 5.4 Mini',
     value: 'gpt-5.4-mini',
-    base_url: 'https://api.openai.com/v1',
+    base_url: 'https://api.openapi.com/v1',
     provider: 'openai',
   },
   {
+    id: crypto.randomUUID(),
     name: 'GPT 5.4',
     value: 'gpt-5.4',
     base_url: 'https://api.openai.com/v1',
     provider: 'openai',
   },
-  { name: 'GPT OSS 120B', value: 'openai/gpt-oss-120b' },
-  { name: 'Deepseek 3.2', value: 'deepseek-ai/DeepSeek-V3.2' },
-  { name: 'Qwen3 30B A3B', value: 'Qwen/Qwen3-30B-A3B' },
-  { name: 'Gemini 2.5 Flash', value: 'google/gemini-2.5-flash' },
-  { name: 'GLM-4.7', value: 'zai-org/GLM-4.7' },
-  { name: 'Nemotron-3-Nano', value: 'nvidia/Nemotron-3-Nano-30B-A3B' },
+  {
+    id: crypto.randomUUID(),
+    name: 'Qwen3 30B A3B',
+    value: 'Qwen/Qwen3-30B-A3B',
+  },
+  {
+    id: crypto.randomUUID(),
+    name: 'Gemini 2.5 Flash',
+    value: 'google/gemini-2.5-flash',
+  },
+  { id: crypto.randomUUID(), name: 'GLM-4.7', value: 'zai-org/GLM-4.7' },
+  {
+    id: crypto.randomUUID(),
+    name: 'Nemotron-3-Ultra',
+    value: 'nvidia/nemotron-3-ultra-550b-a55b:free',
+  },
 ]
 
 export default function AgentChat() {
-  const wsUrl = 'wss://apex-ai.borls.com/ws'
+  const { user, isLoading: userLoading } = useCurrentUser()
+  const { activeBusiness, isLoading: businessLoading } = useActiveBusinessStore()
+
+  const wsUrl = 'wss://apex-ai.borls.com/ws/conversational'
   const apiBaseUrl = 'https://apex-ai.borls.com/api'
-  const agentId = 'e10c503d-00fc-4282-9d2e-3f8c4be7b0a0'
-  const userId = 'usr_123456'
-  const appName = 'agentic-chat'
+  const userId = user?.id || ''
+  const businessAccountId = activeBusiness?.business_account_id || ''
+  const appName = businessAccountId
   const defaultModel = MODELS[0].value
-  const businessAccountId = 'ba-12345678-1234-1234-1234-123456789012'
+  const agentId = 'e10c503d-00fc-4282-9d2e-3f8c4be7b0a0'
 
   const [selectedModel, setSelectedModel] = useState<string>(
     defaultModel || MODELS[0].value
@@ -90,6 +153,7 @@ export default function AgentChat() {
     currentContent,
     currentReasoning,
     sessionId,
+    reconnectAttempt,
     send,
     stop,
     connect,
@@ -97,7 +161,7 @@ export default function AgentChat() {
     regenerate,
     setSessionId,
   } = useAgentChat({
-    wsUrl,
+    wsBaseUrl: wsUrl,
     agentId,
     userId,
     appName,
@@ -106,10 +170,12 @@ export default function AgentChat() {
   })
 
   useEffect(() => {
+    if (!userId || !businessAccountId) return
+
     connect()
 
     return () => disconnect()
-  }, [connect, disconnect])
+  }, [connect, disconnect, userId, businessAccountId])
 
   const handleSubmit = useCallback(
     (message: PromptInputMessage) => {
@@ -120,7 +186,8 @@ export default function AgentChat() {
         message.text.trim(),
         selectedModel,
         selectedModelData?.base_url,
-        selectedModelData?.provider
+        selectedModelData?.provider,
+        selectedModelData?.provider_options
       )
       setInputValue('')
     },
@@ -161,10 +228,15 @@ export default function AgentChat() {
     setShowHistory((prev) => !prev)
   }, [])
 
-  const handleConnectors = () => {
-    console.log('Connectors')
-
-    setOpenConnectors(!openConnectors)
+  if (userLoading || businessLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-white dark:bg-muted">
+        <div className="flex flex-col items-center gap-4">
+          <Loading className="h-8 w-8 text-primary" />
+          <span className="text-sm text-muted-foreground">Cargando chat...</span>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -327,10 +399,7 @@ export default function AgentChat() {
                   </PromptInputSelectTrigger>
                   <PromptInputSelectContent>
                     {MODELS.map((model) => (
-                      <PromptInputSelectItem
-                        key={model.value}
-                        value={model.value}
-                      >
+                      <PromptInputSelectItem key={model.id} value={model.value}>
                         {model.name}
                       </PromptInputSelectItem>
                     ))}
@@ -349,6 +418,8 @@ export default function AgentChat() {
                     apiBaseUrl={apiBaseUrl}
                     isOpen={connectorsOpen}
                     handleConnectors={setConnectorsOpen}
+                    isConnected={isConnected}
+                    reconnectAttempt={reconnectAttempt}
                   />
                 </div>
               </PromptInputTools>

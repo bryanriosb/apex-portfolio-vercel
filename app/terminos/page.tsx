@@ -39,7 +39,7 @@ export default function TerminosUso() {
           <div className="bg-card/50 p-8 border border-border/50">
             <p className="text-lg leading-relaxed text-muted-foreground">
               Estos Términos de Uso (en adelante, los "Términos") regulan el
-              acceso y uso de la plataforma APEX (Adaptive Planning & Execution Platform) (en adelante, la
+              acceso y uso de la plataforma APEX (Agentic AI Planning & Execution Platform) (en adelante, la
               "Plataforma"), propiedad de BORLS SAS, una empresa especializada en
               el desarrollo de soluciones tecnológicas y software empresarial.
             </p>
@@ -257,10 +257,10 @@ export default function TerminosUso() {
               estándares de calidad y disponibilidad técnica.
             </p>
             <p className="text-muted-foreground">
-              El usuario reconoce que es responsable de cumplir con la Ley 1581 de 2012 
-              respecto a los datos de sus propios clientes finales, incluyendo la obtención 
-              de autorización para su tratamiento. BORLS no será responsable por el 
-              incumplimiento por parte del usuario de sus obligaciones como responsable 
+              El usuario reconoce que es responsable de cumplir con la Ley 1581 de 2012
+              respecto a los datos de sus propios clientes finales, incluyendo la obtención
+              de autorización para su tratamiento. BORLS no será responsable por el
+              incumplimiento por parte del usuario de sus obligaciones como responsable
               del tratamiento de datos de terceros.
             </p>
           </section>
@@ -289,9 +289,9 @@ export default function TerminosUso() {
                   8.2. Derechos de BORLS
                 </h3>
                 <p className="text-muted-foreground mb-4">
-                  BORLS se reserva el derecho de utilizar datos agregados y anonimizados 
-                  para fines estadísticos y de mejora del servicio, garantizando que dicha 
-                  información no permita la identificación de usuarios individuales ni de 
+                  BORLS se reserva el derecho de utilizar datos agregados y anonimizados
+                  para fines estadísticos y de mejora del servicio, garantizando que dicha
+                  información no permita la identificación de usuarios individuales ni de
                   sus clientes finales, conforme al artículo 2 de la Ley 1581 de 2012.
                 </p>
               </div>
@@ -303,10 +303,10 @@ export default function TerminosUso() {
                 <p className="text-muted-foreground">
                   En caso de terminación del servicio, BORLS proporcionará al
                   usuario un plazo de 30 días para exportar sus datos. Transcurrido
-                  este período, los datos serán eliminados permanentemente de nuestros 
-                  servidores activos dentro de los siguientes 30 días. Las copias de 
-                  seguridad serán eliminadas conforme a los ciclos de retención establecidos 
-                  (máximo 90 días adicionales), salvo obligación legal de conservación 
+                  este período, los datos serán eliminados permanentemente de nuestros
+                  servidores activos dentro de los siguientes 30 días. Las copias de
+                  seguridad serán eliminadas conforme a los ciclos de retención establecidos
+                  (máximo 90 días adicionales), salvo obligación legal de conservación
                   superior. El usuario podrá solicitar un certificado de eliminación de datos.
                 </p>
               </div>

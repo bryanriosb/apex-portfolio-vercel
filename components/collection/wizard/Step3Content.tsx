@@ -27,7 +27,7 @@ import { FileData, EmailConfig, StrategyType, DatabaseStrategy } from './types'
 import { ThresholdPreview } from './ThresholdPreview'
 import { useWizardThresholdPreview } from '@/hooks/collection/use-wizard-threshold-preview'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
-import { CollectionTemplate } from '@/lib/models/collection'
+import { CollectionTemplate } from '@/lib/models/collection/template'
 
 interface Step3ContentProps {
   fileData: FileData | null

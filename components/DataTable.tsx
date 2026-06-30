@@ -40,8 +40,9 @@ import DataTablePagination from './DataTablePagination'
 import { DataTableToolbar } from './DataTableToolbar'
 import { ConfirmDeleteDialog } from './ConfirmDeleteDialog'
 import Loading from './ui/loading'
-import * as XLSX from 'xlsx'
 import { toast } from 'sonner'
+
+const EMPTY_ARRAY: any[] = []
 
 export interface FilterConfig {
   column: string
@@ -184,11 +185,11 @@ export const DataTable = forwardRef<DataTableRef, DataTableProps<any, any>>(
       })
       return visibility
     })
-    const data = isAutonomous ? internalData : externalData || []
+    const data = isAutonomous ? internalData : externalData || EMPTY_ARRAY
     const pagination = isAutonomous ? internalPagination : externalPagination
     const filterState = isAutonomous
       ? internalFilterState
-      : externalFilterState || []
+      : externalFilterState || EMPTY_ARRAY
 
     const selectColumn: ColumnDef<TData, TValue> = useMemo(
       () => ({
@@ -322,7 +323,7 @@ export const DataTable = forwardRef<DataTableRef, DataTableProps<any, any>>(
             const content =
               format === 'csv'
                 ? arrayToCSV(headers, processedData)
-                : arrayToExcel(headers, processedData)
+                : await arrayToExcel(headers, processedData)
 
             // Generar nombre de archivo
             const timestamp = new Date().getTime()
@@ -368,7 +369,8 @@ export const DataTable = forwardRef<DataTableRef, DataTableProps<any, any>>(
     )
 
     const arrayToExcel = React.useCallback(
-      (headers: string[], rows: (string | number)[][]): any => {
+      async (headers: string[], rows: (string | number)[][]): Promise<any> => {
+        const XLSX = await import('xlsx')
         const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
         const workbook = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Datos')
@@ -642,7 +644,7 @@ export const DataTable = forwardRef<DataTableRef, DataTableProps<any, any>>(
               pageSize: 10,
             }
             : undefined,
-        columnFilters: filterState || [],
+        columnFilters: filterState || EMPTY_ARRAY,
         columnVisibility,
         rowSelection,
       },

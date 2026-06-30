@@ -1,5 +1,5 @@
-import { fetchTemplatesAction, createTemplateAction, type TemplateListResponse } from '@/lib/actions/collection'
-import type { CollectionTemplate, CollectionTemplateInsert } from '@/lib/models/collection'
+import { fetchTemplatesAction, createTemplateAction, type TemplateListResponse } from '@/lib/actions/collection/template'
+import type { CollectionTemplate, CollectionTemplateInsert } from '@/lib/models/collection/template'
 
 export interface TemplateServiceParams {
     business_account_id: string
@@ -27,7 +27,7 @@ export const TemplateService = {
     },
 
     async getTemplate(id: string): Promise<CollectionTemplate> {
-        const { getTemplateByIdAction } = await import('@/lib/actions/collection')
+        const { getTemplateByIdAction } = await import('@/lib/actions/collection/template')
         const template = await getTemplateByIdAction(id)
         if (!template) {
             throw new Error('Plantilla no encontrada')
@@ -36,7 +36,7 @@ export const TemplateService = {
     },
 
     async updateTemplate(id: string, data: any): Promise<CollectionTemplate> {
-        const { updateTemplateAction } = await import('@/lib/actions/collection')
+        const { updateTemplateAction } = await import('@/lib/actions/collection/template')
         const result = await updateTemplateAction(id, data)
         if (!result.success || !result.data) {
             throw new Error(result.error || 'Error al actualizar la plantilla')

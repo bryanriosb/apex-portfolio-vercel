@@ -8,7 +8,7 @@ import type {
     CollectionEvent,
     CollectionEventInsert,
     createEvent,
-} from '@/lib/models/collection'
+} from '@/lib/models/collection/event'
 
 export interface EventListResponse {
     data: CollectionEvent[]

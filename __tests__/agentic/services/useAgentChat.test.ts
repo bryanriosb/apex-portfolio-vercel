@@ -24,7 +24,7 @@ let mockSessionServiceInstance: {
 
 // Mock AgentService - must use function keyword for constructor
 vi.mock('@/lib/services/agent/AgentService', () => ({
-  AgentService: function(callbacks: unknown) {
+  AgentService: function(callbacks: unknown, _options?: unknown, _isWorkflow?: boolean) {
     mockAgentServiceInstance = {
       connect: vi.fn(),
       disconnect: vi.fn(),
@@ -64,7 +64,7 @@ function getMockSessionService() {
 
 describe('useAgentChat Hook', () => {
   const defaultOptions = {
-    wsUrl: 'ws://test.example.com',
+    wsBaseUrl: 'ws://test.example.com',
     agentId: 'test-agent',
     userId: 'test-user',
     appName: 'test-app',
@@ -154,8 +154,9 @@ describe('useAgentChat Hook', () => {
 
       const mockService = getMockAgentService()
       expect(mockService.connect).toHaveBeenCalledWith(
-        defaultOptions.wsUrl,
-        defaultOptions.agentId
+        defaultOptions.wsBaseUrl,
+        defaultOptions.agentId,
+        defaultOptions.userId
       )
     })
   })
@@ -184,8 +185,9 @@ describe('useAgentChat Hook', () => {
       const mockService = getMockAgentService()
       expect(mockService.disconnect).toHaveBeenCalled()
       expect(mockService.connect).toHaveBeenCalledWith(
-        defaultOptions.wsUrl,
-        defaultOptions.agentId
+        defaultOptions.wsBaseUrl,
+        defaultOptions.agentId,
+        defaultOptions.userId
       )
     })
   })
@@ -514,6 +516,9 @@ describe('useAgentChat Hook', () => {
         currentContent: 'Thinking...',
         currentReasoning: 'Processing...',
         sessionId: 'session-123',
+        reconnectAttempt: 0,
+        reconnectCountdown: 0,
+        maxRetries: 10,
       }
 
       act(() => {
@@ -564,6 +569,34 @@ describe('useAgentChat Hook', () => {
       expect(typeof result.current.reconnect).toBe('function')
       expect(typeof result.current.regenerate).toBe('function')
       expect(typeof result.current.setSessionId).toBe('function')
+    })
+  })
+
+  describe('heartbeat support', () => {
+    it('should maintain connection state when receiving pong', () => {
+      const { result } = renderHook(() => useAgentChat(defaultOptions))
+
+      // Simulate connected state
+      const mockService = getMockAgentService()
+      act(() => {
+        mockService.callbacks.onStateChange({
+          ...result.current,
+          isConnected: true,
+        })
+      })
+
+      expect(result.current.isConnected).toBe(true)
+
+      // Simulate pong message (should not change state)
+      act(() => {
+        mockService.callbacks.onStateChange({
+          ...result.current,
+          isConnected: true,
+        })
+      })
+
+      expect(result.current.isConnected).toBe(true)
+      expect(result.current.isStreaming).toBe(false)
     })
   })
 })

@@ -110,7 +110,7 @@ export const BLACKLIST_COLUMNS: ColumnDef<BlacklistWithCustomerInfo>[] = [
       const date = row.original.bounced_at
       if (!date) return <div className="text-muted-foreground">-</div>
       return (
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground font-mono">
           {format(new Date(date), 'dd MMM yyyy HH:mm', { locale: es })}
         </div>
       )
@@ -122,7 +122,7 @@ export const BLACKLIST_COLUMNS: ColumnDef<BlacklistWithCustomerInfo>[] = [
     cell: ({ row }) => {
       const date = row.original.created_at
       return (
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground font-mono">
           {format(new Date(date), 'dd MMM yyyy', { locale: es })}
         </div>
       )

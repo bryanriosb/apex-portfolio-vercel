@@ -15,7 +15,7 @@ import {
     getActiveAttachmentsAction,
     deleteAttachmentAction
 } from '@/lib/actions/collection/attachment'
-import { CollectionAttachment } from '@/lib/models/collection'
+import { CollectionAttachment } from '@/lib/models/collection/attachment'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { cn } from '@/lib/utils'

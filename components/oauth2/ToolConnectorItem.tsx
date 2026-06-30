@@ -221,7 +221,7 @@ export function ToolConnectorItem({
                   disabled={isBusy}
                 >
                   {loadingAction === 'refresh' ? (
-                    <Spinner />
+                    <Spinner className="size-8" />
                   ) : (
                     <RefreshCwIcon className="h-3 w-3" />
                   )}
@@ -233,7 +233,7 @@ export function ToolConnectorItem({
                   disabled={isBusy}
                 >
                   {loadingAction === 'disconnect' ? (
-                    <Spinner />
+                    <Spinner className="size-8" />
                   ) : (
                     <UnplugIcon className="h-3 w-3" />
                   )}
@@ -249,7 +249,7 @@ export function ToolConnectorItem({
               disabled={isBusy}
             >
               {loadingAction === 'connect' ? (
-                <Spinner />
+                <Spinner className="size-8" />
               ) : (
                 <RefreshCwIcon className="h-3 w-3 mr-1" />
               )}

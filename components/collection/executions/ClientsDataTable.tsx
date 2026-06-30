@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { ColumnDef } from '@tanstack/react-table'
 import { DataTable, FilterConfig } from '@/components/DataTable'
-import { CollectionClient, ClientStatus } from '@/lib/models/collection'
+import { CollectionClient, ClientStatus } from '@/lib/models/collection/client'
 import { fetchClientsByExecutionAction } from '@/lib/actions/collection/client'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -161,7 +161,7 @@ export function ClientsDataTable({
           if (!date) return <span className="text-muted-foreground">-</span>
           return (
             <div className="flex flex-col">
-              <span className="text-xs">
+              <span className="text-xs font-mono">
                 {formatDateInTimezone(date, timezone)}
               </span>
             </div>
@@ -175,7 +175,7 @@ export function ClientsDataTable({
           const date = row.original.email_delivered_at
           if (!date) return <span className="text-muted-foreground">-</span>
           return (
-            <span className="text-xs">
+            <span className="text-xs font-mono">
               {formatDateInTimezone(date, timezone)}
             </span>
           )
@@ -188,7 +188,7 @@ export function ClientsDataTable({
           const date = row.original.email_opened_at
           if (!date) return <span className="text-muted-foreground">-</span>
           return (
-            <span className="text-xs">
+            <span className="text-xs font-mono">
               {formatDateInTimezone(date, timezone)}
             </span>
           )
@@ -241,7 +241,7 @@ export function ClientsDataTable({
                 {fallbackType?.toUpperCase() || 'FALLBACK'}
               </Badge>
               {fallbackSent && (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground font-mono">
                   {formatDateInTimezone(fallbackSent, timezone)}
                 </span>
               )}

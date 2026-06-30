@@ -11,7 +11,7 @@ import type {
     CollectionTemplate,
     CollectionTemplateInsert,
     CollectionTemplateUpdate,
-} from '@/lib/models/collection'
+} from '@/lib/models/collection/template'
 
 export interface TemplateListResponse {
     data: CollectionTemplate[]

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { DataTable } from '@/components/DataTable'
 import { getExecutionColumns } from './execution-columns'
-import { ExecutionService } from '@/lib/services/collection'
+import { ExecutionService } from '@/lib/services/collection/execution-service'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import type { FilterConfig } from '@/components/DataTable'
@@ -22,8 +22,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Eye, RefreshCw, Trash2, CheckCircle2, Clock, AlertCircle, Pause, PlayCircle } from 'lucide-react'
 import Link from 'next/link'
-import { CollectionExecution, ExecutionStatus } from '@/lib/models/collection'
-import { updateExecutionStatusAction } from '@/lib/actions/collection'
+import { CollectionExecution, ExecutionStatus } from '@/lib/models/collection/execution'
+import { updateExecutionStatusAction } from '@/lib/actions/collection/execution'
 import { toast } from 'sonner'
 
 const statusOptions = [

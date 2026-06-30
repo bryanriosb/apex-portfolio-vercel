@@ -14,7 +14,7 @@ const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'APEX | Adaptive Planning & Execution Platform',
+    default: 'APEX | Agentic AI Planning & Execution Platform',
     template: '%s | APEX',
   },
   description:

@@ -12,6 +12,7 @@ import {
 import SidebarCustomFooter from './SidebarCustomFooter'
 import {
   SIDE_APP_MENU_ITEMS,
+  SIDE_AGENCY_MENU_ITEMS,
   SIDE_SYSTEM_MENU_ITEMS,
 } from '@/const/sidebar-menu'
 import { useCurrentUser } from '@/hooks/use-current-user'
@@ -33,7 +34,7 @@ export function AppSidebar({ accessibleModules, businessLogoUrl }: AppSidebarPro
   const { state } = useSidebar()
   const { activeBusiness } = useActiveBusinessStore()
   const isCollapsed = state === 'collapsed'
-  
+
   // Usar el logo del negocio activo del store si está disponible, de lo contrario usar el prop del SSR
   const effectiveLogoUrl = activeBusiness?.logo_url ?? businessLogoUrl
 
@@ -106,7 +107,16 @@ export function AppSidebar({ accessibleModules, businessLogoUrl }: AppSidebarPro
     })
   }, [role, accessibleModulesSet])
 
-  // Filtrar sub-items también
+  // Filtrar items del menú por rol y módulos accesibles
+  const filteredAgencyItems = useMemo(() => {
+    return SIDE_AGENCY_MENU_ITEMS.filter((item) => {
+      if (!role || !item.allowedRoles.includes(role)) return false
+      if (item.skipPlanCheck) return true
+      if (!item.moduleCode) return true
+      return accessibleModulesSet.has(item.moduleCode)
+    })
+  }, [role, accessibleModulesSet])
+
   const finalAppItems = useMemo(() => {
     return filteredAppItems.map((item) => {
       if (!item.items) return item
@@ -131,6 +141,24 @@ export function AppSidebar({ accessibleModules, businessLogoUrl }: AppSidebarPro
       return { ...item, items: filteredSubItems }
     })
   }, [filteredAppItems, role, accessibleModulesSet])
+
+  const finalAgencyItems = useMemo(() => {
+    return filteredAgencyItems.map((item) => {
+      if (!item.items) return item
+
+      const filteredSubItems = item.items.filter((subItem) => {
+        if (subItem.allowedRoles && (!role || !subItem.allowedRoles.includes(role))) {
+          return false
+        }
+        if (subItem.moduleCode) {
+          return accessibleModulesSet.has(subItem.moduleCode)
+        }
+        return true
+      })
+
+      return { ...item, items: filteredSubItems }
+    })
+  }, [filteredAgencyItems, role, accessibleModulesSet])
 
   const finalSystemItems = useMemo(() => {
     return filteredSystemItems.map((item) => {
@@ -164,6 +192,9 @@ export function AppSidebar({ accessibleModules, businessLogoUrl }: AppSidebarPro
     <>
       {finalAppItems.length > 0 && (
         <NavMain items={finalAppItems} label="Aplicación" userRole={role} />
+      )}
+      {finalAgencyItems.length > 0 && (
+        <NavMain items={finalAgencyItems} label="Agencia IA" userRole={role} />
       )}
       <SelectSeparator />
       {finalSystemItems.length > 0 && (

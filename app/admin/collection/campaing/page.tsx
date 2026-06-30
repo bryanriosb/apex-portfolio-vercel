@@ -1,4 +1,4 @@
-import { CreationWizard } from '@/components/collection/wizard'
+import { CreationWizard } from '@/components/collection/wizard/CreationWizard'
 
 export default function CrearPage() {
     return (

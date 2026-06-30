@@ -9,7 +9,7 @@ import type {
     CollectionClient,
     CollectionClientInsert,
     CollectionClientUpdate,
-} from '@/lib/models/collection'
+} from '@/lib/models/collection/client'
 
 export interface ClientListResponse {
     data: CollectionClient[]

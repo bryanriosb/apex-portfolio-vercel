@@ -1,11 +1,13 @@
 'use client'
 
-import ReactECharts from 'echarts-for-react'
+import dynamic from 'next/dynamic'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { ExecutionTrendItem } from '@/lib/actions/reports'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+
+const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false })
 
 interface ExecutionChartProps {
   data: ExecutionTrendItem[]

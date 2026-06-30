@@ -9,7 +9,7 @@ import {
 import type {
   CollectionExecution,
   CollectionExecutionUpdate,
-} from '@/lib/models/collection'
+} from '@/lib/models/collection/execution'
 import { CollectionService } from '@/lib/services/collection/collection-service'
 
 export interface ExecutionListResponse {

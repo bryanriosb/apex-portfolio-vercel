@@ -1,7 +1,7 @@
 'use server'
 
 import * as XLSX from 'xlsx'
-import type { CollectionClientInsert } from '@/lib/models/collection'
+import type { CollectionClientInsert } from '@/lib/models/collection/client'
 
 export interface CSVRow {
     email: string

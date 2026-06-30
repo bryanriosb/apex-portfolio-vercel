@@ -29,8 +29,8 @@ export const Frame1Security: React.FC<Frame1SecurityProps> = () => {
     return () => clearTimeout(timer)
   }, [])
 
-  const apexRate = 94
-  const bulkRate = 62
+  const apexRate = 98
+  const bulkRate = 34
 
   return (
     <div className="w-full relative animate-in fade-in duration-500">

@@ -1,6 +1,23 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import BusinessService from '@/lib/services/business/business-service'
+import { setClientCookie, deleteClientCookie } from '@/lib/utils/cookies'
+
+const syncBusinessCookie = (business: Business | null) => {
+  if (typeof window !== 'undefined') {
+    if (business?.business_account_id) {
+      // Expiration: 30 days
+      const expires = new Date()
+      expires.setDate(expires.getDate() + 30)
+      setClientCookie('x-business-account-id', business.business_account_id, { 
+        path: '/',
+        expires
+      })
+    } else {
+      deleteClientCookie('x-business-account-id')
+    }
+  }
+}
 
 export interface Business {
   id: string
@@ -39,7 +56,10 @@ export const useActiveBusinessStore = create<ActiveBusinessState>()(
       userId: null,
       hydrated: false,
 
-      setActiveBusiness: (business) => set({ activeBusiness: business }),
+      setActiveBusiness: (business) => {
+        syncBusinessCookie(business)
+        set({ activeBusiness: business })
+      },
 
       setHydrated: (hydrated) => set({ hydrated }),
 
@@ -50,6 +70,7 @@ export const useActiveBusinessStore = create<ActiveBusinessState>()(
         // If no userId stored or different user, data is stale
         if (!state.userId || state.userId !== currentUserId) {
           console.log('[ActiveBusinessStore] Usuario diferente detectado, limpiando datos...')
+          syncBusinessCookie(null)
           set({ 
             activeBusiness: null, 
             businesses: [], 
@@ -67,9 +88,11 @@ export const useActiveBusinessStore = create<ActiveBusinessState>()(
         // Siempre validar que los datos corresponden al usuario actual
         if (state.userId && state.userId !== userId) {
           console.log('[ActiveBusinessStore] Cambio de usuario en sesión, reseteando...')
+          const nextActive = businesses[0] || null
+          syncBusinessCookie(nextActive)
           set({
             businesses,
-            activeBusiness: businesses[0] || null,
+            activeBusiness: nextActive,
             userId,
             lastFetched: Date.now(),
           })
@@ -79,10 +102,12 @@ export const useActiveBusinessStore = create<ActiveBusinessState>()(
         // Mantener el negocio activo si aún existe en la nueva lista
         const current = state.activeBusiness
         const validBusiness = current ? businesses.find((b) => b.id === current.id) : null
+        const nextActive = validBusiness || businesses[0] || null
 
+        syncBusinessCookie(nextActive)
         set({
           businesses,
-          activeBusiness: validBusiness || businesses[0] || null,
+          activeBusiness: nextActive,
           userId,
           lastFetched: Date.now(),
         })
@@ -95,6 +120,7 @@ export const useActiveBusinessStore = create<ActiveBusinessState>()(
         // Validate user session
         if (state.userId && state.userId !== userId) {
           console.log('[ActiveBusinessStore] Usuario diferente, invalidando caché...')
+          syncBusinessCookie(null)
           set({ 
             activeBusiness: null, 
             businesses: [], 
@@ -132,13 +158,15 @@ export const useActiveBusinessStore = create<ActiveBusinessState>()(
 
           const currentActive = state.activeBusiness
           const isValidActive = currentActive && loadedBusinesses.find(b => b.id === currentActive.id)
+          const nextActive = isValidActive ? currentActive : loadedBusinesses[0] || null
 
+          syncBusinessCookie(nextActive)
           set({
             businesses: loadedBusinesses,
             lastFetched: now,
             isLoading: false,
             userId,
-            activeBusiness: isValidActive ? currentActive : loadedBusinesses[0] || null,
+            activeBusiness: nextActive,
           })
         } catch (error) {
           console.error('Error loading businesses:', error)
@@ -147,13 +175,16 @@ export const useActiveBusinessStore = create<ActiveBusinessState>()(
         }
       },
 
-      reset: () => set({ 
-        activeBusiness: null, 
-        businesses: [], 
-        isLoading: false, 
-        lastFetched: null,
-        userId: null 
-      }),
+      reset: () => {
+        syncBusinessCookie(null)
+        set({ 
+          activeBusiness: null, 
+          businesses: [], 
+          isLoading: false, 
+          lastFetched: null,
+          userId: null 
+        })
+      },
 
       updateBusinessLogo: (businessId: string, logoUrl: string | null) => {
         const state = get()

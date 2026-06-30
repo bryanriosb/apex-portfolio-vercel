@@ -1,9 +1,11 @@
 'use client'
 
-import ReactECharts from 'echarts-for-react'
+import dynamic from 'next/dynamic'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatCurrency } from '@/lib/utils/currency'
+
+const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false })
 
 interface PieChartProps {
   data: { name: string; value: number }[]

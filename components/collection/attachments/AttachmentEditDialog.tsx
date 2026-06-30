@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { updateAttachmentAction } from '@/lib/actions/collection/attachment'
-import { CollectionAttachment } from '@/lib/models/collection'
+import { CollectionAttachment } from '@/lib/models/collection/attachment'
 import { Loader2 } from 'lucide-react'
 
 interface AttachmentEditDialogProps {

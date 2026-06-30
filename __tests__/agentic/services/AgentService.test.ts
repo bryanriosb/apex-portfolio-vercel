@@ -2,26 +2,38 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import fc from 'fast-check'
 import type { AgentState, ChatMessage, AgentCallbacks } from '@/lib/services/agent/types'
 
+vi.mock('@/lib/actions/api/auth-ticket', () => ({
+  getAuthTicket: vi.fn().mockResolvedValue({ ticket: 'test-ticket-123', expires_in: 30 }),
+}))
+
 // Mock WebSocketService module before importing AgentService
 const mockCallbacks = {
   onOpen: vi.fn(),
   onClose: vi.fn(),
   onMessage: vi.fn(),
   onError: vi.fn(),
+  onStatusChange: vi.fn(),
+  onReconnectAttempt: vi.fn(),
 }
 
 vi.mock('@/lib/services/websocket/WebSocketService', () => ({
-  WebSocketService: vi.fn().mockImplementation((url: string, agentId: string, callbacks: typeof mockCallbacks) => ({
+  WebSocketService: vi.fn().mockImplementation((config: any) => ({
     isConnected: false,
     connect: vi.fn(function (this: { isConnected: boolean }) {
       this.isConnected = true
-      callbacks.onOpen()
+      config.callbacks.onOpen()
     }),
     disconnect: vi.fn(function (this: { isConnected: boolean }) {
       this.isConnected = false
-      callbacks.onClose()
+      config.callbacks.onClose()
     }),
     send: vi.fn(),
+    startHeartbeat: vi.fn(),
+    stopHeartbeat: vi.fn(),
+    sendPing: vi.fn(),
+    getStatus: vi.fn().mockReturnValue('connected'),
+    getReconnectAttempt: vi.fn().mockReturnValue(0),
+    getReconnectCountdown: vi.fn().mockReturnValue(0),
   })),
 }))
 
@@ -46,30 +58,31 @@ describe('AgentService - Property 1: Message ID Generation Uniqueness', () => {
         stateHistory.push(state)
       },
     }
-    agentService = new AgentService(callbacks)
+    agentService = new AgentService(callbacks, {
+      urlBuilder: async () => 'ws://test',
+      reconnection: { maxRetries: 6, countdownSeconds: 6 },
+    })
   })
 
-  it('should generate unique IDs for all messages across multiple send operations', () => {
-    // Use property-based testing with minimum 100 iterations
-    fc.assert(
-      fc.property(
-        // Generate arrays of message content strings
+    it('should generate unique IDs for all messages across multiple send operations', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.array(fc.string({ minLength: 1, maxLength: 100 }), { minLength: 2, maxLength: 50 }),
-        (messages) => {
-          // Reset service for each test case
+        async (messages) => {
           stateHistory = []
           const localCallbacks: AgentCallbacks = {
             onStateChange: (state) => {
               stateHistory.push(state)
             },
           }
-          const localService = new AgentService(localCallbacks)
-          localService.connect('ws://test', 'test-agent')
+          const localService = new AgentService(localCallbacks, {
+            urlBuilder: async () => 'ws://test',
+            reconnection: { maxRetries: 6, countdownSeconds: 6 },
+          })
+          await localService.connect('test-agent', 'test-user')
 
-          // Collect all message IDs
           const messageIds: string[] = []
 
-          // Send multiple messages
           messages.forEach((content, index) => {
             const result = localService.send({
               content,
@@ -85,7 +98,6 @@ describe('AgentService - Property 1: Message ID Generation Uniqueness', () => {
             }
           })
 
-          // Verify all IDs are unique
           const uniqueIds = new Set(messageIds)
           expect(uniqueIds.size).toBe(messageIds.length)
 
@@ -96,23 +108,25 @@ describe('AgentService - Property 1: Message ID Generation Uniqueness', () => {
     )
   })
 
-  it('should generate unique IDs when messages are created rapidly in succession', () => {
-    fc.assert(
-      fc.property(
+  it('should generate unique IDs when messages are created rapidly in succession', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.integer({ min: 10, max: 100 }),
-        (messageCount) => {
+        async (messageCount) => {
           stateHistory = []
           const localCallbacks: AgentCallbacks = {
             onStateChange: (state) => {
               stateHistory.push(state)
             },
           }
-          const localService = new AgentService(localCallbacks)
-          localService.connect('ws://test', 'test-agent')
+          const localService = new AgentService(localCallbacks, {
+            urlBuilder: async () => 'ws://test',
+            reconnection: { maxRetries: 6, countdownSeconds: 6 },
+          })
+          await localService.connect('test-agent', 'test-user')
 
           const messageIds: string[] = []
 
-          // Send messages rapidly
           for (let i = 0; i < messageCount; i++) {
             localService.send({
               content: `Message ${i}`,
@@ -125,7 +139,6 @@ describe('AgentService - Property 1: Message ID Generation Uniqueness', () => {
             messageIds.push(msg.id)
           })
 
-          // All IDs should be unique
           const uniqueIds = new Set(messageIds)
           expect(uniqueIds.size).toBe(messageIds.length)
 
@@ -136,19 +149,22 @@ describe('AgentService - Property 1: Message ID Generation Uniqueness', () => {
     )
   })
 
-  it('should generate IDs that follow the expected format pattern', () => {
-    fc.assert(
-      fc.property(
+  it('should generate IDs that follow the expected format pattern', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.string({ minLength: 1, maxLength: 50 }),
-        (content) => {
+        async (content) => {
           stateHistory = []
           const localCallbacks: AgentCallbacks = {
             onStateChange: (state) => {
               stateHistory.push(state)
             },
           }
-          const localService = new AgentService(localCallbacks)
-          localService.connect('ws://test', 'test-agent')
+          const localService = new AgentService(localCallbacks, {
+            urlBuilder: async () => 'ws://test',
+            reconnection: { maxRetries: 6, countdownSeconds: 6 },
+          })
+          await localService.connect('test-agent', 'test-user')
 
           localService.send({
             content,
@@ -158,7 +174,6 @@ describe('AgentService - Property 1: Message ID Generation Uniqueness', () => {
           const state = localService.getState()
           const lastMessage = state.messages[state.messages.length - 1]
 
-          // ID should match the format: msg_<timestamp>_<counter>
           expect(lastMessage.id).toMatch(/^msg_\d+_\d+$/)
 
           return true
@@ -187,12 +202,15 @@ describe('AgentService - Property 3: Message State Consistency', () => {
         stateHistory.push(state)
       },
     }
-    agentService = new AgentService(callbacks)
+    agentService = new AgentService(callbacks, {
+      urlBuilder: async () => 'ws://test',
+      reconnection: { maxRetries: 6, countdownSeconds: 6 },
+    })
   })
 
-  it('should maintain chronological order of messages after multiple send operations', () => {
-    fc.assert(
-      fc.property(
+  it('should maintain chronological order of messages after multiple send operations', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.array(
           fc.record({
             content: fc.string({ minLength: 1, maxLength: 100 }),
@@ -200,17 +218,19 @@ describe('AgentService - Property 3: Message State Consistency', () => {
           }),
           { minLength: 2, maxLength: 20 }
         ),
-        (messages) => {
+        async (messages) => {
           stateHistory = []
           const localCallbacks: AgentCallbacks = {
             onStateChange: (state) => {
               stateHistory.push(state)
             },
           }
-          const localService = new AgentService(localCallbacks)
-          localService.connect('ws://test', 'test-agent')
+          const localService = new AgentService(localCallbacks, {
+            urlBuilder: async () => 'ws://test',
+            reconnection: { maxRetries: 6, countdownSeconds: 6 },
+          })
+          await localService.connect('test-agent', 'test-user')
 
-          // Send messages with small delays to ensure different timestamps
           messages.forEach((msg, index) => {
             localService.send({
               content: msg.content,
@@ -221,7 +241,6 @@ describe('AgentService - Property 3: Message State Consistency', () => {
           const state = localService.getState()
           const timestamps = state.messages.map((m) => m.createdAt.getTime())
 
-          // Verify chronological order
           for (let i = 1; i < timestamps.length; i++) {
             expect(timestamps[i]).toBeGreaterThanOrEqual(timestamps[i - 1])
           }
@@ -251,7 +270,10 @@ describe('AgentService - Property 3: Message State Consistency', () => {
               stateHistory.push(state)
             },
           }
-          const localService = new AgentService(localCallbacks)
+          const localService = new AgentService(localCallbacks, {
+            urlBuilder: async () => 'ws://test',
+            reconnection: { maxRetries: 6, countdownSeconds: 6 },
+          })
 
           // Create messages with specific timestamps
           const messages: ChatMessage[] = messageData.map((data, index) => ({
@@ -305,7 +327,10 @@ describe('AgentService - Property 3: Message State Consistency', () => {
               stateHistory.push(state)
             },
           }
-          const localService = new AgentService(localCallbacks)
+          const localService = new AgentService(localCallbacks, {
+            urlBuilder: async () => 'ws://test',
+            reconnection: { maxRetries: 6, countdownSeconds: 6 },
+          })
 
           // Create messages with specific timestamps
           const messages: ChatMessage[] = data.messages.map((msg) => ({
@@ -340,9 +365,9 @@ describe('AgentService - Property 3: Message State Consistency', () => {
     )
   })
 
-  it('should preserve message order when interleaving send and setMessages operations', () => {
-    fc.assert(
-      fc.property(
+  it('should preserve message order when interleaving send and setMessages operations', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.array(
           fc.record({
             content: fc.string({ minLength: 1, maxLength: 50 }),
@@ -350,15 +375,18 @@ describe('AgentService - Property 3: Message State Consistency', () => {
           }),
           { minLength: 3, maxLength: 15 }
         ),
-        (operations) => {
+        async (operations) => {
           stateHistory = []
           const localCallbacks: AgentCallbacks = {
             onStateChange: (state) => {
               stateHistory.push(state)
             },
           }
-          const localService = new AgentService(localCallbacks)
-          localService.connect('ws://test', 'test-agent')
+          const localService = new AgentService(localCallbacks, {
+            urlBuilder: async () => 'ws://test',
+            reconnection: { maxRetries: 6, countdownSeconds: 6 },
+          })
+          await localService.connect('test-agent', 'test-user')
 
           let messageCounter = 0
 
@@ -369,7 +397,6 @@ describe('AgentService - Property 3: Message State Consistency', () => {
                 userId: 'test-user',
               })
             } else {
-              // setMessages with a single new message
               const newMessage: ChatMessage = {
                 id: `set-msg-${messageCounter++}`,
                 role: 'user',
@@ -383,7 +410,6 @@ describe('AgentService - Property 3: Message State Consistency', () => {
 
           const state = localService.getState()
 
-          // Verify all messages are in chronological order
           const timestamps = state.messages.map((m) => m.createdAt.getTime())
           for (let i = 1; i < timestamps.length; i++) {
             expect(timestamps[i]).toBeGreaterThanOrEqual(timestamps[i - 1])
@@ -396,21 +422,23 @@ describe('AgentService - Property 3: Message State Consistency', () => {
     )
   })
 
-  it('should maintain message state consistency after clear operation', () => {
-    fc.assert(
-      fc.property(
+  it('should maintain message state consistency after clear operation', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.array(fc.string({ minLength: 1, maxLength: 50 }), { minLength: 1, maxLength: 10 }),
-        (contents) => {
+        async (contents) => {
           stateHistory = []
           const localCallbacks: AgentCallbacks = {
             onStateChange: (state) => {
               stateHistory.push(state)
             },
           }
-          const localService = new AgentService(localCallbacks)
-          localService.connect('ws://test', 'test-agent')
+          const localService = new AgentService(localCallbacks, {
+            urlBuilder: async () => 'ws://test',
+            reconnection: { maxRetries: 6, countdownSeconds: 6 },
+          })
+          await localService.connect('test-agent', 'test-user')
 
-          // Send some messages
           contents.forEach((content) => {
             localService.send({
               content,
@@ -418,12 +446,10 @@ describe('AgentService - Property 3: Message State Consistency', () => {
             })
           })
 
-          // Clear the conversation
           localService.clear()
 
           const state = localService.getState()
 
-          // Verify state is reset
           expect(state.messages).toHaveLength(0)
           expect(state.sessionId).toBeNull()
           expect(state.isStreaming).toBe(false)
@@ -453,7 +479,10 @@ describe('AgentService - Unit Tests', () => {
         stateHistory.push(state)
       },
     }
-    agentService = new AgentService(callbacks)
+    agentService = new AgentService(callbacks, {
+      urlBuilder: async () => 'ws://test',
+      reconnection: { maxRetries: 6, countdownSeconds: 6 },
+    })
   })
 
   describe('initial state', () => {
@@ -471,8 +500,8 @@ describe('AgentService - Unit Tests', () => {
   })
 
   describe('connect', () => {
-    it('should update connection state on connect', () => {
-      agentService.connect('ws://test', 'test-agent')
+    it('should update connection state on connect', async () => {
+      await agentService.connect('test-agent', 'test-user')
 
       // The mock WebSocketService immediately sets isConnected to true
       // We need to verify the state reflects this
@@ -483,8 +512,8 @@ describe('AgentService - Unit Tests', () => {
   })
 
   describe('disconnect', () => {
-    it('should update connection state on disconnect', () => {
-      agentService.connect('ws://test', 'test-agent')
+    it('should update connection state on disconnect', async () => {
+      await agentService.connect('test-agent', 'test-user')
       agentService.disconnect()
 
       const state = agentService.getState()
@@ -502,8 +531,8 @@ describe('AgentService - Unit Tests', () => {
       expect(result).toBe(false)
     })
 
-    it('should add user message to messages array when connected', () => {
-      agentService.connect('ws://test', 'test-agent')
+    it('should add user message to messages array when connected', async () => {
+      await agentService.connect('test-agent', 'test-user')
 
       const result = agentService.send({
         content: 'test message',
@@ -518,8 +547,8 @@ describe('AgentService - Unit Tests', () => {
       expect(state.messages[0].content).toBe('test message')
     })
 
-    it('should set isStreaming to true when sending', () => {
-      agentService.connect('ws://test', 'test-agent')
+    it('should set isStreaming to true when sending', async () => {
+      await agentService.connect('test-agent', 'test-user')
 
       agentService.send({
         content: 'test message',
@@ -532,8 +561,8 @@ describe('AgentService - Unit Tests', () => {
   })
 
   describe('stop', () => {
-    it('should set isStreaming to false', () => {
-      agentService.connect('ws://test', 'test-agent')
+    it('should set isStreaming to false', async () => {
+      await agentService.connect('test-agent', 'test-user')
       agentService.send({
         content: 'test message',
         userId: 'test-user',
@@ -588,6 +617,52 @@ describe('AgentService - Unit Tests', () => {
       const state = agentService.getState()
       expect(state.sessionId).toBe('session-123')
       expect(state.messages).toHaveLength(1)
+    })
+  })
+
+  describe('heartbeat message handling', () => {
+    it('should handle pong messages without errors', () => {
+      const pongMessage = JSON.stringify({ type: 'pong' })
+
+      // Simulate receiving a pong message
+      expect(() => {
+        // Access private handleMessage via any cast for testing
+        (agentService as any).handleMessage(pongMessage)
+      }).not.toThrow()
+
+      // State should remain unchanged
+      const state = agentService.getState()
+      expect(state.messages).toHaveLength(0)
+      expect(state.isStreaming).toBe(false)
+    })
+
+    it('should handle ping messages without errors', () => {
+      const pingMessage = JSON.stringify({ type: 'ping' })
+
+      expect(() => {
+        (agentService as any).handleMessage(pingMessage)
+      }).not.toThrow()
+
+      const state = agentService.getState()
+      expect(state.messages).toHaveLength(0)
+    })
+
+    it('should not affect streaming state when receiving pong', async () => {
+      await agentService.connect('test-agent', 'test-user')
+
+      agentService.send({
+        content: 'test message',
+        userId: 'test-user',
+      })
+
+      const stateBefore = agentService.getState()
+      expect(stateBefore.isStreaming).toBe(true)
+
+      // Simulate receiving pong during streaming
+      (agentService as any).handleMessage(JSON.stringify({ type: 'pong' }))
+
+      const stateAfter = agentService.getState()
+      expect(stateAfter.isStreaming).toBe(true)
     })
   })
 })

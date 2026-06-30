@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import type { ExecutionStatus, ClientStatus } from '@/lib/models/collection'
+import type { ExecutionStatus } from '@/lib/models/collection/execution'
+import type { ClientStatus } from '@/lib/models/collection/client'
 
 interface StatusBadgeProps {
     status: ExecutionStatus | ClientStatus
