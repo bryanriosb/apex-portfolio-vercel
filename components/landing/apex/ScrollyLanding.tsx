@@ -189,9 +189,9 @@ export const ScrollyLanding: React.FC = () => {
     'SEGURIDAD',
     'ANÁLISIS',
     'CALIDAD',
-    'PLANES',
+    'PLATAFORMA',
     'GOVERNANZA',
-    'DEMO',
+    'SOLUCIONES',
   ]
 
   return (
