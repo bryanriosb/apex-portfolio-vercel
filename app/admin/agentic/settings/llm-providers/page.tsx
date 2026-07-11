@@ -287,7 +287,7 @@ export default function LlmProvidersPage() {
               <div className="text-center">
                 <p className="font-medium">Sin proveedores</p>
                 <p className="text-sm text-muted-foreground">
-                  Registra un proveedor LLM con su clave API global.
+                  Registra tus proveedores LLM con sus claves API para el uso de los agentes.
                 </p>
               </div>
               <Button onClick={handleCreate} size="sm">

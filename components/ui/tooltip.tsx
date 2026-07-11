@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { Tooltip as TooltipPrimitive } from "radix-ui"
-import { Slot } from "@radix-ui/react-slot"
 
 import { cn } from "@/lib/utils/index"
 
@@ -27,13 +26,12 @@ function Tooltip({
 
 const TooltipTrigger = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Trigger> & { asChild?: boolean }
->(({ asChild = false, ...props }, ref) => {
-  const Comp = asChild ? Slot : TooltipPrimitive.Trigger
-  return (
-    <Comp ref={ref} data-slot="tooltip-trigger" {...props} />
-  )
-})
+  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Trigger>
+>((props, ref) => (
+  // Radix soporta asChild nativamente; renderizar un Slot en su lugar
+  // desconecta el trigger del estado del tooltip (nunca se abre)
+  <TooltipPrimitive.Trigger ref={ref} data-slot="tooltip-trigger" {...props} />
+))
 TooltipTrigger.displayName = TooltipPrimitive.Trigger.displayName
 
 const TooltipContent = React.forwardRef<

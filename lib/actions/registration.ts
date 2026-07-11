@@ -4,6 +4,7 @@ import { getSupabaseAdminClient } from './supabase'
 import { verifyTurnstileToken } from '@/lib/services/turnstile/turnstile-service'
 import { isLocalhost } from '@/lib/utils/is-localhost'
 import type { BusinessType } from '@/lib/types/enums'
+import apiApexAiAuth from '@/lib/actions/api/apex-ai'
 
 export interface RegisterBusinessData {
   fullName: string
@@ -187,6 +188,31 @@ export async function registerBusinessAction(
 
     if (trialError) {
       console.error('Error starting trial:', trialError)
+    }
+
+    // 6. Aprovisionar la ontología en apex-ai: (:MainCompany)-[:HAS_BRANCH]->(:Branch).
+    // Un fallo aquí NO hace fallar el registro: el endpoint es idempotente (MERGE),
+    // así que puede re-ejecutarse manualmente con los ids logueados abajo.
+    // El timeout acota la latencia del sign-up si apex-ai está lento o caído.
+    try {
+      await apiApexAiAuth.post(
+        '/ontology/companies',
+        {
+          business_account_id: businessAccountId,
+          business_id: businessId,
+          company_name: data.businessName,
+          branch_name: data.businessName,
+          city: data.city,
+          state: data.state,
+        },
+        { timeout: 5000 }
+      )
+    } catch (ontologyError) {
+      console.error('Error provisioning ontology graph (pending backfill):', {
+        business_account_id: businessAccountId,
+        business_id: businessId,
+        error: ontologyError,
+      })
     }
 
     return { success: true }

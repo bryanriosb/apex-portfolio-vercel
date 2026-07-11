@@ -22,6 +22,7 @@ export interface ComboboxOption {
   value: string
   label: string
   description?: string
+  icon?: React.ReactNode
 }
 
 interface ComboboxProps {
@@ -33,6 +34,7 @@ interface ComboboxProps {
   emptyText?: string
   disabled?: boolean
   className?: string
+  popoverClassName?: string
   isLoading?: boolean
 }
 
@@ -45,6 +47,7 @@ export function Combobox({
   emptyText = 'No se encontraron resultados',
   disabled = false,
   className,
+  popoverClassName,
   isLoading = false,
 }: ComboboxProps) {
   const [open, setOpen] = useState(false)
@@ -86,7 +89,8 @@ export function Combobox({
           )}
           disabled={disabled}
         >
-          <span className="truncate flex-1 text-left">
+          <span className="truncate flex-1 text-left flex items-center gap-2">
+            {selectedOption?.icon}
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           {isLoading ? (
@@ -96,7 +100,13 @@ export function Combobox({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+      <PopoverContent
+        className={cn(
+          'w-[var(--radix-popover-trigger-width)] p-0',
+          popoverClassName
+        )}
+        align="start"
+      >
         <Command shouldFilter={false}>
           <CommandInput
             placeholder={searchPlaceholder}
@@ -126,7 +136,10 @@ export function Combobox({
                     )}
                   />
                   <div className="flex flex-col min-w-0">
-                    <span className="truncate">{option.label}</span>
+                    <span className="truncate flex items-center gap-2">
+                      {option.icon}
+                      {option.label}
+                    </span>
                     {option.description && (
                       <span className="text-xs text-muted-foreground truncate">
                         {option.description}

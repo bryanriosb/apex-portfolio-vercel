@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { ProviderLogo } from '@/components/agents/ProviderLogo'
 import {
   findLlmProviderOption,
   type LlmProviderFormValues,
@@ -79,7 +80,10 @@ export function LlmProviderFormFields({
                   <SelectLabel>Clientes nativos</SelectLabel>
                   {providerOptions.native.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
-                      {option.label}
+                      <span className="flex items-center gap-2">
+                        <ProviderLogo provider={option.value} />
+                        {option.label}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -87,7 +91,10 @@ export function LlmProviderFormFields({
                   <SelectLabel>OpenAI compatible</SelectLabel>
                   {providerOptions.compatible.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
-                      {option.label}
+                      <span className="flex items-center gap-2">
+                        <ProviderLogo provider={option.value} />
+                        {option.label}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectGroup>

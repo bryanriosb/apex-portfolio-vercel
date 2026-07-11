@@ -17,6 +17,12 @@ import {
   PopoverContent,
 } from '@/components/ui/popover'
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
   useAgentTools,
   useOAuth2Tools,
   useOAuth2Discover,
@@ -218,18 +224,25 @@ export function PromptInputConnectorMenu({
 
   return (
     <Popover open={isOpen} onOpenChange={handleConnectors}>
-      <PopoverTrigger>
-        <div
-          role="button"
-          className={cn('flex items-center justify-center', statusColor)}
-        >
-          {isLoading ? (
-            <Spinner />
-          ) : (
-            <PlugIcon className="h-4 w-4" />
-          )}
-        </div>
-      </PopoverTrigger>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger>
+              <div
+                role="button"
+                className={cn('flex items-center justify-center border p-2', statusColor)}
+              >
+                {isLoading ? (
+                  <Spinner />
+                ) : (
+                  <PlugIcon className="h-4 w-4" />
+                )}
+              </div>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="top">Conectores MCP</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
       <PopoverContent
         sideOffset={8}

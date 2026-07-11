@@ -11,7 +11,8 @@ import {
   buildLlmProviderOptions,
   findLlmProviderOption,
 } from '@/lib/models/agents/llm-provider'
-import { ModelSelectorLogo } from '@/components/ai-elements/model-selector'
+import { ProviderLogo } from '@/components/agents/ProviderLogo'
+import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import { useGlobalChatStore } from '@/lib/store/global-chat-store'
 import { useWebSocketReconnectionStore } from '@/lib/store/websocket-reconnection-store'
@@ -118,6 +119,27 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
   const providerModels = useMemo(
     () => getModelsForProvider(selectedProvider),
     [getModelsForProvider, selectedProvider]
+  )
+
+  const providerComboboxOptions: ComboboxOption[] = useMemo(
+    () =>
+      availableProviders.map((option) => ({
+        value: option.value,
+        label: option.label,
+        icon: <ProviderLogo provider={option.value} />,
+      })),
+    [availableProviders]
+  )
+
+  const modelComboboxOptions: ComboboxOption[] = useMemo(
+    () =>
+      providerModels.map((model) => ({
+        value: model.id,
+        label: model.name,
+        // El id permite buscar por slug (ej. google/gemma-4-31B-it)
+        description: model.id,
+      })),
+    [providerModels]
   )
 
   // Si el modelo seleccionado no pertenece al provider actual, elegir el default o el primero
@@ -406,54 +428,26 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                       </PromptInputSelectItem>
                     </PromptInputSelectContent>
                   </PromptInputSelect>
-                  <PromptInputSelect
+                  <Combobox
+                    options={providerComboboxOptions}
                     value={selectedProvider}
-                    onValueChange={setSelectedProvider}
+                    onChange={(value) => value && setSelectedProvider(value)}
+                    placeholder="Proveedor"
+                    searchPlaceholder="Buscar proveedor..."
                     disabled={!isConnected || availableProviders.length === 0}
-                  >
-                    <PromptInputSelectTrigger
-                      className={cn(
-                        'h-8 text-xs',
-                        !isConnected && 'opacity-50 cursor-not-allowed'
-                      )}
-                    >
-                      <PromptInputSelectValue placeholder="Proveedor" />
-                    </PromptInputSelectTrigger>
-                    <PromptInputSelectContent>
-                      {availableProviders.map((option) => (
-                        <PromptInputSelectItem
-                          key={option.value}
-                          value={option.value}
-                        >
-                          <span className="flex items-center gap-2">
-                            <ModelSelectorLogo provider={option.value} />
-                            {option.label}
-                          </span>
-                        </PromptInputSelectItem>
-                      ))}
-                    </PromptInputSelectContent>
-                  </PromptInputSelect>
-                  <PromptInputSelect
+                    className="h-8 w-auto min-w-[130px] text-xs border-input"
+                    popoverClassName="w-[240px]"
+                  />
+                  <Combobox
+                    options={modelComboboxOptions}
                     value={selectedModel}
-                    onValueChange={setSelectedModel}
+                    onChange={(value) => value && setSelectedModel(value)}
+                    placeholder="Modelo"
+                    searchPlaceholder="Buscar modelo..."
                     disabled={!isConnected || providerModels.length === 0}
-                  >
-                    <PromptInputSelectTrigger
-                      className={cn(
-                        'h-8 text-xs max-w-[180px]',
-                        !isConnected && 'opacity-50 cursor-not-allowed'
-                      )}
-                    >
-                      <PromptInputSelectValue placeholder="Modelo" />
-                    </PromptInputSelectTrigger>
-                    <PromptInputSelectContent>
-                      {providerModels.map((model) => (
-                        <PromptInputSelectItem key={model.id} value={model.id}>
-                          {model.name}
-                        </PromptInputSelectItem>
-                      ))}
-                    </PromptInputSelectContent>
-                  </PromptInputSelect>
+                    className="h-8 w-auto max-w-[200px] text-xs border-input"
+                    popoverClassName="w-[320px]"
+                  />
                   <div
                     className={cn(
                       !isConnected && 'opacity-50',

@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useModels } from '@/hooks/use-models'
+import { ProviderLogo } from '@/components/agents/ProviderLogo'
 import type { AgentFormValues } from '@/lib/models/agents/agent'
 
 const MDEditor = dynamic(() => import('@uiw/react-md-editor'), {
@@ -164,7 +165,10 @@ export function AgentFormFields({ form, isSubmitting }: AgentFormFieldsProps) {
                 <SelectContent className="rounded-none">
                   {MODEL_PROVIDERS.map((provider) => (
                     <SelectItem key={provider.value} value={provider.value} className="rounded-none">
-                      {provider.label}
+                      <span className="flex items-center gap-2">
+                        <ProviderLogo provider={provider.value} />
+                        {provider.label}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>

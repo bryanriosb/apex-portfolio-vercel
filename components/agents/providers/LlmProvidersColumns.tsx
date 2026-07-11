@@ -1,6 +1,7 @@
 import { ColumnDef } from '@tanstack/react-table'
 import { Badge } from '@/components/ui/badge'
 import { KeyRound } from 'lucide-react'
+import { ProviderLogo } from '@/components/agents/ProviderLogo'
 import type { LlmProvider } from '@/lib/models/agents/llm-provider'
 import { formatInBusinessTimeZone } from '@/lib/utils/date-format'
 
@@ -14,10 +15,13 @@ export const getLlmProvidersColumns = (
     cell: ({ row }) => {
       const provider = row.getValue('provider') as string
       return (
-        <div className="space-y-0.5">
-          <div className="font-medium">{getProviderLabel(provider)}</div>
-          <div className="text-xs text-muted-foreground font-mono">
-            {provider}
+        <div className="flex items-center gap-2">
+          <ProviderLogo provider={provider} className="size-5" />
+          <div className="space-y-0.5">
+            <div className="font-medium">{getProviderLabel(provider)}</div>
+            <div className="text-xs text-muted-foreground font-mono">
+              {provider}
+            </div>
           </div>
         </div>
       )
