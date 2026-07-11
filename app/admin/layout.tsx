@@ -12,6 +12,7 @@ import { PermissionsLoader } from '@/components/PermissionsLoader'
 import { TrialProviderClient } from '@/components/trial/TrialProviderClient'
 import { getTrialDataFromServer } from '@/lib/services/trial/trial-server-service'
 import { getBusinessWithLogoByAccountAction } from '@/lib/actions/business'
+import { SidebarSync } from '@/components/SidebarSync'
 import dynamic from 'next/dynamic'
 
 const GlobalChat = dynamic(
@@ -33,11 +34,14 @@ export default async function AdminLayout({
   const businessAccountId = user?.business_account_id || null
   const userRole = user?.role || 'customer'
 
-  // Ejecutar las 3 consultas en paralelo (ya tenemos los datos de sesión)
+  // Para company_admin, no necesitamos trial data ni business logo
+  const isCompanyAdmin = userRole === 'company_admin'
+  
+  // Ejecutar consultas en paralelo según el rol
   const [accessibleModules, trialData, businessWithLogo] = await Promise.all([
     getAccessibleModules(businessAccountId, userRole),
-    getTrialDataFromServer(),
-    businessAccountId
+    isCompanyAdmin ? Promise.resolve(null) : getTrialDataFromServer(businessAccountId),
+    businessAccountId && !isCompanyAdmin
       ? getBusinessWithLogoByAccountAction(businessAccountId)
       : Promise.resolve(null),
   ])
@@ -46,6 +50,7 @@ export default async function AdminLayout({
 
   return (
     <SidebarProvider defaultOpen={sidebarOpen} className="h-full w-full">
+      <SidebarSync />
       <Suspense fallback={<SidebarSkeleton />}>
         <AppSidebar
           accessibleModules={accessibleModules}

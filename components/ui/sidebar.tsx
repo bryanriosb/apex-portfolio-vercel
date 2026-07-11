@@ -267,8 +267,7 @@ function SidebarTrigger({
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar } = useSidebar()
-  const [isClosed, setIsClosed] = React.useState(true)
+  const { toggleSidebar, open } = useSidebar()
 
   return (
     <Button
@@ -280,11 +279,10 @@ function SidebarTrigger({
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
-        setIsClosed(!isClosed)
       }}
       {...props}
     >
-      {isClosed ? (
+      {open ? (
         <PanelRightOpen className="h-6! w-6!" />
       ) : (
         <PanelRightClose className="h-6! w-6!" />

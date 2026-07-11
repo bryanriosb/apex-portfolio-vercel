@@ -91,25 +91,10 @@ export async function authenticateWithSupabase(
     // Ya no usamos tablas legacy. Extraemos todo de user_metadata (o app_metadata)
     const { user_metadata } = authData.user || {}
     
-    // Obtener business_id desde user_metadata o desde business_customers si es customer
+    // Obtener business_id desde user_metadata
     let businessId = user_metadata?.business_id || null
     let businessAccountId = user_metadata?.business_account_id || null
     
-    // Si es customer y no tiene business_id en metadata, buscarlo en business_customers
-    if (userRole === 'customer' && !businessId) {
-      const { data: customerData } = await supabase
-        .from('business_customers')
-        .select('business_id, businesses!inner(business_account_id)')
-        .eq('user_id', authData.user.id)
-        .eq('status', 'active')
-        .single()
-      
-      if (customerData) {
-        businessId = customerData.business_id
-        businessAccountId = (customerData.businesses as any)?.business_account_id || null
-      }
-    }
-
     let businesses = user_metadata?.businesses || null
     let businessType = user_metadata?.business_type || null
     let subscriptionPlan = user_metadata?.subscription_plan || null
@@ -117,23 +102,55 @@ export async function authenticateWithSupabase(
     let instanceId = user_metadata?.instance_id || null
     let timezone = user_metadata?.timezone || 'America/Bogota'
 
-    // Fallback: Si no hay businesses en metadata pero sí tenemos el businessAccountId, lo consultamos (por si se crearon más sucursales)
+    // Queries en paralelo según el rol y datos disponibles
+    const queriesToRun: Promise<void>[] = []
+
+    // Si es customer y no tiene business_id en metadata, buscarlo en business_customers
+    if (userRole === 'customer' && !businessId) {
+      queriesToRun.push(
+        (async () => {
+          const { data: customerData } = await supabase
+            .from('business_customers')
+            .select('business_id, businesses!inner(business_account_id)')
+            .eq('user_id', authData.user.id)
+            .eq('status', 'active')
+            .single()
+          
+          if (customerData) {
+            businessId = customerData.business_id
+            businessAccountId = (customerData.businesses as any)?.business_account_id || null
+          }
+        })()
+      )
+    }
+
+    // Fallback: Si no hay businesses en metadata pero sí tenemos el businessAccountId, lo consultamos
     if ((!businesses || businesses.length === 0) && businessAccountId && userRole === 'business_admin') {
-      const fetchedBusinesses = await getAccountBusinesses(businessAccountId)
-      if (fetchedBusinesses && fetchedBusinesses.length > 0) {
-        businesses = fetchedBusinesses
+      queriesToRun.push(
+        (async () => {
+          const fetchedBusinesses = await getAccountBusinesses(businessAccountId)
+          if (fetchedBusinesses && fetchedBusinesses.length > 0) {
+            businesses = fetchedBusinesses
 
-        // Si no teníamos los datos principales, los intentamos inferir del primer negocio
-        if (!businessId) businessId = businesses[0].id
+            // Si no teníamos los datos principales, los intentamos inferir del primer negocio
+            if (!businessId) businessId = businesses[0].id
 
-        const { data: firstBusiness } = await supabase
-          .from('businesses')
-          .select('type')
-          .eq('id', businesses[0].id)
-          .single()
+            // Obtener el type del primer negocio
+            const { data: firstBusiness } = await supabase
+              .from('businesses')
+              .select('type')
+              .eq('id', businesses[0].id)
+              .single()
 
-        if (firstBusiness && !businessType) businessType = firstBusiness.type
-      }
+            if (firstBusiness && !businessType) businessType = firstBusiness.type
+          }
+        })()
+      )
+    }
+
+    // Ejecutar todas las queries en paralelo
+    if (queriesToRun.length > 0) {
+      await Promise.all(queriesToRun)
     }
 
     return {

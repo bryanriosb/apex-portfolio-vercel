@@ -448,3 +448,86 @@
 .shimmer-animation {
   animation: shimmer var(--shimmer-duration, 2s) linear infinite;
 }
+
+/* ADK UI React - Override blue primary with project primary color */
+[data-adk-ui-wrapper] {
+  --adk-primary: var(--primary);
+  --adk-primary-foreground: var(--primary-foreground);
+}
+
+[data-adk-ui-wrapper] button.bg-\[blue-600\],
+[data-adk-ui-wrapper] button:not([class*="bg-"]):not([class*="border-"]):not([class*="text-"]):not([class*="hover:"]) {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+[data-adk-ui-wrapper] button.bg-blue-600 {
+  background-color: var(--primary) !important;
+}
+
+[data-adk-ui-wrapper] button.bg-blue-600:hover {
+  background-color: color-mix(in srgb, var(--primary) 90%, white) !important;
+}
+
+[data-adk-ui-wrapper] button.text-blue-600 {
+  color: var(--primary) !important;
+}
+
+[data-adk-ui-wrapper] button.border-blue-600 {
+  border-color: var(--primary) !important;
+}
+
+[data-adk-ui-wrapper] button:hover {
+  background-color: color-mix(in srgb, var(--primary) 90%, white) !important;
+}
+
+[data-adk-ui-wrapper] .focus\:ring-blue-500,
+[data-adk-ui-wrapper] .focus\:border-blue-500 {
+  --tw-ring-color: var(--primary);
+  ring-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+
+[data-adk-ui-wrapper] .animate-spin .border-t-blue-600 {
+  border-top-color: var(--primary) !important;
+}
+
+[data-adk-ui-wrapper] .bg-blue-600 {
+  background-color: var(--primary) !important;
+}
+
+[data-adk-ui-wrapper] .bg-blue-600\/90 {
+  background-color: color-mix(in srgb, var(--primary) 90%, white) !important;
+}
+
+[data-adk-ui-wrapper] .text-blue-600 {
+  color: var(--primary) !important;
+}
+
+[data-adk-ui-wrapper] .text-blue-700 {
+  color: color-mix(in srgb, var(--primary) 90%, white) !important;
+}
+
+[data-adk-ui-wrapper] .border-blue-600 {
+  border-color: var(--primary) !important;
+}
+
+[data-adk-ui-wrapper] .focus\:ring-blue-500 {
+  --tw-ring-color: var(--primary);
+}
+
+[data-adk-ui-wrapper] .focus\:border-blue-500 {
+  border-color: var(--primary) !important;
+}
+
+[data-adk-ui-wrapper] .border-blue-200 {
+  border-color: color-mix(in srgb, var(--primary) 30%, white) !important;
+}
+
+[data-adk-ui-wrapper] .bg-blue-50 {
+  background-color: color-mix(in srgb, var(--primary) 15%, white) !important;
+}
+
+[data-adk-ui-wrapper] .text-blue-800 {
+  color: color-mix(in srgb, var(--primary) 50%, black) !important;
+}

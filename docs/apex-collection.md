@@ -1,14 +1,14 @@
-# APEX Collection Module - Sistema de Cobranza y Recaudo
+# APEX Collection Module - Sistema de Cartera y Recaudo
 
 ## Visión General
 
-**APEX** (*Adaptic Planning & Execution Platform*) es una plataforma empresarial integral diseñada para la planificación y ejecución de procesos críticos de negocio. Este documento describe el **Módulo de Cobranza y Recaudo (Collection)**, el primer módulo implementado de la plataforma APEX.
+**APEX** (*Adaptic Planning & Execution Platform*) es una plataforma empresarial integral diseñada para la planificación y ejecución de procesos críticos de negocio. Este documento describe el **Módulo de Cartera y Recaudo (Collection)**, el primer módulo implementado de la plataforma APEX.
 
 El módulo de Collection cubre el ciclo completo de gestión de cartera: desde la comunicación inteligente con deudores hasta la conciliación automática de pagos recibidos. Combina estrategias avanzadas de entrega, gestión de reputación de dominios, segmentación dinámica basada en días de mora, y un agente de conciliación inteligente para maximizar la recuperación de cartera y medir el verdadero impacto de cada acción de cobro.
 
 ### Diferenciador Clave
 
-A diferencia de las soluciones tradicionales que solo envían notificaciones, **APEX Collection cierra el ciclo**: conecta las campañas ejecutadas con los pagos recibidos, permitiendo a los directivos de cobranza conocer exactamente qué estrategias funcionan, cuánto se recupera por cada peso invertido, y predecir comportamientos futuros mediante Machine Learning.
+A diferencia de las soluciones tradicionales que solo envían notificaciones, **APEX Collection cierra el ciclo**: conecta las campañas ejecutadas con los pagos recibidos, permitiendo a los directivos de Cartera conocer exactamente qué estrategias funcionan, cuánto se recupera por cada peso invertido, y predecir comportamientos futuros mediante Machine Learning.
 
 ### Arquitectura de Plataforma
 
@@ -17,7 +17,7 @@ A diferencia de las soluciones tradicionales que solo envían notificaciones, **
 │                    APEX - Adaptic Planning & Execution Platform     │
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  MÓDULO 1: COLLECTION (Cobranza y Recaudo)                  │   │
+│  │  MÓDULO 1: COLLECTION (Cartera y Recaudo)                  │   │
 │  │                                                             │   │
 │  │  FASE 1: Notificaciones y Campañas [✅ IMPLEMENTADO]        │   │
 │  │  ├── Gestión de Cartera y Facturas                          │   │
@@ -41,9 +41,9 @@ A diferencia de las soluciones tradicionales que solo envían notificaciones, **
 
 ## Propuesta de Valor
 
-### Para Departamentos de Cobranza
+### Para Departamentos de Cartera
 
-1. **Automatización Completa**: Reduce el tiempo de gestión de cobranza en un 80% mediante la automatización del envío de notificaciones masivas con personalización segmentada.
+1. **Automatización Completa**: Reduce el tiempo de gestión de Cartera en un 80% mediante la automatización del envío de notificaciones masivas con personalización segmentada.
 
 2. **Mayor Tasa de Recuperación**: El sistema de umbrales dinámicos asigna automáticamente el mensaje correcto según la antigüedad de la deuda, aumentando la efectividad de las comunicaciones.
 
@@ -53,9 +53,9 @@ A diferencia de las soluciones tradicionales que solo envían notificaciones, **
 
 5. **Transparencia Total**: Dashboard en tiempo real con métricas de entrega, apertura, rebote y progreso de campañas.
 
-6. **Cierre del Ciclo de Cobro** [Fase 2]: Conexión directa entre campañas ejecutadas y pagos recibidos, permitiendo medir el verdadero ROI de cada acción de cobranza.
+6. **Cierre del Ciclo de Cobro** [Fase 2]: Conexión directa entre campañas ejecutadas y pagos recibidos, permitiendo medir el verdadero ROI de cada acción de Cartera.
 
-7. **Conciliación Automatizada** [Fase 2]: Agente inteligente que procesa confirmaciones de pago por email, reduciendo el trabajo manual del coordinador de cobranza en un 70%.
+7. **Conciliación Automatizada** [Fase 2]: Agente inteligente que procesa confirmaciones de pago por email, reduciendo el trabajo manual del coordinador de Cartera en un 70%.
 
 8. **Predicción de Comportamiento** [Fase 2]: Machine Learning que anticipa qué clientes pagarán y cuándo, permitiendo priorizar esfuerzos y proyectar flujo de caja.
 
@@ -84,7 +84,7 @@ Este módulo de Collection demuestra la arquitectura extensible de APEX, diseña
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         FLUJO DE COBRANZA                           │
+│                         FLUJO DE Cartera                           │
 └─────────────────────────────────────────────────────────────────────┘
 
 1. CONFIGURACIÓN INICIAL
@@ -157,7 +157,7 @@ Este módulo de Collection demuestra la arquitectura extensible de APEX, diseña
    │   ├── Lectura de emails de confirmación de pago
    │   ├── Extracción de datos relevantes (NLP)
    │   ├── Validación automática en sistema
-   │   └── Alertas al coordinador de cobranza
+   │   └── Alertas al coordinador de Cartera
    │
    └── KPIs de Recuperación por Campaña
        ├── Tasa de recuperación por campaña
@@ -1127,7 +1127,7 @@ export async function createExecutionAction(data) {
 
 ## Casos de Uso
 
-### Caso 1: Cobranza Preventiva
+### Caso 1: Cartera Preventiva
 
 **Escenario**: Empresa con 500 clientes, facturas vencidas entre 1-30 días.
 
@@ -1142,7 +1142,7 @@ export async function createExecutionAction(data) {
 - Open rate: 35%
 - Pagos recibidos en 48h: 120 (24% tasa de conversión)
 
-### Caso 2: Cobranza Judicial
+### Caso 2: Cartera Judicial
 
 **Escenario**: Facturas vencidas > 90 días, requiere comunicado formal.
 
@@ -1299,7 +1299,7 @@ export async function createExecutionAction(data) {
 
 > **Nota**: Esta sección describe funcionalidades planificadas para la Fase 2 del módulo de Collection. Aún no están implementadas en el sistema actual.
 
-Esta fase estratégica cerrará el ciclo completo de cobranza dentro del módulo de Collection de APEX, permitiendo medir el verdadero impacto de las campañas mediante la conciliación automática de pagos recibidos.
+Esta fase estratégica cerrará el ciclo completo de Cartera dentro del módulo de Collection de APEX, permitiendo medir el verdadero impacto de las campañas mediante la conciliación automática de pagos recibidos.
 
 **Secuencia de implementación planificada**:
 1. Importación de transacciones bancarias
@@ -1428,7 +1428,7 @@ interface ReconciliationUI {
 
 ### 3. Agente de Conciliación Inteligente (Email Processing)
 
-**Objetivo**: Procesar automáticamente los emails que confirman pagos, reduciendo la carga manual del coordinador de cobranza.
+**Objetivo**: Procesar automáticamente los emails que confirman pagos, reduciendo la carga manual del coordinador de Cartera.
 
 #### Problema:
 Los clientes frecuentemente envían emails confirmando pagos realizados. El coordinador debe:
@@ -1812,7 +1812,7 @@ CREATE INDEX idx_payments_reconciliation ON payment_reconciliations(campaign_exe
 ### Fase 4: Inteligencia Avanzada (Q4 2025)
 
 - [ ] Análisis de sentimiento en respuestas de clientes
-- [ ] Chatbot de cobranza para consultas frecuentes
+- [ ] Chatbot de Cartera para consultas frecuentes
 - [ ] Predicción de optimal send time por cliente
 - [ ] Auto-escalation a agencias de cobro externas
 - [ ] Recomendador de estrategias basado en ML
@@ -1826,7 +1826,7 @@ CREATE INDEX idx_payments_reconciliation ON payment_reconciliations(campaign_exe
 
 ### Módulo de Collection: El Primer Paso
 
-El **Módulo de Cobranza y Recaudo** representa la primera implementación de APEX, demostrando la arquitectura extensible y las capacidades de la plataforma. Este módulo proporciona una solución integral para la gestión completa del ciclo de cobranza, desde la primera notificación hasta la conciliación final del pago.
+El **Módulo de Cartera y Recaudo** representa la primera implementación de APEX, demostrando la arquitectura extensible y las capacidades de la plataforma. Este módulo proporciona una solución integral para la gestión completa del ciclo de Cartera, desde la primera notificación hasta la conciliación final del pago.
 
 #### Fase 1: Comunicaciones Inteligentes (Implementado)
 
@@ -1839,12 +1839,12 @@ El sistema actual permite:
 
 #### Fase 2: Cierre del Ciclo (En Planificación)
 
-La próxima fase transformará el módulo de Collection de un sistema de "notificaciones" a una plataforma de "gestión integral de cobranza":
+La próxima fase transformará el módulo de Collection de un sistema de "notificaciones" a una plataforma de "gestión integral de Cartera":
 
 1. **Medir verdadero impacto**: KPIs de recuperación que relacionan directamente cada campaña con los pagos recibidos
 2. **Automatizar conciliación**: Reducción del 70% en tiempo de matching de pagos mediante el Agente Inteligente
 3. **Predecir el futuro**: Machine Learning para anticipar comportamientos de pago y optimizar estrategias
-4. **Priorizar eficientemente**: El coordinador de cobranza recibe solo los casos que realmente requieren atención humana
+4. **Priorizar eficientemente**: El coordinador de Cartera recibe solo los casos que realmente requieren atención humana
 
 ### Visión de APEX a Largo Plazo
 
@@ -1857,7 +1857,7 @@ APEX está diseñado para expandirse más allá del módulo de Collection, incor
 
 Los componentes desarrollados para Collection (sistema de notificaciones, gestión de plantillas, workflows de aprobación, dashboards analíticos) sentarán las bases para futuros módulos de APEX, permitiendo una experiencia unificada y componentes reutilizables.
 
-El módulo de Collection está diseñado para crecer con el negocio, desde pymes hasta grandes empresas con volúmenes masivos de cartera, proporcionando siempre la visibilidad y control necesarios para una gestión de cobranza estratégica y efectiva.
+El módulo de Collection está diseñado para crecer con el negocio, desde pymes hasta grandes empresas con volúmenes masivos de cartera, proporcionando siempre la visibilidad y control necesarios para una gestión de Cartera estratégica y efectiva.
 
 ---
 

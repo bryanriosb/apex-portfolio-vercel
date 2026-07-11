@@ -28,7 +28,7 @@ const softwareSchema = {
   operatingSystem: 'Cloud',
   url: siteUrl,
   description:
-    'Sistema operativo de cobranza con arquitectura serverless, multi-canal y tracking en tiempo real.',
+    'Sistema operativo de Cartera con arquitectura serverless, multi-canal y tracking en tiempo real.',
   offers: {
     '@type': 'Offer',
     price: '0',

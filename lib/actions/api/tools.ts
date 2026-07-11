@@ -61,7 +61,7 @@ export async function listTools(
   }
 
   try {
-    return await query(`/api/agents/${params.agentId}/tools`, queryParams)
+    return await query(`/agents/${params.agentId}/tools`, queryParams)
   } catch (error) {
     console.warn(`[listTools] Failed to fetch tools for agent ${params.agentId}. Returning empty array.`, error)
     return { tools: [] }
@@ -71,26 +71,26 @@ export async function listTools(
 export async function getTool(
   params: GetToolParams
 ): Promise<ToolDefinitionResponse> {
-  return query(`/api/agents/tools/${params.toolId}`)
+  return query(`/agents/tools/${params.toolId}`)
 }
 
 export async function createTool(
   params: CreateToolParams
 ): Promise<ToolDefinitionResponse> {
-  return create(`/api/agents/${params.agentId}/tools`, params.payload)
+  return create(`/agents/${params.agentId}/tools`, params.payload)
 }
 
 export async function updateTool(
   params: UpdateToolParams
 ): Promise<ToolDefinitionResponse> {
-  return update(`/api/agents/tools/${params.toolId}`, params.payload, false)
+  return update(`/agents/tools/${params.toolId}`, params.payload, false)
 }
 
 export async function toggleToolActive(
   params: ToggleToolParams
 ): Promise<{ success: boolean }> {
   return update(
-    `/api/agents/tools/${params.toolId}`,
+    `/agents/tools/${params.toolId}`,
     { is_active: params.isActive },
     true
   )
@@ -99,7 +99,7 @@ export async function toggleToolActive(
 export async function authorizeOAuth2(
   params: OAuthActionParams
 ): Promise<{ authorization_url: string }> {
-  return create(`/api/agents/tools/${params.toolId}/oauth2/authorize`, {
+  return create(`/agents/tools/${params.toolId}/oauth2/authorize`, {
     owner_type: params.ownerType,
     owner_id: params.ownerId,
   })
@@ -109,7 +109,7 @@ export async function refreshOAuth2(
   params: OAuthActionParams
 ): Promise<{ success: boolean }> {
   return create(
-    `/api/agents/tools/${params.toolId}/oauth2/refresh`,
+    `/agents/tools/${params.toolId}/oauth2/refresh`,
     {},
     {
       params: {
@@ -124,7 +124,7 @@ export async function disconnectOAuth2(
   params: OAuthActionParams
 ): Promise<{ success: boolean }> {
   return destroy(
-    `/api/agents/tools/${params.toolId}/oauth2?owner_type=${params.ownerType}&owner_id=${params.ownerId}`
+    `/agents/tools/${params.toolId}/oauth2?owner_type=${params.ownerType}&owner_id=${params.ownerId}`
   )
 }
 
@@ -138,11 +138,11 @@ export async function discoverOAuth2(
   scopes?: string[]
   resource?: string
 }> {
-  return create(`/api/agents/tools/${params.toolId}/oauth2/discover`, {})
+  return create(`/agents/tools/${params.toolId}/oauth2/discover`, {})
 }
 
 export async function deleteTool(
   params: DeleteToolParams
 ): Promise<{ success: boolean }> {
-  return destroy(`/api/agents/tools/${params.toolId}`)
+  return destroy(`/agents/tools/${params.toolId}`)
 }

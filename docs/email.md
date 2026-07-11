@@ -16,7 +16,7 @@ Agradezco la oportunidad de proporcionar información adicional sobre nuestro ca
 
 ### Plataforma: Borls Collections Management System
 
-Somos una **plataforma de gestión de cobranza** que ayuda a empresas a administrar sus cuentas por cobrar de manera organizada y eficiente. Nuestra plataforma permite a las empresas:
+Somos una **plataforma de gestión de Cartera** que ayuda a empresas a administrar sus cuentas por cobrar de manera organizada y eficiente. Nuestra plataforma permite a las empresas:
 
 - **Importar datos de clientes** desde archivos CSV estructurados
 - **Crear ejecuciones de cobro** programadas o inmediatas

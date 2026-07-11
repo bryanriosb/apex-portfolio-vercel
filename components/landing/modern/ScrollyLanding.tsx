@@ -118,11 +118,10 @@ function Header({ scrolled }: { scrolled: boolean }) {
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        scrolled
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled
           ? 'bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm'
           : 'bg-transparent'
-      }`}
+        }`}
     >
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3 group">
@@ -430,7 +429,7 @@ function ProblemSlide() {
             className="text-lg text-slate-600"
           >
             Las empresas latinoamericanas pierden en promedio 15 horas semanales
-            en procesos manuales de cobranza.
+            en procesos manuales de Cartera.
           </motion.p>
         </div>
 
@@ -759,11 +758,10 @@ function PricingSlide() {
                   ? '0 35px 60px -15px rgba(37, 99, 235, 0.4)'
                   : '0 25px 50px -12px rgba(0, 0, 0, 0.15)',
               }}
-              className={`relative p-8 border transition-all ${
-                plan.popular
+              className={`relative p-8 border transition-all ${plan.popular
                   ? 'bg-blue-600 border-blue-600 text-white shadow-2xl'
                   : 'bg-white border-slate-200 shadow-lg'
-              }`}
+                }`}
             >
               {plan.popular && (
                 <motion.div
@@ -844,11 +842,10 @@ function PricingSlide() {
               >
                 <Link
                   href="/auth/sign-up"
-                  className={`group flex items-center justify-center gap-2 w-full py-4 text-center font-bold transition-colors ${
-                    plan.popular
+                  className={`group flex items-center justify-center gap-2 w-full py-4 text-center font-bold transition-colors ${plan.popular
                       ? 'bg-white text-blue-600 hover:bg-slate-100 shadow-lg'
                       : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg'
-                  }`}
+                    }`}
                 >
                   {plan.popular ? 'Prueba gratis' : 'Elegir plan'}
                   <motion.div
@@ -1003,7 +1000,7 @@ function Footer() {
               <span className="font-bold text-xl">APEX</span>
             </motion.div>
             <p className="text-slate-400 max-w-sm mb-6">
-              La plataforma de cobranza inteligente para empresas
+              La plataforma de Cartera inteligente para empresas
               latinoamericanas.
             </p>
             <span className="text-sm text-slate-500">

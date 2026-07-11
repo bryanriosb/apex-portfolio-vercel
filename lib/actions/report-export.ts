@@ -56,7 +56,7 @@ function arrayToExcel(
 }
 
 // ============================================================================
-// REPORTE DE EJECUCIONES DE COBRANZA
+// REPORTE DE EJECUCIONES DE Cartera
 // ============================================================================
 
 export async function exportExecutionsReportAction(
@@ -243,7 +243,7 @@ export async function exportBlacklistReportAction(
 }
 
 // ============================================================================
-// REPORTE DE CLIENTES EN COBRANZA
+// REPORTE DE CLIENTES EN Cartera
 // ============================================================================
 
 export async function exportCollectionClientsReportAction(
@@ -326,7 +326,7 @@ export async function exportCollectionClientsReportAction(
     return {
       success: true,
       data,
-      filename: `reporte-clientes-cobranza-${params.startDate.split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`,
+      filename: `reporte-clientes-Cartera-${params.startDate.split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`,
     }
   } catch (error) {
     console.error('Error exporting collection clients report:', error)

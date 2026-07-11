@@ -1,5 +1,3 @@
-import { getServerSession } from 'next-auth'
-import { AUTH_OPTIONS } from '@/const/auth'
 import { getTrialInfoAction } from '@/lib/actions/system-settings'
 
 export interface TrialServerData {
@@ -8,11 +6,8 @@ export interface TrialServerData {
   trialEndsAt: string | null
 }
 
-export async function getTrialDataFromServer(): Promise<TrialServerData | null> {
+export async function getTrialDataFromServer(businessAccountId: string | null): Promise<TrialServerData | null> {
   try {
-    const session = await getServerSession(AUTH_OPTIONS)
-    const businessAccountId = (session?.user as any)?.business_account_id
-
     if (!businessAccountId) {
       return null
     }

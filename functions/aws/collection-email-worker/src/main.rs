@@ -260,7 +260,7 @@ fn wrap_with_styles(html_body: &str) -> String {
             </tr>
             <tr>
                 <td style="font-family:sans-serif;vertical-align:top;padding-bottom:10px;padding-top:10px;color:#999999;font-size:12px;text-align:center" valign="top" align="center">
-                <span class="m_58810963162805476apple-link" style="color:#999999;font-size:12px;text-align:center">Notificacion automatica de cobranzas - APX - Plataforma para la gestión inteligente de cobranza, propiedad de BORLS © 2026 Todos los derechos reservados | <a href="https://apex.borls.com" style="color:#999999;font-size:12px;text-align:center" target="_blank">https://apex.borls.com</a></span>
+                <span class="m_58810963162805476apple-link" style="color:#999999;font-size:12px;text-align:center">Notificacion automatica de Carteras - APX - Plataforma para la gestión inteligente de Cartera, propiedad de BORLS © 2026 Todos los derechos reservados | <a href="https://apex.borls.com" style="color:#999999;font-size:12px;text-align:center" target="_blank">https://apex.borls.com</a></span>
                 </td>
             </tr>
             </tbody>

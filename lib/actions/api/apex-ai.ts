@@ -14,7 +14,7 @@ const config = {
 export const apiApexAi: AxiosInstance = axios.create(config)
 
 apiApexAi.interceptors.request.use((request) => {
-  request.baseURL = selectedEnvironment.BASE_URL
+  request.baseURL = selectedEnvironment.API_BASE_URL
   return request
 })
 
@@ -23,7 +23,7 @@ const apiApexAiAuth: AxiosInstance = axios.create(config)
 
 apiApexAiAuth.interceptors.request.use(
   async (request) => {
-    request.baseURL = selectedEnvironment.BASE_URL
+    request.baseURL = selectedEnvironment.API_BASE_URL
 
     const token = process.env.APEX_AI_SECRET
     if (token && !request.headers['Authorization']) {

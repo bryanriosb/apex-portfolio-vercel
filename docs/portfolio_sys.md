@@ -2,7 +2,7 @@
 
 ## Overview
 
-Sistema de gestión de cobranza escalable con arquitectura serverless en AWS, diseñado para procesar miles de notificaciones por semana con tracking completo y fallback multi-canal.
+Sistema de gestión de Cartera escalable con arquitectura serverless en AWS, diseñado para procesar miles de notificaciones por semana con tracking completo y fallback multi-canal.
 
 ## Arquitectura Principal
 

@@ -39,7 +39,7 @@
 
 ### [Portfolio System Overview](./portfolio_sys.md)
 
-**Resumen ejecutivo** del sistema completo de collection/cobranza.
+**Resumen ejecutivo** del sistema completo de collection/Cartera.
 
 **Incluye:**
 

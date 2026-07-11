@@ -3,10 +3,13 @@ import { AgentService, type AgentServiceOptions } from '@/lib/services/agent/Age
 import { SessionService } from '@/lib/services/session/SessionService'
 import { getAuthTicket } from '@/lib/actions/api/auth-ticket'
 import { useWebSocketReconnectionStore } from '@/lib/store/websocket-reconnection-store'
+import type { Component, UiEvent } from '@zavora-ai/adk-ui-react'
 import type {
   AgentState,
   ChatMessage,
   SendMessageOptions,
+  ServerEvent,
+  ToolCallData,
 } from '@/lib/services/agent/types'
 
 export interface UseAgentChatOptions {
@@ -40,6 +43,95 @@ export interface UseAgentChatReturn extends AgentState {
   reconnect: () => Promise<void>
   regenerate: () => void
   setSessionId: (sessionId: string | null) => void
+  sendUiEvent: (event: UiEvent) => boolean
+}
+
+function buildMessagesFromEvents(events: ServerEvent[]): ChatMessage[] {
+  const messages: ChatMessage[] = []
+  let currentContent = ''
+  let reasoningParts: string[] = []
+  let inReasoning = false
+  let toolCalls: ToolCallData[] = []
+  let uiComponents: Component[] | undefined = undefined
+  let uiTheme: 'light' | 'dark' | 'system' | undefined = undefined
+  let uiToolName: string | undefined = undefined
+  let msgId = 0
+
+  const flushAssistant = () => {
+    if (currentContent || toolCalls.length > 0 || uiComponents || reasoningParts.length > 0) {
+      messages.push({
+        id: `session_msg_${++msgId}`,
+        role: 'assistant',
+        content: currentContent,
+        reasoning: reasoningParts.length > 0 ? reasoningParts.join('') : undefined,
+        toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+        uiComponents,
+        uiTheme,
+        uiToolName,
+        createdAt: new Date(),
+      })
+    }
+    currentContent = ''
+    reasoningParts = []
+    inReasoning = false
+    toolCalls = []
+    uiComponents = undefined
+    uiTheme = undefined
+    uiToolName = undefined
+  }
+
+  for (const event of events) {
+    switch (event.type) {
+      case 'user':
+        flushAssistant()
+        messages.push({
+          id: `session_msg_${++msgId}`,
+          role: 'user',
+          content: event.content,
+          createdAt: new Date(),
+        })
+        break
+
+      case 'assistant':
+        flushAssistant()
+        currentContent = event.content
+        break
+
+      case 'tool_call':
+        toolCalls.push({
+          type: 'dynamic-tool',
+          toolCallId: `tool_${Date.now()}_${msgId}`,
+          toolName: event.name,
+          state: 'output-available',
+          input: (() => { try { return JSON.parse(event.arguments) } catch { return event.arguments } })(),
+          attempts: 1,
+          toolType: event.tool_type ?? 'Function',
+        })
+        break
+
+      case 'reasoning_start':
+        inReasoning = true
+        break
+
+      case 'reasoning_delta':
+        reasoningParts.push(event.content)
+        break
+
+      case 'reasoning_end':
+        inReasoning = false
+        break
+
+      case 'ui_response':
+        flushAssistant()
+        uiComponents = event.payload.components
+        uiTheme = event.payload.theme as 'light' | 'dark' | 'system' | undefined
+        uiToolName = event.tool_name
+        break
+    }
+  }
+
+  flushAssistant()
+  return messages
 }
 
 export function useAgentChat(options: UseAgentChatOptions): UseAgentChatReturn {
@@ -61,9 +153,12 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatReturn {
     messages: initialMessages,
     isStreaming: false,
     isConnected: false,
+    isLoadingSession: false,
     error: null,
     currentContent: '',
     currentReasoning: '',
+    currentToolCalls: [],
+    currentSkills: [],
     sessionId: initialSessionId ?? null,
     reconnectAttempt: 0,
     reconnectCountdown: 0,
@@ -162,18 +257,15 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatReturn {
         return
       }
 
+      setState((prev) => ({ ...prev, isLoadingSession: true }))
+
       try {
         const session = await sessionServiceRef.current.getSession(
           newSessionId,
           optionsRef.current.userId,
           optionsRef.current.appName
         )
-        const loadedMessages: ChatMessage[] = session.events.map((event) => ({
-          id: event.id,
-          role: event.author === 'user' ? 'user' : 'assistant',
-          content: event.content,
-          createdAt: new Date(event.timestamp),
-        }))
+        const loadedMessages = buildMessagesFromEvents(session.events)
         sessionIdRef.current = newSessionId
         serviceRef.current?.setConversation(newSessionId, loadedMessages)
 
@@ -182,7 +274,10 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatReturn {
             ...prev,
             sessionId: newSessionId,
             messages: loadedMessages,
+            isLoadingSession: false,
           }))
+        } else {
+          setState((prev) => ({ ...prev, isLoadingSession: false }))
         }
       } catch (error) {
         console.error('Failed to load session messages:', error)
@@ -194,7 +289,10 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatReturn {
             ...prev,
             sessionId: newSessionId,
             messages: [],
+            isLoadingSession: false,
           }))
+        } else {
+          setState((prev) => ({ ...prev, isLoadingSession: false }))
         }
       }
     },
@@ -248,6 +346,14 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatReturn {
     }, 80)
   }, [send, state.isStreaming])
 
+  const sendUiEvent = useCallback(
+    (event: UiEvent): boolean => {
+      if (!serviceRef.current) return false
+      return serviceRef.current.sendUiEvent(event, sessionIdRef.current ?? '', optionsRef.current.userId)
+    },
+    []
+  )
+
   return {
     ...state,
     send,
@@ -258,5 +364,6 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatReturn {
     reconnect,
     regenerate,
     setSessionId,
+    sendUiEvent,
   }
 }

@@ -110,6 +110,6 @@ export interface OAuthActionOptions {
 
 const MCP_TOOL_TYPES = new Set(["McpRemote", "McpLocal"]);
 
-export function isMcpTool(tool: ToolWithAuthStatus): boolean {
+export function isMcpTool(tool: Pick<ToolWithAuthStatus, "tool_type">): boolean {
   return MCP_TOOL_TYPES.has(tool.tool_type);
 }

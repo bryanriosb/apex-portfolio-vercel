@@ -1,15 +1,23 @@
 'use client'
 
-import { ChangeEvent, Fragment, useCallback, useEffect, useState, useRef } from 'react'
-import { CopyIcon, RefreshCcwIcon, HistoryIcon, ChevronRightIcon, BotIcon, BrainCog, PanelRightOpen, BrainCircuit, RefreshCw } from 'lucide-react'
+import { ChangeEvent, Fragment, useCallback, useEffect, useMemo, useState, useRef } from 'react'
+import { CopyIcon, RefreshCcwIcon, HistoryIcon, ChevronRightIcon, BotIcon, BrainCog, PanelRightOpen, BrainCircuit, RefreshCw, AlertTriangleIcon } from 'lucide-react'
 import type { ChatStatus } from 'ai'
 
 import { useAgentChat } from '@/lib/services/agent'
 import { useCurrentUser } from '@/hooks/use-current-user'
+import { useModels } from '@/hooks/use-models'
+import {
+  buildLlmProviderOptions,
+  findLlmProviderOption,
+} from '@/lib/models/agents/llm-provider'
+import { ModelSelectorLogo } from '@/components/ai-elements/model-selector'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import { useGlobalChatStore } from '@/lib/store/global-chat-store'
 import { useWebSocketReconnectionStore } from '@/lib/store/websocket-reconnection-store'
+import { getSelectedEnvironment } from '@/lib/actions/api'
 import { PromptInputConnectorMenu } from '@/components/oauth2/PromptInputConnectorMenu'
+import { Spinner } from '@/components/ui/spinner'
 import {
   Conversation,
   ConversationContent,
@@ -44,88 +52,30 @@ import {
   type PromptInputMessage,
 } from '@/components/ai-elements/prompt-input'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { ChatHistory } from '@/components/ChatHistory'
+import { ChatUiRenderer } from '@/components/global-chat/ChatUiRenderer'
+import {
+  Tool,
+  ToolHeader,
+  ToolContent,
+  ToolInput,
+  ToolOutput,
+} from '@/components/ai-elements/tool'
+import {
+  Sources,
+  SourcesTrigger,
+  SourcesContent,
+  Source,
+} from '@/components/ai-elements/sources'
+import type { UiEvent } from '@zavora-ai/adk-ui-react'
 import { cn } from '@/lib/utils'
+import { t, getUiActionLabel, getToolNameLabel, getToolTypeLabel } from '@/lib/i18n'
 import { createImmediateSyncAction } from '@/lib/actions/collection/sync-jobs-actions'
 import { toast } from 'sonner'
 
-const MODELS = [
-  {
-    id: crypto.randomUUID(),
-    name: 'Gemma 4 26B A4B-it',
-    value: 'google/gemma-4-26B-A4B-it',
-    provider: 'deepinfra',
-    base_url: 'https://api.deepinfra.com/v1',
-  },
-  {
-    id: crypto.randomUUID(),
-    name: 'Gemma 4 31B-it',
-    value: 'google/gemma-4-31B-it',
-    provider: 'deepinfra',
-    base_url: 'https://api.deepinfra.com/v1',
-  },
-  {
-    id: crypto.randomUUID(),
-    name: 'Gemma 4 31B-it-turbo',
-    value: 'google/gemma-4-31B-it-turbo',
-    provider: 'deepinfra',
-    base_url: 'https://api.deepinfra.com/v1',
-  },
-  {
-    id: crypto.randomUUID(),
-    name: 'Nemotron-3-Super-120B-A12B (OpenRouter)',
-    value: 'nvidia/nemotron-3-super-120b-a12b:free',
-    provider: 'openrouter',
-    provider_options: {
-      reasoning_effort: 'low',
-    },
-  },
-  {
-    id: crypto.randomUUID(),
-    name: 'Trinity Large Thinking',
-    value: 'arcee-ai/trinity-large-thinking:free',
-    provider: 'openrouter',
-    provider_options: {
-      reasoning_effort: 'medium',
-    },
-  },
-  {
-    id: crypto.randomUUID(),
-    name: 'GPT OSS 120B (OpenRouter)',
-    value: 'openai/gpt-oss-120b',
-    provider: 'openrouter',
-  },
-  {
-    id: crypto.randomUUID(),
-    name: 'GPT 5.4 Mini',
-    value: 'gpt-5.4-mini',
-    base_url: 'https://api.openapi.com/v1',
-    provider: 'openai',
-  },
-  {
-    id: crypto.randomUUID(),
-    name: 'GPT 5.4',
-    value: 'gpt-5.4',
-    base_url: 'https://api.openai.com/v1',
-    provider: 'openai',
-  },
-  {
-    id: crypto.randomUUID(),
-    name: 'Qwen3 30B A3B',
-    value: 'Qwen/Qwen3-30B-A3B',
-  },
-  {
-    id: crypto.randomUUID(),
-    name: 'Gemini 2.5 Flash',
-    value: 'google/gemini-2.5-flash',
-  },
-  { id: crypto.randomUUID(), name: 'GLM-4.7', value: 'zai-org/GLM-4.7' },
-  {
-    id: crypto.randomUUID(),
-    name: 'Nemotron-3-Ultra',
-    value: 'nvidia/nemotron-3-ultra-550b-a55b:free',
-  },
-]
+const DEFAULT_PROVIDER = 'deepinfra'
+const DEFAULT_MODEL = 'google/gemma-4-31B-it'
 
 export function GlobalChat({ children }: { children?: React.ReactNode }) {
   const { user, isLoading: userLoading } = useCurrentUser()
@@ -133,20 +83,53 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
   const { isPanelOpen, togglePanel, openPanel, closePanel } = useGlobalChatStore()
   const reconnectAll = useWebSocketReconnectionStore((s) => s.reconnectAll)
 
-  const apiBaseUrl = 'https://apex-ai.borls.com/api'
+  const env = getSelectedEnvironment()
+  const apiBaseUrl = env.API_BASE_URL
   const userId = user?.id || ''
   const businessAccountId = activeBusiness?.business_account_id || ''
   const appName = businessAccountId
-  const defaultModel = MODELS[0].value
 
   const [agentMode, setAgentMode] = useState<'simple' | 'workflow'>('simple')
   const isWorkflow = agentMode === 'workflow'
-  const wsUrl = isWorkflow ? 'wss://apex-ai.borls.com/ws/conversational/workflow' : 'wss://apex-ai.borls.com/ws/conversational'
+  const wsBaseUrl = env.APEX_WS_URL
+  const wsUrl = isWorkflow ? `${wsBaseUrl}/conversational/workflow` : `${wsBaseUrl}/conversational`
   const agentId = isWorkflow ? '61c93887-136b-42cb-8b43-3c65fbea9ecf' : 'e10c503d-00fc-4282-9d2e-3f8c4be7b0a0'
 
-  const [selectedModel, setSelectedModel] = useState<string>(
-    defaultModel || MODELS[0].value
+  const [selectedProvider, setSelectedProvider] = useState<string>(DEFAULT_PROVIDER)
+  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL)
+
+  const { allModels, getModelsForProvider } = useModels()
+
+  // Providers soportados por el backend (nativos + OpenAI-compatible) que
+  // existen en models.dev con al menos un modelo
+  const providerOptions = useMemo(() => {
+    const { native, compatible } = buildLlmProviderOptions(allModels)
+    return { native, compatible }
+  }, [allModels])
+
+  const availableProviders = useMemo(() => {
+    return [...providerOptions.native, ...providerOptions.compatible].filter(
+      (option) =>
+        allModels[option.value] &&
+        Object.keys(allModels[option.value].models).length > 0
+    )
+  }, [providerOptions, allModels])
+
+  const providerModels = useMemo(
+    () => getModelsForProvider(selectedProvider),
+    [getModelsForProvider, selectedProvider]
   )
+
+  // Si el modelo seleccionado no pertenece al provider actual, elegir el default o el primero
+  useEffect(() => {
+    if (providerModels.length === 0) return
+    if (!providerModels.some((model) => model.id === selectedModel)) {
+      const fallback =
+        providerModels.find((model) => model.id === DEFAULT_MODEL) ||
+        providerModels[0]
+      setSelectedModel(fallback.id)
+    }
+  }, [providerModels, selectedModel])
   const [inputValue, setInputValue] = useState('')
   const [showHistory, setShowHistory] = useState(false)
   const [connectorsOpen, setConnectorsOpen] = useState(false)
@@ -155,9 +138,12 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
     messages,
     isStreaming,
     isConnected,
+    isLoadingSession,
     error,
     currentContent,
     currentReasoning,
+    currentToolCalls,
+    currentSkills,
     sessionId,
     reconnectAttempt,
     reconnectCountdown,
@@ -169,6 +155,7 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
     reconnect,
     regenerate,
     setSessionId,
+    sendUiEvent,
   } = useAgentChat({
     wsBaseUrl: wsUrl,
     agentId,
@@ -189,14 +176,14 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
     connect()
 
     return () => disconnect()
-  }, [canConnect, connect, disconnect])
+  }, [canConnect, connect, disconnect, isWorkflow])
 
   const processedMessagesRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     const lastMessage = messages[messages.length - 1]
     if (lastMessage?.role === 'assistant' && !isStreaming) {
-      if (lastMessage.content.includes('trigger_collection_sync') && !processedMessagesRef.current.has(lastMessage.id)) {
+      if (lastMessage.content?.includes('trigger_collection_sync') && !processedMessagesRef.current.has(lastMessage.id)) {
         processedMessagesRef.current.add(lastMessage.id)
 
         toast.info('Iniciando sincronización de colecciones...')
@@ -222,18 +209,20 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
     (message: PromptInputMessage) => {
       if (!isConnected || !message.text?.trim()) return
 
-      const selectedModelData = MODELS.find((m) => m.value === selectedModel)
+      const providerOption = findLlmProviderOption(
+        providerOptions,
+        selectedProvider
+      )
       send(
         message.text.trim(),
         selectedModel,
-        selectedModelData?.base_url,
-        selectedModelData?.provider,
-        selectedModelData?.provider_options
+        providerOption?.requiresBaseUrl ? providerOption.baseUrl : undefined,
+        selectedProvider
       )
       setInputValue('')
       openPanel() // Open side panel when sending a message
     },
-    [send, selectedModel, isConnected, openPanel]
+    [send, selectedModel, selectedProvider, providerOptions, isConnected, openPanel]
   )
 
   const copyToClipboard = useCallback((text: string) => {
@@ -247,6 +236,13 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
     return lastAssistant?.id === messageId
   }
 
+  const isLastUiMessage = (messageId: string) => {
+    const lastUi = [...messages]
+      .reverse()
+      .find((m) => m.uiComponents && m.uiComponents.length > 0)
+    return lastUi?.id === messageId
+  }
+
   const getStatus = (): ChatStatus => {
     if (error) return 'error'
     if (isStreaming) return 'streaming'
@@ -258,6 +254,7 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
       setSessionId(newSessionId)
       setShowHistory(false)
       openPanel()
+      setIsViewingHistory(true)
     },
     [setSessionId, openPanel]
   )
@@ -266,11 +263,42 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
     setSessionId(null)
     setShowHistory(false)
     openPanel()
+    setIsViewingHistory(false)
   }, [setSessionId, openPanel])
+
+  const [isViewingHistory, setIsViewingHistory] = useState(false)
 
   const toggleHistory = useCallback(() => {
     setShowHistory((prev) => !prev)
   }, [])
+
+  const handleUiAction = useCallback(
+    (event: UiEvent) => {
+      sendUiEvent(event)
+    },
+    [sendUiEvent]
+  )
+
+  const parseUiEventContent = (content: string) => {
+    const uiEventRegex = /\[UI Event:\s*(.*?)\]\s*Action:\s*(\S+)/g
+    const parts: ({ type: 'text'; text: string } | { type: 'ui_event'; eventLabel: string; action: string })[] = []
+    let lastIndex = 0
+    let match
+
+    while ((match = uiEventRegex.exec(content)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ type: 'text', text: content.slice(lastIndex, match.index) })
+      }
+      parts.push({ type: 'ui_event', eventLabel: match[1].trim(), action: match[2] })
+      lastIndex = match.index + match[0].length
+    }
+
+    if (lastIndex < content.length) {
+      parts.push({ type: 'text', text: content.slice(lastIndex) })
+    }
+
+    return parts
+  }
 
   if (userLoading || businessLoading) {
     return (
@@ -379,9 +407,9 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                     </PromptInputSelectContent>
                   </PromptInputSelect>
                   <PromptInputSelect
-                    value={selectedModel}
-                    onValueChange={setSelectedModel}
-                    disabled={!isConnected}
+                    value={selectedProvider}
+                    onValueChange={setSelectedProvider}
+                    disabled={!isConnected || availableProviders.length === 0}
                   >
                     <PromptInputSelectTrigger
                       className={cn(
@@ -389,11 +417,38 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                         !isConnected && 'opacity-50 cursor-not-allowed'
                       )}
                     >
-                      <PromptInputSelectValue />
+                      <PromptInputSelectValue placeholder="Proveedor" />
                     </PromptInputSelectTrigger>
                     <PromptInputSelectContent>
-                      {MODELS.map((model) => (
-                        <PromptInputSelectItem key={model.id} value={model.value}>
+                      {availableProviders.map((option) => (
+                        <PromptInputSelectItem
+                          key={option.value}
+                          value={option.value}
+                        >
+                          <span className="flex items-center gap-2">
+                            <ModelSelectorLogo provider={option.value} />
+                            {option.label}
+                          </span>
+                        </PromptInputSelectItem>
+                      ))}
+                    </PromptInputSelectContent>
+                  </PromptInputSelect>
+                  <PromptInputSelect
+                    value={selectedModel}
+                    onValueChange={setSelectedModel}
+                    disabled={!isConnected || providerModels.length === 0}
+                  >
+                    <PromptInputSelectTrigger
+                      className={cn(
+                        'h-8 text-xs max-w-[180px]',
+                        !isConnected && 'opacity-50 cursor-not-allowed'
+                      )}
+                    >
+                      <PromptInputSelectValue placeholder="Modelo" />
+                    </PromptInputSelectTrigger>
+                    <PromptInputSelectContent>
+                      {providerModels.map((model) => (
+                        <PromptInputSelectItem key={model.id} value={model.id}>
                           {model.name}
                         </PromptInputSelectItem>
                       ))}
@@ -419,12 +474,12 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                 </PromptInputTools>
                 <div className="flex items-center gap-2">
                   <Button
-                    variant="outline"
+                    variant={isPanelOpen ? "default" : "outline"}
                     size="icon"
-                    className="h-8 w-8 rounded-full"
+                    className="h-8 w-8"
                     onClick={togglePanel}
                   >
-                    <BrainCircuit className="!h-5 !w-5" />
+                    <BrainCircuit className={cn("!h-5 !w-5", isPanelOpen && "text-white")} />
                   </Button>
                   <PromptInputSubmit
                     disabled={!isConnected || (!inputValue.trim() && !isStreaming)}
@@ -445,15 +500,15 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
           "shrink-0 flex flex-col bg-white border-l shadow-2xl h-full transition-[width] duration-300 ease-in-out overflow-hidden z-50",
           isPanelOpen
             ? showHistory
-              ? "w-[606px] lg:w-[656px]"
-              : "w-[350px] lg:w-[400px]"
+              ? "w-[776px] lg:w-[826px]"
+              : "w-[450px] lg:w-[500px]"
             : "w-0 border-l-0"
         )}
       >
         <div
           className={cn(
             "flex h-full min-h-full overflow-hidden bg-white transition-[width] duration-300 ease-in-out",
-            showHistory ? "w-[606px] lg:w-[656px]" : "w-[350px] lg:w-[400px]"
+            showHistory ? "w-[776px] lg:w-[826px]" : "w-[450px] lg:w-[500px]"
           )}
         >
           {/* Chat History Sidebar */}
@@ -464,14 +519,15 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
             currentSessionId={sessionId}
             onSelectSession={handleSelectSession}
             onNewChat={handleNewChat}
+            isOpen={showHistory}
             className={cn(
               'shrink-0 transition-all duration-300 ease-in-out border-r',
-              showHistory ? 'w-64' : 'w-0 overflow-hidden border-r-0'
+              showHistory ? 'w-80' : 'w-0 overflow-hidden border-r-0'
             )}
           />
 
           {/* Main Chat Area */}
-          <div className="flex flex-col w-[350px] lg:w-[400px] shrink-0 h-full overflow-hidden dark:bg-muted relative">
+          <div className="flex flex-col w-[450px] lg:w-[500px] shrink-0 h-full overflow-hidden dark:bg-muted relative">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-primary/20 px-4 py-3 h-14 shrink-0 bg-background/95 backdrop-blur z-10">
               <div className="flex items-center gap-2">
@@ -505,17 +561,34 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-hidden">
+            <div className="relative flex-1 overflow-hidden">
+              {error && (
+                <div className="mx-4 mt-3 flex items-start gap-2 p-3 border border-border rounded-lg bg-card">
+                  <AlertTriangleIcon className="size-4 text-muted-foreground shrink-0 mt-0.5" />
+                  <span className="text-sm text-muted-foreground break-words min-w-0">{error}</span>
+                </div>
+              )}
               <Conversation className="h-full">
                 <ConversationContent scrollTrigger={messages.length}>
-                  {messages.length === 0 && !isStreaming && (
-                    <ConversationEmptyState
-                      title="Hola 👋, soy APEX"
-                      description="Tu asistente inteligente para Cartera y Cobranza. ¿Qué quieres lograr hoy?"
-                    />
+                  {isLoadingSession && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                      <div className="flex flex-col items-center gap-3">
+                        <Spinner className="size-6" />
+                        <span className="text-sm text-muted-foreground">Cargando conversación...</span>
+                      </div>
+                    </div>
                   )}
 
-                  {messages.map((message) => (
+                  {!isLoadingSession && messages.length === 0 && !isStreaming && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center">
+                      <ConversationEmptyState
+                        title="Hola 👋, soy APEX"
+                        description="Tu asistente inteligente para Cartera y Cartera. ¿Qué quieres lograr hoy?"
+                      />
+                    </div>
+                  )}
+
+                  {!isLoadingSession && messages.map((message) => (
                     <Fragment key={message.id}>
                       {message.reasoning && (
                         <Reasoning className="w-full">
@@ -524,9 +597,83 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                         </Reasoning>
                       )}
 
+                      {message.toolCalls && message.toolCalls.length > 0 && (
+                        <div className="w-full space-y-2">
+                          {message.toolCalls.map((toolCall) => (
+                            <Tool key={toolCall.toolCallId}>
+                              <ToolHeader
+                                type="dynamic-tool"
+                                state={toolCall.state}
+                                toolName={getToolNameLabel(toolCall.toolName)}
+                              >
+                                {toolCall.toolType && (
+                                  <Badge variant="outline" className="ml-2 text-xs">
+                                    {getToolTypeLabel(toolCall.toolType)}
+                                  </Badge>
+                                )}
+                                {toolCall.attempts > 1 && (
+                                  <Badge variant="secondary" className="ml-1 text-xs">
+                                    ×{toolCall.attempts}
+                                  </Badge>
+                                )}
+                              </ToolHeader>
+                              <ToolContent>
+                                <ToolInput input={toolCall.input} />
+                              </ToolContent>
+                            </Tool>
+                          ))}
+                        </div>
+                      )}
+
+                      {message.skills && message.skills.length > 0 && (
+                        <Sources className="w-full">
+                          <SourcesTrigger count={message.skills.length} />
+                          <SourcesContent>
+                            {message.skills.map((skill, index) => (
+                              <Source key={index} title={`${skill.name}${skill.version ? ` v${skill.version}` : ''}`} />
+                            ))}
+                          </SourcesContent>
+                        </Sources>
+                      )}
+
                       <Message from={message.role}>
                         <MessageContent>
-                          <MessageResponse>{message.content}</MessageResponse>
+                          {message.uiComponents && message.uiComponents.length > 0 ? (
+                            <>
+                              {message.content && (
+                                <MessageResponse>{message.content}</MessageResponse>
+                              )}
+                              <ChatUiRenderer
+                                components={message.uiComponents}
+                                theme={message.uiTheme}
+                                onAction={handleUiAction}
+                                isStreaming={isStreaming && isLastUiMessage(message.id)}
+                                disabled={isViewingHistory}
+                              />
+                            </>
+                          ) : (() => {
+                            const parts = parseUiEventContent(message.content)
+                            const hasUiEvents = parts.some(p => p.type === 'ui_event')
+                            if (!hasUiEvents) {
+                              return <MessageResponse>{message.content}</MessageResponse>
+                            }
+                            return parts.map((part, idx) =>
+                              part.type === 'ui_event' ? (
+                                <div key={idx} className="w-full border-l-2 border-primary/40 pl-4 py-1 my-1">
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="text-[10px]">{t('ui.uiEventLabel')}</Badge>
+                                    <span className="text-muted-foreground text-xs">{t('ui.uiEventButtonClicked')}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-muted-foreground text-xs">{t('ui.uiEventAction')}:</span>
+                                    <Badge variant="secondary" className="text-[10px]">{getUiActionLabel(part.action)}</Badge>
+                                  </div>
+                                </div>
+                              ) : (
+                                <MessageResponse key={idx}>{part.text}</MessageResponse>
+                              )
+                            )
+                          })()}
                         </MessageContent>
 
                         {message.role === 'assistant' &&
@@ -558,6 +705,45 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                           <ReasoningTrigger />
                           <ReasoningContent>{currentReasoning}</ReasoningContent>
                         </Reasoning>
+                      )}
+
+                      {currentToolCalls.length > 0 && (
+                        <div className="w-full space-y-2">
+                          {currentToolCalls.map((toolCall) => (
+                            <Tool key={toolCall.toolCallId}>
+                              <ToolHeader
+                                type="dynamic-tool"
+                                state={toolCall.state}
+                                toolName={getToolNameLabel(toolCall.toolName)}
+                              >
+                                {toolCall.toolType && (
+                                  <Badge variant="outline" className="ml-2 text-xs">
+                                    {getToolTypeLabel(toolCall.toolType)}
+                                  </Badge>
+                                )}
+                                {toolCall.attempts > 1 && (
+                                  <Badge variant="secondary" className="ml-1 text-xs">
+                                    ×{toolCall.attempts}
+                                  </Badge>
+                                )}
+                              </ToolHeader>
+                              <ToolContent>
+                                <ToolInput input={toolCall.input} />
+                              </ToolContent>
+                            </Tool>
+                          ))}
+                        </div>
+                      )}
+
+                      {currentSkills.length > 0 && (
+                        <Sources className="w-full">
+                          <SourcesTrigger count={currentSkills.length} />
+                          <SourcesContent>
+                            {currentSkills.map((skill, index) => (
+                              <Source key={index} title={`${skill.name}${skill.version ? ` v${skill.version}` : ''}`} />
+                            ))}
+                          </SourcesContent>
+                        </Sources>
                       )}
 
                       {currentContent && (

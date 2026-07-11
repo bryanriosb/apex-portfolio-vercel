@@ -4,7 +4,7 @@
 
 ### Objetivo
 
-Sistema diseñado para maximizar la deliverability de emails de cobranza, evitar carpetas de spam, y escalar desde 50 hasta 50,000+ emails manteniendo una reputación positiva con ISPs.
+Sistema diseñado para maximizar la deliverability de emails de Cartera, evitar carpetas de spam, y escalar desde 50 hasta 50,000+ emails manteniendo una reputación positiva con ISPs.
 
 ---
 
@@ -127,7 +127,7 @@ Batches totales: 84
 - Dominio con warm-up completado
 - Open Rate consistente > 15%
 - Bounce Rate < 3%
-- Necesidad de velocidad (cobranza urgente)
+- Necesidad de velocidad (Cartera urgente)
 - Alta confianza en listas de email
 
 **Configuración Típica**:
@@ -977,7 +977,7 @@ const result = await createExecutionWithClientsAction({
   executionData: {
     business_id: 'uuid-business',
     created_by: 'uuid-user',
-    name: 'Campaña Cobranza Febrero - Nuevo Dominio',
+    name: 'Campaña Cartera Febrero - Nuevo Dominio',
     description: 'Primera campaña con bore.sas',
     email_template_id: 'uuid-template',
     execution_mode: 'immediate', // o 'scheduled'
@@ -1012,7 +1012,7 @@ const result = await createExecutionWithClientsAction({
   executionData: {
     business_id: 'uuid-business',
     created_by: 'uuid-user',
-    name: 'Campaña Cobranza Urgente',
+    name: 'Campaña Cartera Urgente',
     email_template_id: 'uuid-template',
     execution_mode: 'immediate',
   },

@@ -8,5 +8,5 @@ export interface AuthTicketResponse {
 }
 
 export async function getAuthTicket(): Promise<AuthTicketResponse> {
-  return create('/api/auth/handshake', {})
+  return create('/auth/handshake', {})
 }

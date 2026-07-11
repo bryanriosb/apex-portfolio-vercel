@@ -12,9 +12,9 @@ import { JobObservabilityViewer } from './JobObservabilityViewer';
 import { AttachmentViewer } from './AttachmentViewer';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Workflow, BrainCircuit, Eye, EyeOff } from 'lucide-react';
+import { Workflow, BrainCircuit, Eye, EyeOff, Bot, Hammer } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { getModuleLabel, getStatusLabel, getFieldLabel, getJobSchemaLabel, t } from '@/lib/i18n';
+import { getModuleLabel, getStatusLabel, getFieldLabel, getJobSchemaLabel, getCategoryLabel, t } from '@/lib/i18n';
 
 const MermaidViewer = dynamic(
   () => import('./MermaidViewer').then((mod) => mod.MermaidViewer),
@@ -330,18 +330,31 @@ function JobContextViewer({ job }: { job: any }) {
   const attachmentPaths = Array.isArray(rawAttachments) ? rawAttachments : [];
   const hasAttachments = attachmentPaths.length > 0;
 
+  const jobTypeLabels: Record<string, string> = {
+    'agent-job': 'Agente',
+    'agent-workflow-job': 'Flujo de Trabajo',
+    'apex-job': 'Lógico',
+  };
+
   let tipoBadge = <span className="break-words font-mono text-xs">{job.kind}</span>;
   if (job.kind === 'Single') {
     tipoBadge = <Badge variant="default">{t('ui.ejecucionUnica')}</Badge>;
-  } else if (job.kind) {
-    tipoBadge = <span className="break-words font-mono text-xs">{getTranslation(job.kind.toLowerCase()) || getTranslation(job.kind) || job.kind}</span>;
+  } else if (jobTypeStr) {
+    const label = jobTypeLabels[jobTypeStr] || jobTypeStr;
+    const Icon = job.isApex ? Hammer : job.isWorkflow ? BrainCircuit : Bot;
+    tipoBadge = (
+      <span className="inline-flex items-center gap-1.5">
+        <Icon className="w-3.5 h-3.5" />
+        <Badge variant="default">{label}</Badge>
+      </span>
+    );
   }
 
   const jobInfo: any = {
     ID: job.id || job.job_id,
     ...(job.name ? { name: job.name } : {}),
-    ...(job.category ? { category: job.category } : {}),
-    ...(metadata?.job_type ? { job_type: metadata.job_type } : {}),
+    ...(job.category ? { category: getCategoryLabel(job.category) } : {}),
+    ...(metadata?.job_type ? { job_type: jobTypeLabels[jobTypeStr] || metadata.job_type } : {}),
     Módulo: job.module ? getModuleLabel(job.module) : '',
     Tipo: tipoBadge,
     Estado: job.status ? getStatusLabel(job.status) : '',

@@ -76,11 +76,8 @@ export default function SignInPage() {
         return
       }
 
-      toast.success('Auténticacion exitosa')
-      setTimeout(() => {
-        console.log('Redirecting to /admin')
-        router.push('/admin')
-      }, 2000)
+      toast.success('Autenticacion exitosa')
+      router.push('/admin')
     } catch (error) {
       toast.error('Ocurrió un error. Por favor, intenta de nuevo.')
       // Resetear Turnstile para permitir nuevo intento

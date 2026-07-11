@@ -55,7 +55,8 @@ export function getJobTypeLabel(jobType: string): string {
 }
 
 export function getToolTypeLabel(toolType: string): string {
-  return automation.toolTypes[toolType] ?? toolType;
+  const label = automation.toolTypes[toolType] ?? automation.toolTypes[toolType.charAt(0).toUpperCase() + toolType.slice(1)] ?? toolType;
+  return label.toLowerCase().includes('mcp') ? label.toUpperCase() : label;
 }
 
 export function getNodeTypeLabel(nodeType: string): string {
@@ -80,4 +81,12 @@ export function getJobSchemaLabel(jobTypeKey: string, field: string): string | u
 
 export function getUiLabel(key: string): string {
   return ui[key] ?? key;
+}
+
+export function getUiActionLabel(action: string): string {
+  return ui[`uiEventAction_${action}`] ?? action;
+}
+
+export function getToolNameLabel(toolName: string): string {
+  return ui[`toolName_${toolName}`] ?? toolName;
 }

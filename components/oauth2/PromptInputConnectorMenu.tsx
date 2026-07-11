@@ -214,7 +214,7 @@ export function PromptInputConnectorMenu({
     isConnectedAuthStatus(t.auth_status)
   ).length
 
-  const statusColor = connectedCount > 0 ? 'text-primary' : 'text-red-500'
+  const statusColor = connectedCount > 0 ? 'text-primary' : (!isLoading && tools.length == 0) ? 'text-red-500' : 'text-muted-foreground'
 
   return (
     <Popover open={isOpen} onOpenChange={handleConnectors}>
@@ -224,7 +224,7 @@ export function PromptInputConnectorMenu({
           className={cn('flex items-center justify-center', statusColor)}
         >
           {isLoading ? (
-            <Loader2Icon className="h-4 w-4 animate-spin" />
+            <Spinner />
           ) : (
             <PlugIcon className="h-4 w-4" />
           )}
@@ -246,7 +246,7 @@ export function PromptInputConnectorMenu({
         {/* Loading */}
         {isLoading && (
           <div className="flex items-center justify-center py-6">
-            <Loader2Icon className="h-4 w-4 animate-spin text-muted-foreground" />
+            <Spinner />
           </div>
         )}
 

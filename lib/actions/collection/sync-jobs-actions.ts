@@ -37,7 +37,7 @@ export async function listSyncJobsAction(
 ): Promise<JobRecord[]> {
   return handleApiCall(async () => {
     // The endpoint uses query params: ?module=collection
-    const response = await apiApexAiAuth.get('/api/jobs', {
+    const response = await apiApexAiAuth.get('/jobs', {
       params: {
         module: 'collection',
       },
@@ -52,7 +52,7 @@ export async function createImmediateSyncAction(
   businessAccountId: string
 ): Promise<SyncEnqueueResponse> {
   return handleApiCall(async () => {
-    const response = await apiApexAiAuth.post('/api/collections/sync', payload)
+    const response = await apiApexAiAuth.post('/collections/sync', payload)
     return response.data
   })
 }
@@ -62,7 +62,7 @@ export async function createScheduledSyncAction(
   accessToken: string
 ): Promise<SyncEnqueueResponse> {
   return handleApiCall(async () => {
-    const response = await apiApexAiAuth.post('/api/jobs', payload)
+    const response = await apiApexAiAuth.post('/jobs', payload)
     return response.data
   })
 }
@@ -72,7 +72,7 @@ export async function getSyncProgressAction(
   accessToken: string
 ): Promise<SyncProgressResponse> {
   return handleApiCall(async () => {
-    const response = await apiApexAiAuth.get(`/api/collections/sync/${jobId}`)
+    const response = await apiApexAiAuth.get(`/collections/sync/${jobId}`)
     return response.data
   })
 }
@@ -82,7 +82,7 @@ export async function cancelSyncJobAction(
   accessToken: string
 ): Promise<void> {
   return handleApiCall(async () => {
-    await apiApexAiAuth.delete(`/api/collections/sync/${jobId}`)
+    await apiApexAiAuth.delete(`/collections/sync/${jobId}`)
   })
 }
 
@@ -92,6 +92,6 @@ export async function updateJobStatusAction(
   accessToken: string
 ): Promise<void> {
   return handleApiCall(async () => {
-    await apiApexAiAuth.patch(`/api/jobs/${jobId}`, { status })
+    await apiApexAiAuth.patch(`/jobs/${jobId}`, { status })
   })
 }

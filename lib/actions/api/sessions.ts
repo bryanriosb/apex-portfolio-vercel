@@ -28,7 +28,7 @@ export interface DeleteSessionParams {
 export async function listSessions(
   params: ListSessionsParams
 ): Promise<SessionsListResponse> {
-  return query('/api/sessions', {
+  return query('/agents/sessions', {
     user_id: params.userId,
     app_name: params.appName,
     limit: params.limit ?? 20,
@@ -39,7 +39,7 @@ export async function listSessions(
 export async function getSession(
   params: GetSessionParams
 ): Promise<SessionDetailResponse> {
-  return query(`/api/sessions/${params.sessionId}`, {
+  return query(`/agents/sessions/${params.sessionId}`, {
     user_id: params.userId,
     app_name: params.appName,
   })
@@ -49,6 +49,6 @@ export async function deleteSession(
   params: DeleteSessionParams
 ): Promise<{ success: boolean }> {
   return destroy(
-    `/api/sessions/${params.sessionId}?user_id=${params.userId}&app_name=${params.appName}`
+    `/agents/sessions/${params.sessionId}?user_id=${params.userId}&app_name=${params.appName}`
   )
 }

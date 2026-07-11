@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Implementar el módulo de **Facturas** consumiendo el endpoint `GET /api/ontology/invoices` (CRUD completo), integrado en el sidebar bajo **Aplicación → Cobranza → Facturas** (antes de Transacciones). Se sigue la arquitectura existente: **Component → Service → Action → API**, con DataTable autónomo y modales para CRUD, tal como el módulo de customers.
+Implementar el módulo de **Facturas** consumiendo el endpoint `GET /api/ontology/invoices` (CRUD completo), integrado en el sidebar bajo **Aplicación → Cartera → Facturas** (antes de Transacciones). Se sigue la arquitectura existente: **Component → Service → Action → API**, con DataTable autónomo y modales para CRUD, tal como el módulo de customers.
 
 ## Scope
 
@@ -67,7 +67,7 @@ Implementar el módulo de **Facturas** consumiendo el endpoint `GET /api/ontolog
 - `const/sidebar-menu.ts`
 
 **Detalles:**
-- Agregar sub-item `{ title: 'Facturas', url: '/admin/collection/invoices' }` **antes** de 'Transacciones' en la sección Cobranza (~línea 96)
+- Agregar sub-item `{ title: 'Facturas', url: '/admin/collection/invoices' }` **antes** de 'Transacciones' en la sección Cartera (~línea 96)
 
 ### Fase 6: Página de listado ✅
 

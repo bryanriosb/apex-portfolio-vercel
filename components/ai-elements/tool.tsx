@@ -7,6 +7,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils/index";
+import { t } from "@/lib/i18n";
 import type { DynamicToolUIPart, ToolUIPart } from "ai";
 import {
   CheckCircleIcon,
@@ -35,23 +36,24 @@ export type ToolPart = ToolUIPart | DynamicToolUIPart;
 export type ToolHeaderProps = {
   title?: string;
   className?: string;
+  children?: ReactNode;
 } & (
-  | { type: ToolUIPart["type"]; state: ToolUIPart["state"]; toolName?: never }
-  | {
+    | { type: ToolUIPart["type"]; state: ToolUIPart["state"]; toolName?: never }
+    | {
       type: DynamicToolUIPart["type"];
       state: DynamicToolUIPart["state"];
       toolName: string;
     }
-);
+  );
 
 const statusLabels: Record<ToolPart["state"], string> = {
-  "approval-requested": "Awaiting Approval",
-  "approval-responded": "Responded",
-  "input-available": "Running",
-  "input-streaming": "Pending",
-  "output-available": "Completed",
-  "output-denied": "Denied",
-  "output-error": "Error",
+  "approval-requested": t('ui.toolEstadoAprobacionRequerida'),
+  "approval-responded": t('ui.toolEstadoRespondido'),
+  "input-available": t('ui.toolEstadoEjecutando'),
+  "input-streaming": t('ui.toolEstadoPendiente'),
+  "output-available": t('ui.toolEstadoCompletado'),
+  "output-denied": t('ui.toolEstadoDenegado'),
+  "output-error": t('ui.toolEstadoError'),
 };
 
 const statusIcons: Record<ToolPart["state"], ReactNode> = {
@@ -77,6 +79,7 @@ export const ToolHeader = ({
   type,
   state,
   toolName,
+  children,
   ...props
 }: ToolHeaderProps) => {
   const derivedName =
@@ -90,10 +93,15 @@ export const ToolHeader = ({
       )}
       {...props}
     >
-      <div className="flex items-center gap-2">
-        <WrenchIcon className="size-4 text-muted-foreground" />
-        <span className="font-medium text-sm">{title ?? derivedName}</span>
-        {getStatusBadge(state)}
+      <div className="flex items-center justify-between w-full text-xs">
+        <div className="flex gap-2"><WrenchIcon className="size-4 text-muted-foreground" />
+          <span className="font-medium">{title ?? derivedName}</span>
+        </div>
+
+        <div className="flex gap-1">
+          {getStatusBadge(state)}
+          {children}
+        </div>
       </div>
       <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
     </CollapsibleTrigger>
@@ -119,7 +127,7 @@ export type ToolInputProps = ComponentProps<"div"> & {
 export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
   <div className={cn("space-y-2 overflow-hidden", className)} {...props}>
     <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-      Parameters
+      {t('ui.toolParametros')}
     </h4>
     <div className="rounded-md bg-muted/50">
       <CodeBlock code={JSON.stringify(input, null, 2)} language="json" />
@@ -155,7 +163,7 @@ export const ToolOutput = ({
   return (
     <div className={cn("space-y-2", className)} {...props}>
       <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-        {errorText ? "Error" : "Result"}
+        {errorText ? t('ui.toolError') : t('ui.toolResultado')}
       </h4>
       <div
         className={cn(

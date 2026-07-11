@@ -15,6 +15,6 @@ export type {
   WebSocketIncomingMessage,
   SessionSummary,
   SessionsListResponse,
-  EventSummary,
+  ServerEvent,
   SessionDetailResponse,
 } from "./types";

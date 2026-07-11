@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { useAgentChat } from '@/lib/services/agent/useAgentChat'
@@ -13,6 +14,8 @@ let mockAgentServiceInstance: {
   setMessages: ReturnType<typeof vi.fn>
   setConversation: ReturnType<typeof vi.fn>
   getState: ReturnType<typeof vi.fn>
+  getConnectionStatus: ReturnType<typeof vi.fn>
+  sendUiEvent: ReturnType<typeof vi.fn>
   callbacks: { onStateChange: (state: AgentState) => void; onSessionCreated?: (sessionId: string) => void }
 } | null = null
 
@@ -33,7 +36,21 @@ vi.mock('@/lib/services/agent/AgentService', () => ({
       clear: vi.fn(),
       setMessages: vi.fn(),
       setConversation: vi.fn(),
-      getState: vi.fn(),
+      getState: vi.fn().mockReturnValue({
+        messages: [],
+        isStreaming: false,
+        isConnected: false,
+        isLoadingSession: false,
+        error: null,
+        currentContent: '',
+        currentReasoning: '',
+        sessionId: null,
+        reconnectAttempt: 0,
+        reconnectCountdown: 0,
+        maxRetries: 10,
+      }),
+      getConnectionStatus: vi.fn().mockReturnValue('disconnected'),
+      sendUiEvent: vi.fn().mockReturnValue(true),
       callbacks: callbacks as { onStateChange: (state: AgentState) => void; onSessionCreated?: (sessionId: string) => void },
     }
     return mockAgentServiceInstance
@@ -154,7 +171,6 @@ describe('useAgentChat Hook', () => {
 
       const mockService = getMockAgentService()
       expect(mockService.connect).toHaveBeenCalledWith(
-        defaultOptions.wsBaseUrl,
         defaultOptions.agentId,
         defaultOptions.userId
       )
@@ -185,7 +201,6 @@ describe('useAgentChat Hook', () => {
       const mockService = getMockAgentService()
       expect(mockService.disconnect).toHaveBeenCalled()
       expect(mockService.connect).toHaveBeenCalledWith(
-        defaultOptions.wsBaseUrl,
         defaultOptions.agentId,
         defaultOptions.userId
       )
@@ -421,16 +436,16 @@ describe('useAgentChat Hook', () => {
         updated_at: '2024-01-01T00:00:01Z',
       }
 
-      const mockSessionService = getMockSessionService()
-      mockSessionService.getSession.mockResolvedValue(mockSession)
-
       const { result } = renderHook(() => useAgentChat(defaultOptions))
+
+      const mockSessionService = getMockSessionService()
+      mockSessionService!.getSession.mockResolvedValue(mockSession)
 
       await act(async () => {
         await result.current.setSessionId('session-123')
       })
 
-      expect(mockSessionService.getSession).toHaveBeenCalledWith(
+      expect(mockSessionService!.getSession).toHaveBeenCalledWith(
         'session-123',
         defaultOptions.userId,
         defaultOptions.appName
@@ -455,14 +470,14 @@ describe('useAgentChat Hook', () => {
     })
 
     it('should handle session load failure gracefully', async () => {
-      const mockSessionService = getMockSessionService()
-      mockSessionService.getSession.mockRejectedValue(
-        new Error('Failed to load session')
-      )
-
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       const { result } = renderHook(() => useAgentChat(defaultOptions))
+
+      const mockSessionService = getMockSessionService()
+      mockSessionService!.getSession.mockRejectedValue(
+        new Error('Failed to load session')
+      )
 
       await act(async () => {
         await result.current.setSessionId('session-123')
@@ -490,8 +505,7 @@ describe('useAgentChat Hook', () => {
         await result.current.setSessionId('session-123')
       })
 
-      const mockSessionService = getMockSessionService()
-      expect(mockSessionService.getSession).not.toHaveBeenCalled()
+      // SessionService should not be created without apiBaseUrl, so getSession was never called
       const mockService = getMockAgentService()
       expect(mockService.setConversation).toHaveBeenCalledWith('session-123', [])
     })

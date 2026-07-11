@@ -49,7 +49,7 @@ export const Frame6Close: React.FC<Frame6CloseProps> = () => {
 
           <p className="text-sm sm:text-base md:text-lg text-gray-400  max-w-2xl mx-auto mb-8 sm:mb-12 animate-in slide-in-from-bottom-4 duration-700 delay-300 fill-mode-forwards">
             Cada empresa tiene retos únicos. Cuéntenos qué está complicando su
-            operación — Cobranza, tesorería, facturación, Compras, Costos, Inventario, Comex o
+            operación — Cartera, tesorería, facturación, Compras, Costos, Inventario, Comex o
             cualquier proceso crítico — y le ayudamos a resolverlo con agentes
             IA que ejecutan procesos reales con control humano.
           </p>

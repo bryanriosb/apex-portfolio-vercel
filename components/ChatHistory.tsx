@@ -7,6 +7,9 @@ import type { SessionSummary } from '@/lib/services/agent/types'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { formatInBusinessTimeZone } from '@/lib/utils/date-format'
+import { useActiveBusinessStore } from '@/lib/store/active-business-store'
+import { toZonedTime } from 'date-fns-tz'
 
 interface ChatHistoryProps {
   userId: string
@@ -15,6 +18,7 @@ interface ChatHistoryProps {
   currentSessionId: string | null
   onSelectSession: (sessionId: string) => void
   onNewChat: () => void
+  isOpen?: boolean
   className?: string
 }
 
@@ -25,6 +29,7 @@ export function ChatHistory({
   currentSessionId,
   onSelectSession,
   onNewChat,
+  isOpen = false,
   className,
 }: ChatHistoryProps) {
   const [sessions, setSessions] = useState<SessionSummary[]>([])
@@ -32,13 +37,13 @@ export function ChatHistory({
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const sessionService = new SessionService({ baseUrl: apiBaseUrl })
+  const timezone = useActiveBusinessStore((s) => s.activeBusiness?.timezone || 'America/Bogota')
 
   const loadSessions = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     try {
       const response = await sessionService.listSessions(userId, appName)
-      console.log('Session:', response)
 
       setSessions(response.sessions)
     } catch (e) {
@@ -52,6 +57,18 @@ export function ChatHistory({
     if (!userId || !appName) return
     loadSessions()
   }, [loadSessions, userId, appName])
+
+  useEffect(() => {
+    if (isOpen && userId && appName) {
+      loadSessions()
+    }
+  }, [isOpen, userId, appName, loadSessions])
+
+  useEffect(() => {
+    if (currentSessionId && userId && appName) {
+      loadSessions()
+    }
+  }, [currentSessionId, userId, appName, loadSessions])
 
   const handleDelete = useCallback(
     async (sessionId: string, e: React.MouseEvent) => {
@@ -74,14 +91,22 @@ export function ChatHistory({
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    const nowZoned = toZonedTime(new Date(), timezone)
+    const dateZoned = toZonedTime(date, timezone)
 
-    if (diffDays === 0) return 'Hoy'
-    if (diffDays === 1) return 'Ayer'
+    const startOfToday = new Date(nowZoned)
+    startOfToday.setHours(0, 0, 0, 0)
+    const startOfDate = new Date(dateZoned)
+    startOfDate.setHours(0, 0, 0, 0)
+
+    const diffMs = startOfToday.getTime() - startOfDate.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    const time = formatInBusinessTimeZone(date, 'HH:mm', timezone)
+
+    if (diffDays === 0) return `Hoy ${time}`
+    if (diffDays === 1) return `Ayer ${time}`
     if (diffDays < 7) return `Hace ${diffDays} días`
-    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+    return formatInBusinessTimeZone(date, 'dd MMM', timezone)
   }
 
   return (

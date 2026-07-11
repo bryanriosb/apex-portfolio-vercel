@@ -3,6 +3,10 @@
 import { getSupabaseAdminClient } from '@/lib/actions/supabase'
 import type { PlanLimits } from '@/lib/store/unified-permissions-store'
 
+// Cache en memoria para permisos (TTL: 2 minutos)
+const permissionsCache = new Map<string, { data: UnifiedPermissionsData; timestamp: number }>()
+const CACHE_TTL = 2 * 60 * 1000 // 2 minutos
+
 interface UnifiedPermissionsData {
   planId: string | null
   planCode: string | null
@@ -79,6 +83,12 @@ export async function getUnifiedPermissionsAction(
   businessAccountId: string
 ): Promise<UnifiedPermissionsData> {
   try {
+    // Verificar cache
+    const cached = permissionsCache.get(businessAccountId)
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.data
+    }
+
     const client = await getSupabaseAdminClient()
 
     // Query única que obtiene TODO lo necesario
@@ -156,7 +166,7 @@ export async function getUnifiedPermissionsAction(
     // Obtener conteos actuales
     const currentUsage = await getCurrentUsageCounts(businessAccountId)
 
-    return {
+    const result: UnifiedPermissionsData = {
       planId: plan?.id || null,
       planCode: plan?.code || null,
       moduleAccess,
@@ -165,6 +175,11 @@ export async function getUnifiedPermissionsAction(
       planLimits,
       currentUsage,
     }
+
+    // Guardar en cache
+    permissionsCache.set(businessAccountId, { data: result, timestamp: Date.now() })
+
+    return result
   } catch (error) {
     console.error('Error in getUnifiedPermissionsAction:', error)
     throw error

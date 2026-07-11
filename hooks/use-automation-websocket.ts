@@ -6,6 +6,7 @@ import { getAuthTicket } from '@/lib/actions/api/auth-ticket'
 import { selectedEnvironment } from '@/lib/actions/api/index'
 import { WebSocketService, type ConnectionStatus } from '@/lib/services/websocket'
 import { useWebSocketReconnectionStore } from '@/lib/store/websocket-reconnection-store'
+import { normalizeToolType } from '@/lib/utils/tool-type'
 
 export function useAutomationWebSocket(onEvent: (event: AutomationServerEvent) => void) {
   const [isConnected, setIsConnected] = useState(false)
@@ -74,6 +75,9 @@ export function useAutomationWebSocket(onEvent: (event: AutomationServerEvent) =
             }
 
             if (parsed && typeof parsed === 'object' && parsed.type) {
+              if (parsed.tool_type && typeof parsed.tool_type === 'string') {
+                parsed.tool_type = normalizeToolType(parsed.tool_type)
+              }
               onEventRef.current(parsed as AutomationServerEvent)
             }
           } catch {

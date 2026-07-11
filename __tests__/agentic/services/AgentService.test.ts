@@ -16,25 +16,32 @@ const mockCallbacks = {
   onReconnectAttempt: vi.fn(),
 }
 
+let mockConnected = false
+
 vi.mock('@/lib/services/websocket/WebSocketService', () => ({
-  WebSocketService: vi.fn().mockImplementation((config: any) => ({
-    isConnected: false,
-    connect: vi.fn(function (this: { isConnected: boolean }) {
+  WebSocketService: vi.fn().mockImplementation(function (this: any, config: any) {
+    mockConnected = false
+    this._config = config
+    this.isConnected = false
+    this.connect = vi.fn(() => {
+      mockConnected = true
       this.isConnected = true
       config.callbacks.onOpen()
-    }),
-    disconnect: vi.fn(function (this: { isConnected: boolean }) {
+    })
+    this.disconnect = vi.fn(() => {
+      mockConnected = false
       this.isConnected = false
       config.callbacks.onClose()
-    }),
-    send: vi.fn(),
-    startHeartbeat: vi.fn(),
-    stopHeartbeat: vi.fn(),
-    sendPing: vi.fn(),
-    getStatus: vi.fn().mockReturnValue('connected'),
-    getReconnectAttempt: vi.fn().mockReturnValue(0),
-    getReconnectCountdown: vi.fn().mockReturnValue(0),
-  })),
+    })
+    this.send = vi.fn()
+    this.startHeartbeat = vi.fn()
+    this.stopHeartbeat = vi.fn()
+    this.sendPing = vi.fn()
+    this.getStatus = vi.fn().mockReturnValue('connected')
+    this.getReconnectAttempt = vi.fn().mockReturnValue(0)
+    this.getReconnectCountdown = vi.fn().mockReturnValue(0)
+    this.getMaxRetries = vi.fn().mockReturnValue(10)
+  }),
 }))
 
 // Import AgentService after mocking
@@ -656,13 +663,13 @@ describe('AgentService - Unit Tests', () => {
       })
 
       const stateBefore = agentService.getState()
-      expect(stateBefore.isStreaming).toBe(true)
+      expect(stateBefore.isStreaming).toEqual(true)
 
       // Simulate receiving pong during streaming
-      (agentService as any).handleMessage(JSON.stringify({ type: 'pong' }))
+      ;(agentService as any).handleMessage(JSON.stringify({ type: 'pong' }))
 
       const stateAfter = agentService.getState()
-      expect(stateAfter.isStreaming).toBe(true)
+      expect(stateAfter.isStreaming).toEqual(true)
     })
   })
 })

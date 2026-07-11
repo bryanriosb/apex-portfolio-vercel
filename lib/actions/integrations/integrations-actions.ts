@@ -40,7 +40,7 @@ export async function listConnectorsAction(
   businessAccountId: string
 ): Promise<ListConnectorsResponse> {
   return handleApiCall(async () => {
-    const response = await apiApexAiAuth.get('/api/integrations')
+    const response = await apiApexAiAuth.get('/integrations')
     return response.data
   })
 }
@@ -52,7 +52,7 @@ export async function checkConnectorHealthAction(
 ): Promise<HealthCheckResponse> {
   return handleApiCall(async () => {
     const response = await apiApexAiAuth.get(
-      `/api/integrations/${connectorName}/health`
+      `/integrations/${connectorName}/health`
     )
     return response.data
   })
@@ -66,7 +66,7 @@ export async function fetchConnectorRecordsAction(
 ): Promise<ConnectorOperationResponse> {
   return handleApiCall(async () => {
     const response = await apiApexAiAuth.post(
-      `/api/integrations/${connectorName}`,
+      `/integrations/${connectorName}`,
       body
     )
     return response.data
@@ -81,7 +81,7 @@ export async function createConnectorRecordsAction(
 ): Promise<ConnectorOperationResponse> {
   return handleApiCall(async () => {
     const response = await apiApexAiAuth.put(
-      `/api/integrations/${connectorName}`,
+      `/integrations/${connectorName}`,
       body
     )
     return response.data
@@ -96,7 +96,7 @@ export async function updateConnectorRecordsAction(
 ): Promise<ConnectorOperationResponse> {
   return handleApiCall(async () => {
     const response = await apiApexAiAuth.patch(
-      `/api/integrations/${connectorName}`,
+      `/integrations/${connectorName}`,
       body
     )
     return response.data
@@ -111,7 +111,7 @@ export async function deleteConnectorRecordsAction(
 ): Promise<ConnectorOperationResponse> {
   return handleApiCall(async () => {
     const response = await apiApexAiAuth.delete(
-      `/api/integrations/${connectorName}`,
+      `/integrations/${connectorName}`,
       {
         data: body,
       }
@@ -125,7 +125,7 @@ export async function listIntegrationConfigsAction(
   businessAccountId: string
 ): Promise<IntegrationConfig[]> {
   return handleApiCall(async () => {
-    const response = await apiApexAiAuth.get('/api/integrations/config')
+    const response = await apiApexAiAuth.get('/integrations/config')
     return response.data.integrations || []
   })
 }
@@ -136,7 +136,7 @@ export async function getIntegrationConfigAction(
   businessAccountId: string
 ): Promise<IntegrationConfig> {
   return handleApiCall(async () => {
-    const response = await apiApexAiAuth.get(`/api/integrations/config/${id}`)
+    const response = await apiApexAiAuth.get(`/integrations/config/${id}`)
     return response.data
   })
 }
@@ -147,7 +147,7 @@ export async function createIntegrationConfigAction(
   businessAccountId: string
 ): Promise<IntegrationConfig> {
   return handleApiCall(async () => {
-    const response = await apiApexAiAuth.post('/api/integrations/config', data)
+    const response = await apiApexAiAuth.post('/integrations/config', data)
     return response.data
   })
 }
@@ -160,7 +160,7 @@ export async function updateIntegrationConfigAction(
 ): Promise<IntegrationConfig> {
   return handleApiCall(async () => {
     const response = await apiApexAiAuth.patch(
-      `/api/integrations/config/${id}`,
+      `/integrations/config/${id}`,
       data
     )
     return response.data
@@ -173,6 +173,6 @@ export async function deleteIntegrationConfigAction(
   businessAccountId: string
 ): Promise<void> {
   return handleApiCall(async () => {
-    await apiApexAiAuth.delete(`/api/integrations/config/${id}`)
+    await apiApexAiAuth.delete(`/integrations/config/${id}`)
   })
 }

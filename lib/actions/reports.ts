@@ -9,7 +9,7 @@ export interface DateRangeParams {
 }
 
 // ============================================================================
-// REPORTES DE EJECUCIONES DE COBRANZA
+// REPORTES DE EJECUCIONES DE Cartera
 // ============================================================================
 
 export interface CollectionExecutionMetrics {
@@ -97,17 +97,17 @@ export async function fetchCollectionExecutionMetricsAction(
     avg_open_rate:
       executions.length > 0
         ? executions.reduce((sum, e) => sum + (e.open_rate || 0), 0) /
-          executions.length
+        executions.length
         : 0,
     avg_delivery_rate:
       executions.length > 0
         ? executions.reduce((sum, e) => sum + (e.delivery_rate || 0), 0) /
-          executions.length
+        executions.length
         : 0,
     avg_bounce_rate:
       executions.length > 0
         ? executions.reduce((sum, e) => sum + (e.bounce_rate || 0), 0) /
-          executions.length
+        executions.length
         : 0,
   }
 }
@@ -156,7 +156,7 @@ export async function fetchExecutionTrendAction(
 }
 
 // ============================================================================
-// REPORTES DE CLIENTES EN COBRANZA
+// REPORTES DE CLIENTES EN Cartera
 // ============================================================================
 
 export interface ClientStatusDistribution {

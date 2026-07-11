@@ -13,11 +13,15 @@ import {
   Percent,
   ClipboardList,
   CreditCard,
-  BanknoteArrowDown,
   BrainCircuit,
   Zap,
   Unplug,
   Puzzle,
+  ShieldCheck,
+  BanknoteArrowDown,
+  Bot,
+  GitBranch,
+  Wrench,
 } from 'lucide-react'
 import { USER_ROLES, type UserRole } from './roles'
 
@@ -64,15 +68,6 @@ export const SIDE_APP_MENU_ITEMS: MenuItem[] = [
     ],
     items: [
       {
-        title: 'Cobranza',
-        url: '/admin/dashboard',
-        allowedRoles: [
-          USER_ROLES.COMPANY_ADMIN,
-          USER_ROLES.BUSINESS_ADMIN,
-          USER_ROLES.PROFESSIONAL,
-        ],
-      },
-      {
         title: 'Cliente',
         url: '/admin/customer-dashboard',
         allowedRoles: [USER_ROLES.CUSTOMER],
@@ -80,7 +75,7 @@ export const SIDE_APP_MENU_ITEMS: MenuItem[] = [
     ],
   },
   {
-    title: 'Cobranza',
+    title: 'Cartera',
     url: '/admin/collection',
     icon: BanknoteArrowDown,
     moduleCode: 'collection',
@@ -157,6 +152,28 @@ export const SIDE_APP_MENU_ITEMS: MenuItem[] = [
 
 export const SIDE_AGENCY_MENU_ITEMS: MenuItem[] = [
   {
+    title: 'Herramientas',
+    url: '/admin/agentic/tools',
+    icon: Wrench,
+    moduleCode: 'ai_assistant',
+    allowedRoles: [
+      USER_ROLES.COMPANY_ADMIN,
+      USER_ROLES.BUSINESS_ADMIN,
+      USER_ROLES.PROFESSIONAL,
+    ],
+  },
+  {
+    title: 'Agentes',
+    url: '/admin/agentic/agents',
+    icon: Bot,
+    moduleCode: 'ai_assistant',
+    allowedRoles: [
+      USER_ROLES.COMPANY_ADMIN,
+      USER_ROLES.BUSINESS_ADMIN,
+      USER_ROLES.PROFESSIONAL,
+    ],
+  },
+  {
     title: 'Conectores',
     url: '/admin/agentic/connectors',
     icon: Unplug,
@@ -177,6 +194,37 @@ export const SIDE_AGENCY_MENU_ITEMS: MenuItem[] = [
       USER_ROLES.COMPANY_ADMIN,
       USER_ROLES.BUSINESS_ADMIN,
       USER_ROLES.PROFESSIONAL,
+    ],
+  },
+  {
+    title: 'Flujo',
+    url: '/admin/agentic/flows',
+    icon: GitBranch,
+    moduleCode: 'ai_assistant',
+    allowedRoles: [
+      USER_ROLES.COMPANY_ADMIN,
+      USER_ROLES.BUSINESS_ADMIN,
+      USER_ROLES.PROFESSIONAL,
+    ],
+  },
+  {
+    title: 'Auditoria',
+    url: '/admin/audit',
+    icon: ShieldCheck,
+    moduleCode: 'ai_assistant',
+    allowedRoles: [USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN],
+  },
+  {
+    title: 'Configuración',
+    url: '/admin/agentic/settings',
+    icon: Settings,
+    moduleCode: 'ai_assistant',
+    allowedRoles: [USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN],
+    items: [
+      {
+        title: 'Proveedores IA',
+        url: '/admin/agentic/settings/llm-providers',
+      },
     ],
   },
 ]

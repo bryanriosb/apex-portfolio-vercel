@@ -44,7 +44,7 @@ export async function listInvoicesAction(
     if (params?.sort_by) queryParams.sort_by = params.sort_by
     if (params?.sort_order) queryParams.sort_order = params.sort_order
 
-    const response = await apiApexAiAuth.get('/api/ontology/invoices', {
+    const response = await apiApexAiAuth.get('/ontology/invoices', {
       params: queryParams,
     })
     return response.data
@@ -53,7 +53,7 @@ export async function listInvoicesAction(
 
 export async function getInvoiceAction(id: string): Promise<Invoice> {
   return handleApiCall(async () => {
-    const response = await apiApexAiAuth.get(`/api/ontology/invoices/${id}`)
+    const response = await apiApexAiAuth.get(`/ontology/invoices/${id}`)
     return response.data
   })
 }
@@ -62,7 +62,7 @@ export async function createInvoiceAction(
   data: InvoiceCreatePayload
 ): Promise<Invoice> {
   return handleApiCall(async () => {
-    const response = await apiApexAiAuth.post('/api/ontology/invoices', data)
+    const response = await apiApexAiAuth.post('/ontology/invoices', data)
     return response.data
   })
 }
@@ -73,7 +73,7 @@ export async function updateInvoiceAction(
 ): Promise<Invoice> {
   return handleApiCall(async () => {
     const response = await apiApexAiAuth.patch(
-      `/api/ontology/invoices/${id}`,
+      `/ontology/invoices/${id}`,
       data
     )
     return response.data
@@ -82,6 +82,6 @@ export async function updateInvoiceAction(
 
 export async function deleteInvoiceAction(id: string): Promise<void> {
   return handleApiCall(async () => {
-    await apiApexAiAuth.delete(`/api/ontology/invoices/${id}`)
+    await apiApexAiAuth.delete(`/ontology/invoices/${id}`)
   })
 }
