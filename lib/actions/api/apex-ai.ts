@@ -21,13 +21,41 @@ apiApexAi.interceptors.request.use((request) => {
 // Request to api with authentication and refresh token
 const apiApexAiAuth: AxiosInstance = axios.create(config)
 
+/**
+ * Obtiene el access token de Supabase desde la sesión NextAuth del usuario.
+ *
+ * @returns El JWT de Supabase o null si no hay sesión de usuario (p. ej.
+ * flujos de sistema como el aprovisionamiento durante el registro).
+ */
+async function getSessionSupabaseToken(): Promise<string | null> {
+  try {
+    const { getServerSession } = await import('next-auth')
+    const { AUTH_OPTIONS } = await import('@/const/auth')
+    const session = await getServerSession(AUTH_OPTIONS)
+    return session?.user?.accessToken ?? null
+  } catch {
+    // Fuera de un contexto de request de Next.js no hay sesión disponible
+    return null
+  }
+}
+
 apiApexAiAuth.interceptors.request.use(
   async (request) => {
     request.baseURL = selectedEnvironment.API_BASE_URL
 
-    const token = process.env.APEX_AI_SECRET
-    if (token && !request.headers['Authorization']) {
-      request.headers['Authorization'] = `Bearer ${token}`
+    if (!request.headers['Authorization']) {
+      // SSO: el usuario autenticado se identifica ante apex-ai con su JWT de
+      // Supabase; el backend resuelve business_id/business_account_id desde
+      // el token (app/user_metadata o lookup en Supabase).
+      const userToken = await getSessionSupabaseToken()
+
+      // Fallback para flujos sin sesión de usuario (registro, tareas de
+      // sistema): secret key programática con alcance de negocio fijo.
+      const token = userToken ?? process.env.APEX_AI_SECRET
+
+      if (token) {
+        request.headers['Authorization'] = `Bearer ${token}`
+      }
     }
 
     try {

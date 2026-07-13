@@ -25,6 +25,10 @@ export interface AuthUser {
   }> | null
   timezone?: string | null
   accessToken?: string | null
+  /** Refresh token de Supabase para rotar el access token server-side. */
+  refreshToken?: string | null
+  /** Expiración del access token de Supabase (epoch seconds). */
+  expiresAt?: number | null
 }
 
 /**
@@ -169,6 +173,8 @@ export async function authenticateWithSupabase(
       businesses,
       timezone,
       accessToken: authData.session?.access_token || null,
+      refreshToken: authData.session?.refresh_token || null,
+      expiresAt: authData.session?.expires_at ?? null,
     }
   } catch (err) {
     console.error('Cannot sign in:', err)
@@ -185,6 +191,80 @@ export async function signOutSupabase(): Promise<void> {
     await supabase.auth.signOut()
   } catch (err) {
     console.error('Error signing out:', err)
+  }
+}
+
+/**
+ * Refresca la sesión de Supabase con el refresh token del usuario.
+ *
+ * Se invoca desde el callback `jwt` de NextAuth para mantener vigente el
+ * access token de Supabase durante la sesión de 8 horas (los access tokens
+ * de Supabase expiran antes, típicamente en 1 hora).
+ *
+ * Implementado con fetch directo al endpoint de GoTrue en lugar del cliente
+ * singleton de Supabase: `auth.refreshSession` muta el estado de sesión en
+ * memoria del cliente compartido, lo que sería una condición de carrera
+ * entre usuarios concurrentes en el servidor.
+ *
+ * @returns Nuevos tokens y expiración, o null si el refresh falla.
+ */
+export async function refreshSupabaseSession(refreshToken: string): Promise<{
+  accessToken: string
+  refreshToken: string
+  expiresAt: number | null
+} | null> {
+  try {
+    const rawUrl = (process.env.SUPABASE_URL || '').replace(/\/+$/, '')
+    const baseUrl = rawUrl.replace(/\/rest\/v1$/, '')
+    const apiKey =
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      process.env.SUPABASE_SECRET_KEY
+
+    if (!baseUrl || !apiKey) {
+      console.error('refreshSupabaseSession: SUPABASE_URL o apikey no configurados')
+      return null
+    }
+
+    const response = await fetch(
+      `${baseUrl}/auth/v1/token?grant_type=refresh_token`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: apiKey,
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      }
+    )
+
+    if (!response.ok) {
+      console.error(
+        'Error refreshing Supabase session:',
+        response.status,
+        await response.text().catch(() => '')
+      )
+      return null
+    }
+
+    const session: {
+      access_token?: string
+      refresh_token?: string
+      expires_at?: number
+    } = await response.json()
+
+    if (!session.access_token || !session.refresh_token) {
+      console.error('refreshSupabaseSession: respuesta sin tokens')
+      return null
+    }
+
+    return {
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+      expiresAt: session.expires_at ?? null,
+    }
+  } catch (err) {
+    console.error('Error in refreshSupabaseSession:', err)
+    return null
   }
 }
 

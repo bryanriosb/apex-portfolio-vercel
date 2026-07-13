@@ -22,6 +22,7 @@ import {
   Bot,
   GitBranch,
   Wrench,
+  Sparkles,
 } from 'lucide-react'
 import { USER_ROLES, type UserRole } from './roles'
 
@@ -166,6 +167,17 @@ export const SIDE_AGENCY_MENU_ITEMS: MenuItem[] = [
     title: 'Agentes',
     url: '/admin/agentic/agents',
     icon: Bot,
+    moduleCode: 'ai_assistant',
+    allowedRoles: [
+      USER_ROLES.COMPANY_ADMIN,
+      USER_ROLES.BUSINESS_ADMIN,
+      USER_ROLES.PROFESSIONAL,
+    ],
+  },
+  {
+    title: 'Habilidades',
+    url: '/admin/agentic/skills',
+    icon: Sparkles,
     moduleCode: 'ai_assistant',
     allowedRoles: [
       USER_ROLES.COMPANY_ADMIN,

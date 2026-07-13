@@ -53,6 +53,8 @@ export async function authenticate(
       businesses: user.businesses,
       timezone: user.timezone || user.businesses?.[0]?.timezone || 'America/Bogota',
       accessToken: user.accessToken,
+      refreshToken: user.refreshToken,
+      expiresAt: user.expiresAt,
     }
 
     return userSessionData

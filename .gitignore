@@ -39,3 +39,5 @@ next-env.d.ts
 target/
 **/*.rs.bk
 Cargo.lock
+
+/.claude/*
