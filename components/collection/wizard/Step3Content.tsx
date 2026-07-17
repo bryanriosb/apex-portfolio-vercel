@@ -67,11 +67,16 @@ export function Step3Content({
   availableDomains,
 }: Step3ContentProps) {
   const { activeBusiness } = useActiveBusinessStore()
-  if (!fileData) return null
 
-  // Usar hook con Zustand store para compartir datos con Step2 (evita recálculos)
+  // El hook debe invocarse siempre en el mismo orden (rules-of-hooks); el
+  // guard de `fileData` va después. Con fileData nulo se pasa un Map vacío.
   const { previewData, unassignedCount, totalClients, isLoading } =
-    useWizardThresholdPreview(fileData.groupedClients, activeBusiness?.id || '')
+    useWizardThresholdPreview(
+      fileData?.groupedClients ?? new Map(),
+      activeBusiness?.id || ''
+    )
+
+  if (!fileData) return null
 
   // Calcular totales basados en los datos del hook
   // totalClients incluye todos los válidos (status === 'found')

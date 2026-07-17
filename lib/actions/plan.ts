@@ -23,6 +23,7 @@ import type {
   PlanStatus,
 } from '@/lib/models/plan/plan'
 import type { FeaturePermission } from '@/lib/models/plan/feature-permissions'
+import { requireCompanyAdmin } from '@/lib/auth/tenant-guard'
 
 export interface PlanListResponse {
   data: Plan[]
@@ -159,6 +160,8 @@ export async function createPlanAction(
   data: PlanInsert
 ): Promise<{ success: boolean; data?: Plan; error?: string }> {
   try {
+    await requireCompanyAdmin()
+
     const existing = await getPlanByCodeAction(data.code)
     if (existing) {
       return { success: false, error: 'Ya existe un plan con este código' }
@@ -186,6 +189,8 @@ export async function updatePlanAction(
   data: PlanUpdate
 ): Promise<{ success: boolean; data?: Plan; error?: string }> {
   try {
+    await requireCompanyAdmin()
+
     if (data.code) {
       const existing = await getPlanByCodeAction(data.code)
       if (existing && existing.id !== id) {
@@ -210,6 +215,8 @@ export async function deletePlanAction(
   id: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireCompanyAdmin()
+
     const client = await getSupabaseAdminClient()
 
     const { data: usageCount } = await client
@@ -238,6 +245,8 @@ export async function deletePlansAction(
   ids: string[]
 ): Promise<{ success: boolean; deletedCount: number; error?: string }> {
   try {
+    await requireCompanyAdmin()
+
     const client = await getSupabaseAdminClient()
 
     const { data: usageData } = await client
@@ -296,16 +305,18 @@ export async function createPlanModuleAction(
   data: PlanModuleInsert
 ): Promise<{ success: boolean; data?: PlanModule; error?: string }> {
   try {
-    const module = await insertRecord<PlanModule>('plan_modules', {
+    await requireCompanyAdmin()
+
+    const planModule = await insertRecord<PlanModule>('plan_modules', {
       ...data,
       is_active: data.is_active ?? true,
     })
 
-    if (!module) {
+    if (!planModule) {
       return { success: false, error: 'Error al crear el módulo' }
     }
 
-    return { success: true, data: module }
+    return { success: true, data: planModule }
   } catch (error: any) {
     console.error('Error creating plan module:', error)
     return { success: false, error: error.message || 'Error desconocido' }
@@ -317,13 +328,15 @@ export async function updatePlanModuleAction(
   data: Partial<PlanModuleInsert>
 ): Promise<{ success: boolean; data?: PlanModule; error?: string }> {
   try {
-    const module = await updateRecord<PlanModule>('plan_modules', id, data)
+    await requireCompanyAdmin()
 
-    if (!module) {
+    const planModule = await updateRecord<PlanModule>('plan_modules', id, data)
+
+    if (!planModule) {
       return { success: false, error: 'Error al actualizar el módulo' }
     }
 
-    return { success: true, data: module }
+    return { success: true, data: planModule }
   } catch (error: any) {
     console.error('Error updating plan module:', error)
     return { success: false, error: error.message || 'Error desconocido' }
@@ -334,6 +347,8 @@ export async function deletePlanModuleAction(
   id: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireCompanyAdmin()
+
     const client = await getSupabaseAdminClient()
     await client.from('plan_module_access').delete().eq('module_id', id)
     await deleteRecord('plan_modules', id)
@@ -369,6 +384,8 @@ export async function setPlanModuleAccessAction(
   moduleAccess: PlanModuleAccessInsert[]
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireCompanyAdmin()
+
     const client = await getSupabaseAdminClient()
 
     await client.from('plan_module_access').delete().eq('plan_id', planId)
@@ -400,6 +417,8 @@ export async function updatePlanModuleAccessAction(
   data: PlanModuleAccessUpdate
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireCompanyAdmin()
+
     await updateRecord('plan_module_access', id, data)
     return { success: true }
   } catch (error: any) {
@@ -555,6 +574,9 @@ export async function fetchBusinessAccountsWithPlansAction(params?: {
   has_plan?: 'yes' | 'no'
 }): Promise<PlanAssignmentListResponse> {
   try {
+    // Lista cuentas de toda la plataforma: solo company_admin.
+    await requireCompanyAdmin()
+
     const client = await getSupabaseAdminClient()
 
     const { data: accounts, error } = await client
@@ -624,6 +646,10 @@ export async function assignPlanToAccountAction(
   planId: string | null
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // Asignar planes cambia lo que factura/puede hacer un tenant: operación
+    // exclusiva de plataforma (un tenant no puede auto-asignarse un plan).
+    await requireCompanyAdmin()
+
     const client = await getSupabaseAdminClient()
 
     if (planId) {
@@ -659,6 +685,8 @@ export async function bulkAssignPlanToAccountsAction(
   }
 
   try {
+    await requireCompanyAdmin()
+
     const client = await getSupabaseAdminClient()
 
     if (planId) {

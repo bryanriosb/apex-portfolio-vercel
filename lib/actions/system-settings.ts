@@ -13,9 +13,17 @@ import type {
   TrialConfig,
 } from '@/lib/models/system-settings'
 import { DEFAULT_TRIAL_CONFIG, SYSTEM_SETTING_KEYS } from '@/lib/models/system-settings'
+import {
+  requireUser,
+  requireCompanyAdmin,
+  requireAccountAccess,
+} from '@/lib/auth/tenant-guard'
 
 export async function getSettingByKeyAction(key: string): Promise<SystemSetting | null> {
   try {
+    // Configuración de plataforma: lectura solo para sesiones válidas.
+    await requireUser()
+
     const supabase = await getSupabaseAdminClient()
     const { data, error } = await supabase
       .from('system_settings')
@@ -52,6 +60,8 @@ export async function updateTrialConfigAction(
   config: Partial<TrialConfig>
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireCompanyAdmin()
+
     const currentConfig = await getTrialConfigAction()
     const newConfig = { ...currentConfig, ...config }
 
@@ -77,6 +87,8 @@ export async function createSettingAction(
   data: SystemSettingInsert
 ): Promise<{ success: boolean; data?: SystemSetting; error?: string }> {
   try {
+    await requireCompanyAdmin()
+
     const supabase = await getSupabaseAdminClient()
     const { data: existing } = await supabase
       .from('system_settings')
@@ -101,6 +113,8 @@ export async function updateSettingAction(
   data: SystemSettingUpdate
 ): Promise<{ success: boolean; data?: SystemSetting; error?: string }> {
   try {
+    await requireCompanyAdmin()
+
     const result = await updateRecord<SystemSetting>('system_settings', id, data)
     return { success: true, data: result ?? undefined }
   } catch (error) {
@@ -120,6 +134,8 @@ export async function checkAndUpdateExpiredTrialAction(
   businessAccountId: string
 ): Promise<TrialCheckResult> {
   try {
+    await requireAccountAccess(businessAccountId)
+
     const supabase = await getSupabaseAdminClient()
 
     const { data, error } = await supabase.rpc('check_and_update_expired_trial', {
@@ -167,6 +183,11 @@ export async function startTrialForAccountAction(
   customTrialDays?: number
 ): Promise<StartTrialResult> {
   try {
+    // Otorgar/reiniciar trials es una operación de plataforma; un tenant no
+    // puede extenderse su propio período de prueba. El alta de cuentas usa
+    // el RPC directamente en el flujo server-side de registro.
+    await requireCompanyAdmin()
+
     const supabase = await getSupabaseAdminClient()
 
     const { data, error } = await supabase.rpc('start_trial_for_account', {
@@ -207,6 +228,8 @@ export async function setCustomTrialDaysAction(
   customTrialDays: number | null
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireCompanyAdmin()
+
     const supabase = await getSupabaseAdminClient()
 
     const { error } = await supabase
@@ -230,6 +253,8 @@ export async function getTrialInfoAction(businessAccountId: string): Promise<{
   customTrialDays: number | null
 }> {
   try {
+    await requireAccountAccess(businessAccountId)
+
     const supabase = await getSupabaseAdminClient()
 
     const { data, error } = await supabase

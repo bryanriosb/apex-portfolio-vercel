@@ -8,6 +8,7 @@ export const statuses: Record<string, string> = {
   Interrupted: 'Aprobación',
   Completed: 'Completada',
   Failed: 'Fallida',
+  Recurring: 'Recurrente',
 };
 
 export const events: Record<string, string> = {
@@ -28,6 +29,19 @@ export const jobTypes: Record<string, string> = {
   AgentJob: 'Trabajo de Agente',
   AgentWorkflowJob: 'Trabajo de Workflow',
   ApexJob: 'Trabajo Apex',
+};
+
+export const apexJobTypes: Record<string, string> = {
+  Rpa: 'Automatización RPA',
+  HeavyTask: 'Tarea Pesada',
+  PaymentValidation: 'Validación de Pago',
+  CollectionSync: 'Sincronización de Cartera',
+};
+
+export const jobKinds: Record<string, string> = {
+  Single: 'Única',
+  Recurring: 'Recurrente',
+  Instance: 'Instancia',
 };
 
 export const toolTypes: Record<string, string> = {

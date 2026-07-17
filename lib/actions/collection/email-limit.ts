@@ -1,6 +1,7 @@
 'use server'
 
 import { getSupabaseAdminClient } from '@/lib/actions/supabase'
+import { requireUser, requireAccountAccess } from '@/lib/auth/tenant-guard'
 import type { BusinessAccount } from '@/lib/models/business-account/business-account'
 
 export interface EmailCountResult {
@@ -32,6 +33,8 @@ export async function countEmailsSentAction(
   const supabase = await getSupabaseAdminClient()
 
   try {
+    await requireAccountAccess(businessAccountId)
+
     // Obtener todos los business_id que pertenecen al business_account
     const { data: businesses, error: businessesError } = await supabase
       .from('businesses')
@@ -88,6 +91,8 @@ export async function getEmailPeriodForAccount(
   account: BusinessAccount,
   currentDate: Date = new Date()
 ): Promise<{ start: Date; end: Date }> {
+  await requireUser()
+
   const end = currentDate
 
   if (account.status === 'trial' && account.trial_ends_at) {
@@ -175,6 +180,8 @@ export async function validateEmailLimitAction(
   const supabase = await getSupabaseAdminClient()
 
   try {
+    await requireAccountAccess(account.id)
+
     // Verificar primero si hay un override en settings
     let maxEmails = getEffectiveEmailLimit(account)
 

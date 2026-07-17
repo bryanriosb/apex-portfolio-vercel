@@ -81,7 +81,6 @@ export function WorkflowFlowEditor({ id }: WorkflowFlowEditorProps) {
     async (values: WorkflowFormValues) => {
       setIsSubmitting(true)
       try {
-        console.log("SUBMITTING GRAPH JSON:", JSON.stringify(values.graph_json, null, 2))
         if (isEditMode && id) {
           await service.updateWorkflow(id, {
             name: values.name,

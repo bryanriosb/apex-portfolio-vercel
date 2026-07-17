@@ -1,3 +1,5 @@
+import type { Dispatch, SetStateAction } from 'react'
+
 export interface EventBridgeEvent {
   type: string
   timestamp: string
@@ -23,5 +25,5 @@ export interface UseEventBridgeWebSocketReturn {
   maxRetries: number
   reconnect: () => void
   disconnect: () => void
-  setEvents: Function
+  setEvents: Dispatch<SetStateAction<EventBridgeEvent[]>>
 }

@@ -9,6 +9,7 @@ import {
 import Loading from '@/components/ui/loading'
 import { AgentFormFields } from './AgentFormFields'
 import { AgentToolsSelector } from './AgentToolsSelector'
+import { useAvailableLlmProviders } from '@/hooks/use-available-llm-providers'
 import {
   agentFormSchema,
   type AgentFormValues,
@@ -51,7 +52,15 @@ export function AgentForm({
     },
   })
 
+  const { isRestricted, hasConfiguredProviders } = useAvailableLlmProviders()
+  // Sin proveedor disponible no se puede crear un agente (apuntaría a un
+  // proveedor de plataforma bloqueado). En edición se permite: el agente ya
+  // tiene proveedor propio / BYOK.
+  const blockCreateNoProvider =
+    !agent && isRestricted && !hasConfiguredProviders
+
   const handleSubmit = (values: AgentFormValues) => {
+    if (blockCreateNoProvider) return
     onSubmit(values)
   }
 
@@ -79,7 +88,7 @@ export function AgentForm({
           </Button>
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || blockCreateNoProvider}
             size="sm"
             className="rounded-none"
           >

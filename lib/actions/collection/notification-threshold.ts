@@ -7,6 +7,7 @@ import {
   deleteRecord,
   getSupabaseAdminClient,
 } from '@/lib/actions/supabase'
+import { requireUser, requireBusinessAccess } from '@/lib/auth/tenant-guard'
 import type {
   NotificationThreshold,
   NotificationThresholdInsert,
@@ -25,6 +26,8 @@ export async function fetchThresholdsAction(
   businessId: string
 ): Promise<ThresholdListResponse> {
   try {
+    await requireBusinessAccess(businessId)
+
     const supabase = await getSupabaseAdminClient()
 
     const { data, error, count } = await supabase
@@ -57,6 +60,8 @@ export async function getThresholdByIdAction(
   id: string
 ): Promise<NotificationThreshold | null> {
   try {
+    await requireUser()
+
     const supabase = await getSupabaseAdminClient()
 
     const { data, error } = await supabase
@@ -84,6 +89,8 @@ export async function createThresholdAction(
   data: NotificationThresholdInsert
 ): Promise<{ success: boolean; data?: NotificationThreshold; error?: string }> {
   try {
+    await requireBusinessAccess(data.business_id)
+
     const supabase = await getSupabaseAdminClient()
 
     // Validate no overlapping ranges
@@ -134,6 +141,8 @@ export async function updateThresholdAction(
   businessId: string
 ): Promise<{ success: boolean; data?: NotificationThreshold; error?: string }> {
   try {
+    await requireBusinessAccess(businessId)
+
     const supabase = await getSupabaseAdminClient()
 
     // Validate no overlapping ranges (excluding current threshold)
@@ -190,6 +199,8 @@ export async function deleteThresholdAction(
   id: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireUser()
+
     await updateRecord('notification_thresholds', id, { is_active: false })
     return { success: true }
   } catch (error: any) {
@@ -206,6 +217,8 @@ export async function getThresholdForDaysAction(
   daysOverdue: number
 ): Promise<NotificationThreshold | null> {
   try {
+    await requireBusinessAccess(businessId)
+
     const supabase = await getSupabaseAdminClient()
 
     const { data, error } = await supabase.rpc('get_threshold_for_days', {
@@ -259,6 +272,8 @@ export async function reorderThresholdsAction(
   thresholdIds: string[]
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireUser()
+
     const supabase = await getSupabaseAdminClient()
 
     const updates = thresholdIds.map((id, index) =>

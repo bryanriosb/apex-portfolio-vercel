@@ -1,6 +1,7 @@
 'use server'
 
 import { query, create, update, destroy } from './crud'
+import { requireAccountAccess, requireUser } from '@/lib/auth/tenant-guard'
 import type { ToolWithAuthStatus, ToolDefinitionPayload, ToolDefinitionResponse } from '@/lib/types/oauth2-types'
 
 export interface ListToolsParams {
@@ -61,6 +62,9 @@ export async function listTools(
   }
 
   try {
+    // Defensa en profundidad: sin sesión el interceptor de apex-ai usaría el
+    // fallback APEX_AI_SECRET; se valida sesión y tenant de la cuenta pedida.
+    await requireAccountAccess(params.businessAccountId)
     return await query(`/agents/${params.agentId}/tools`, queryParams)
   } catch (error) {
     console.warn(`[listTools] Failed to fetch tools for agent ${params.agentId}. Returning empty array.`, error)
@@ -71,24 +75,28 @@ export async function listTools(
 export async function getTool(
   params: GetToolParams
 ): Promise<ToolDefinitionResponse> {
+  await requireUser()
   return query(`/agents/tools/${params.toolId}`)
 }
 
 export async function createTool(
   params: CreateToolParams
 ): Promise<ToolDefinitionResponse> {
+  await requireUser()
   return create(`/agents/${params.agentId}/tools`, params.payload)
 }
 
 export async function updateTool(
   params: UpdateToolParams
 ): Promise<ToolDefinitionResponse> {
+  await requireUser()
   return update(`/agents/tools/${params.toolId}`, params.payload, false)
 }
 
 export async function toggleToolActive(
   params: ToggleToolParams
 ): Promise<{ success: boolean }> {
+  await requireUser()
   return update(
     `/agents/tools/${params.toolId}`,
     { is_active: params.isActive },
@@ -99,6 +107,7 @@ export async function toggleToolActive(
 export async function authorizeOAuth2(
   params: OAuthActionParams
 ): Promise<{ authorization_url: string }> {
+  await requireUser()
   return create(`/agents/tools/${params.toolId}/oauth2/authorize`, {
     owner_type: params.ownerType,
     owner_id: params.ownerId,
@@ -108,6 +117,7 @@ export async function authorizeOAuth2(
 export async function refreshOAuth2(
   params: OAuthActionParams
 ): Promise<{ success: boolean }> {
+  await requireUser()
   return create(
     `/agents/tools/${params.toolId}/oauth2/refresh`,
     {},
@@ -123,6 +133,7 @@ export async function refreshOAuth2(
 export async function disconnectOAuth2(
   params: OAuthActionParams
 ): Promise<{ success: boolean }> {
+  await requireUser()
   return destroy(
     `/agents/tools/${params.toolId}/oauth2?owner_type=${params.ownerType}&owner_id=${params.ownerId}`
   )
@@ -138,11 +149,13 @@ export async function discoverOAuth2(
   scopes?: string[]
   resource?: string
 }> {
+  await requireUser()
   return create(`/agents/tools/${params.toolId}/oauth2/discover`, {})
 }
 
 export async function deleteTool(
   params: DeleteToolParams
 ): Promise<{ success: boolean }> {
+  await requireUser()
   return destroy(`/agents/tools/${params.toolId}`)
 }

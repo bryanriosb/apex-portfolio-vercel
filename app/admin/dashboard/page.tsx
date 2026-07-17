@@ -23,6 +23,14 @@ import {
   RecaudoDashboardStats,
   RecaudoByBank,
 } from '@/lib/actions/bank-transactions/transaction'
+import {
+  getCarteraDashboardAction,
+  GeneralKpis,
+  EffectivenessKpis,
+  AgingKpis,
+  CashForecastItem,
+  ExpectedForecastItem,
+} from '@/lib/actions/collection/metrics'
 
 import { DashboardHeader } from '@/components/dashboard/collection/DashboardHeader'
 import { StatsCards } from '@/components/dashboard/collection/StatsCards'
@@ -33,12 +41,22 @@ import { BlacklistMonitor } from '@/components/dashboard/collection/BlacklistMon
 import { RecaudoStatsCards } from '@/components/dashboard/collection/RecaudoStatsCards'
 import { RecaudoByBank as RecaudoByBankComponent } from '@/components/dashboard/collection/RecaudoByBank'
 import { RecaudoAlerts } from '@/components/dashboard/collection/RecaudoAlerts'
+import { CarteraKpiCards } from '@/components/dashboard/collection/CarteraKpiCards'
+import { AgingBucketsChart } from '@/components/dashboard/collection/AgingBucketsChart'
+import { CashForecastChart } from '@/components/dashboard/collection/CashForecastChart'
+import { IntentsDistributionChart } from '@/components/dashboard/collection/IntentsDistributionChart'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   DashboardStats,
   ActiveExecution,
 } from '@/lib/models/collection/dashboard'
 import { EmailReputationProfile } from '@/lib/models/collection/email-reputation'
+
+/**
+ * El tab de Campaña queda oculto temporalmente (no eliminado): volver a
+ * `true` para restaurarlo junto con sus cargas de datos y realtime.
+ */
+const SHOW_CAMPAIGN_TAB = false
 
 export default function DashboardPage() {
   const { data: session } = useSession()
@@ -58,11 +76,22 @@ export default function DashboardPage() {
   const [recaudoStats, setRecaudoStats] = useState<RecaudoDashboardStats | null>(null)
   const [recaudoByBank, setRecaudoByBank] = useState<RecaudoByBank[]>([])
 
+  // Indicadores de cartera state
+  const [generalKpis, setGeneralKpis] = useState<GeneralKpis | null>(null)
+  const [effectivenessKpis, setEffectivenessKpis] =
+    useState<EffectivenessKpis | null>(null)
+  const [agingKpis, setAgingKpis] = useState<AgingKpis | null>(null)
+  const [cashForecast, setCashForecast] = useState<CashForecastItem[]>([])
+  const [expectedForecast, setExpectedForecast] = useState<
+    ExpectedForecastItem[]
+  >([])
+
   // Loading states
-  const [statsLoading, setStatsLoading] = useState(true)
+  const [statsLoading, setStatsLoading] = useState(SHOW_CAMPAIGN_TAB)
   const [recentLoading, setRecentLoading] = useState(true)
   const [reputationLoading, setReputationLoading] = useState(true)
   const [recaudoLoading, setRecaudoLoading] = useState(true)
+  const [kpisLoading, setKpisLoading] = useState(true)
 
   const activeExecutionsRef = useRef(activeExecutions)
   const realtimeService = useMemo(() => new RealtimeDashboardService(), [])
@@ -148,11 +177,32 @@ export default function DashboardPage() {
     }
   }, [activeBusiness?.id])
 
+  // Indicadores de cartera (KPIs, aging y forecast desde apex-ai).
+  // La action combinada nunca rechaza: cada endpoint degrada a null/[].
+  const loadCarteraKpis = useCallback(async () => {
+    if (!activeBusiness?.id) return
+
+    setKpisLoading(true)
+    const { general, effectiveness, aging, forecast, expectedForecast } =
+      await getCarteraDashboardAction()
+
+    setGeneralKpis(general)
+    setEffectivenessKpis(effectiveness)
+    setAgingKpis(aging)
+    setCashForecast(forecast)
+    setExpectedForecast(expectedForecast)
+    setKpisLoading(false)
+  }, [activeBusiness?.id])
+
   useEffect(() => {
     if (!activeBusiness?.id) return
 
-    loadData()
     loadRecaudoData()
+    loadCarteraKpis()
+
+    if (!SHOW_CAMPAIGN_TAB) return
+
+    loadData()
 
     setRecentLoading(true)
     getRecentExecutionsAction(activeBusiness.id, 5)
@@ -163,14 +213,15 @@ export default function DashboardPage() {
     getReputationSummaryAction(activeBusiness.id)
       .then(setReputationProfiles)
       .finally(() => setReputationLoading(false))
-  }, [activeBusiness?.id, loadData, loadRecaudoData])
+  }, [activeBusiness?.id, loadData, loadRecaudoData, loadCarteraKpis])
 
   useEffect(() => {
     activeExecutionsRef.current = activeExecutions
   }, [activeExecutions])
 
-  // Realtime updates for dashboard data
+  // Realtime updates for dashboard data (alimenta el tab de Campaña)
   useEffect(() => {
+    if (!SHOW_CAMPAIGN_TAB) return
     if (!activeBusiness?.id) return
 
     const setupRealtime = async () => {
@@ -214,11 +265,18 @@ export default function DashboardPage() {
   }, [activeBusiness?.id, session?.user, realtimeService])
 
   const manualRefresh = () => {
-    loadData()
     loadRecaudoData()
-    if (activeBusiness?.id) {
-      getRecentExecutionsAction(activeBusiness.id, 5).then(setRecentExecutions)
-      getReputationSummaryAction(activeBusiness.id).then(setReputationProfiles)
+    loadCarteraKpis()
+    if (SHOW_CAMPAIGN_TAB) {
+      loadData()
+      if (activeBusiness?.id) {
+        getRecentExecutionsAction(activeBusiness.id, 5).then(
+          setRecentExecutions
+        )
+        getReputationSummaryAction(activeBusiness.id).then(
+          setReputationProfiles
+        )
+      }
     }
     toast.success('Tablero actualizado')
   }
@@ -254,35 +312,75 @@ export default function DashboardPage() {
         onManualRefresh={manualRefresh}
       />
 
-      <Tabs defaultValue="campana" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="campana">Campaña</TabsTrigger>
+      <Tabs
+        defaultValue={SHOW_CAMPAIGN_TAB ? 'campana' : 'indicadores'}
+        className="w-full"
+      >
+        <TabsList
+          className={`grid w-full max-w-md ${SHOW_CAMPAIGN_TAB ? 'grid-cols-3' : 'grid-cols-2'}`}
+        >
+          {SHOW_CAMPAIGN_TAB && (
+            <TabsTrigger value="campana">Campaña</TabsTrigger>
+          )}
+          <TabsTrigger value="indicadores">Indicadores</TabsTrigger>
           <TabsTrigger value="recaudo">Recaudo</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="campana" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
-          <StatsCards
-            stats={stats}
-            statsLoading={statsLoading}
-            reputationLoading={reputationLoading}
-            reputationCount={reputationProfiles.length}
-            warmedCount={reputationProfiles.filter((p) => p.is_warmed_up).length}
-            formatDate={formatDate}
+        {SHOW_CAMPAIGN_TAB && (
+          <TabsContent
+            value="campana"
+            className="space-y-4 sm:space-y-6 mt-4 sm:mt-6"
+          >
+            <StatsCards
+              stats={stats}
+              statsLoading={statsLoading}
+              reputationLoading={reputationLoading}
+              reputationCount={reputationProfiles.length}
+              warmedCount={
+                reputationProfiles.filter((p) => p.is_warmed_up).length
+              }
+              formatDate={formatDate}
+            />
+
+            <ActiveExecutions
+              executions={activeExecutions}
+              getStatusColor={getStatusColor}
+            />
+
+            <RecentExecutions
+              executions={recentExecutions}
+              loading={recentLoading}
+              formatDate={formatDate}
+              getStatusColor={getStatusColor}
+            />
+
+            <BlacklistMonitor />
+          </TabsContent>
+        )}
+
+        <TabsContent
+          value="indicadores"
+          className="space-y-4 sm:space-y-6 mt-4 sm:mt-6"
+        >
+          <CarteraKpiCards
+            generalKpis={generalKpis}
+            agingKpis={agingKpis}
+            loading={kpisLoading}
           />
 
-          <ActiveExecutions
-            executions={activeExecutions}
-            getStatusColor={getStatusColor}
-          />
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+            <AgingBucketsChart data={agingKpis} loading={kpisLoading} />
+            <IntentsDistributionChart
+              data={effectivenessKpis}
+              loading={kpisLoading}
+            />
+          </div>
 
-          <RecentExecutions
-            executions={recentExecutions}
-            loading={recentLoading}
-            formatDate={formatDate}
-            getStatusColor={getStatusColor}
+          <CashForecastChart
+            data={cashForecast}
+            expectedData={expectedForecast}
+            loading={kpisLoading}
           />
-
-          <BlacklistMonitor />
         </TabsContent>
 
         <TabsContent value="recaudo" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">

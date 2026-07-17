@@ -1,6 +1,7 @@
 'use server'
 
 import { getSupabaseAdminClient } from '@/lib/actions/supabase'
+import { requireBusinessAccess } from '@/lib/auth/tenant-guard'
 import { BusinessCustomer } from '@/lib/models/customer/business-customer'
 
 export interface CustomerBatchResponse {
@@ -15,6 +16,8 @@ export async function fetchCustomersByNitsAction(
     nits: string[]
 ): Promise<CustomerBatchResponse> {
     try {
+        await requireBusinessAccess(businessId)
+
         const supabase = await getSupabaseAdminClient()
 
         console.log(`[fetchCustomersByNitsAction] Init for businessId: ${businessId}, count: ${nits.length}`)

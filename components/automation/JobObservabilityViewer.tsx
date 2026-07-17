@@ -26,6 +26,8 @@ import { getFieldLabel, t } from '@/lib/i18n';
 interface JobObservabilityViewerProps {
   jobId?: string;
   sessionId?: string;
+  /** Oculta costos de plataforma (USD) cuando es false; ej. Panel de Auditoría. */
+  showCosts?: boolean;
 }
 
 const TECHNICAL_KEYS = new Set([
@@ -143,7 +145,7 @@ const cleanUserMessage = (text: string): string => {
   return text;
 };
 
-export function JobObservabilityViewer({ jobId, sessionId }: JobObservabilityViewerProps) {
+export function JobObservabilityViewer({ jobId, sessionId, showCosts = true }: JobObservabilityViewerProps) {
   const [data, setData] = useState<JobObserver | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -299,17 +301,19 @@ export function JobObservabilityViewer({ jobId, sessionId }: JobObservabilityVie
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="grid grid-cols-3 bg-muted/20 border border-border px-1 py-2 rounded-none text-sm w-full divide-x divide-border/65">
-        <div className="flex items-center justify-center gap-3 px-1">
-          <div className="p-1.5 bg-background border border-border rounded-none shrink-0">
-            <Coins className="size-3 text-primary" />
+      <div className={`grid ${showCosts ? 'grid-cols-3' : 'grid-cols-2'} bg-muted/20 border border-border px-1 py-2 rounded-none text-sm w-full divide-x divide-border/65`}>
+        {showCosts && (
+          <div className="flex items-center justify-center gap-3 px-1">
+            <div className="p-1.5 bg-background border border-border rounded-none shrink-0">
+              <Coins className="size-3 text-primary" />
+            </div>
+            <div className="flex flex-col gap-1 min-w-0">
+              <span className="text-muted-foreground font-medium text-[12px] uppercase tracking-wider truncate">{t('ui.costoTotal')}</span>
+              <span className="text-sm font-bold text-foreground leading-none truncate">{formatCurrency(total_cost)}</span>
+              <span className="text-[12px] text-muted-foreground truncate">{t('ui.usdAcumulado')}</span>
+            </div>
           </div>
-          <div className="flex flex-col gap-1 min-w-0">
-            <span className="text-muted-foreground font-medium text-[12px] uppercase tracking-wider truncate">{t('ui.costoTotal')}</span>
-            <span className="text-sm font-bold text-foreground leading-none truncate">{formatCurrency(total_cost)}</span>
-            <span className="text-[12px] text-muted-foreground truncate">{t('ui.usdAcumulado')}</span>
-          </div>
-        </div>
+        )}
 
         <div className="flex items-center justify-center gap-3 px-1">
           <div className="p-1.5 bg-background border border-border rounded-none shrink-0">
@@ -340,7 +344,7 @@ export function JobObservabilityViewer({ jobId, sessionId }: JobObservabilityVie
 
       <div className="flex flex-col gap-4">
         <h3 className="text-base font-semibold flex items-center gap-2 text-foreground border-b border-border pb-2">
-          {t('ui.cadenaDePensamiento')}
+          {t('ui.registrosDeDecision')}
         </h3>
 
         <div className="flex flex-col gap-4">
@@ -391,7 +395,7 @@ export function JobObservabilityViewer({ jobId, sessionId }: JobObservabilityVie
                           {formatDate(event.timestamp)}
                         </span>
                       </div>
-                      {event.cost && event.cost > 0 ? (
+                      {showCosts && event.cost && event.cost > 0 ? (
                         <div className="text-[11px] font-mono font-medium text-muted-foreground/80 bg-muted/30 px-2 py-0.5 border border-border">
                           {formatCurrency(event.cost)}
                         </div>

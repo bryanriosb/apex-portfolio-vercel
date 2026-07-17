@@ -1,5 +1,3 @@
-import { fa } from 'zod/v4/locales'
-
 export const USER_ROLES = {
   COMPANY_ADMIN: 'company_admin',
   BUSINESS_ADMIN: 'business_admin',

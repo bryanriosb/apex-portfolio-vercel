@@ -2,6 +2,7 @@
 
 import type { AxiosError } from 'axios'
 import apiApexAiAuth from '@/lib/actions/api/apex-ai'
+import { requireUser, requireBusinessAccess } from '@/lib/auth/tenant-guard'
 import type {
   CollectionSyncPayload,
   EnqueueJobRequest,
@@ -35,6 +36,8 @@ export async function listSyncJobsAction(
   businessId: string,
   accessToken: string
 ): Promise<JobRecord[]> {
+  await requireBusinessAccess(businessId)
+
   return handleApiCall(async () => {
     // The endpoint uses query params: ?module=collection
     const response = await apiApexAiAuth.get('/jobs', {
@@ -51,6 +54,11 @@ export async function createImmediateSyncAction(
   accessToken: string,
   businessAccountId: string
 ): Promise<SyncEnqueueResponse> {
+  // `businessAccountId` puede ser un connector_id (ver SyncJobsService); el
+  // backend resuelve el tenant desde el JWT de sesión, por lo que aquí solo
+  // se exige sesión válida (evita el fallback a APEX_AI_SECRET sin usuario).
+  await requireUser()
+
   return handleApiCall(async () => {
     const response = await apiApexAiAuth.post('/collections/sync', payload)
     return response.data
@@ -61,6 +69,8 @@ export async function createScheduledSyncAction(
   payload: EnqueueJobRequest,
   accessToken: string
 ): Promise<SyncEnqueueResponse> {
+  await requireBusinessAccess(payload.business_id)
+
   return handleApiCall(async () => {
     const response = await apiApexAiAuth.post('/jobs', payload)
     return response.data
@@ -71,6 +81,8 @@ export async function getSyncProgressAction(
   jobId: string,
   accessToken: string
 ): Promise<SyncProgressResponse> {
+  await requireUser()
+
   return handleApiCall(async () => {
     const response = await apiApexAiAuth.get(`/collections/sync/${jobId}`)
     return response.data
@@ -81,6 +93,8 @@ export async function cancelSyncJobAction(
   jobId: string,
   accessToken: string
 ): Promise<void> {
+  await requireUser()
+
   return handleApiCall(async () => {
     await apiApexAiAuth.delete(`/collections/sync/${jobId}`)
   })
@@ -91,6 +105,8 @@ export async function updateJobStatusAction(
   status: string,
   accessToken: string
 ): Promise<void> {
+  await requireUser()
+
   return handleApiCall(async () => {
     await apiApexAiAuth.patch(`/jobs/${jobId}`, { status })
   })

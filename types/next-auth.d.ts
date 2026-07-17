@@ -30,6 +30,12 @@ declare module 'next-auth' {
       name: string
       business_account_id: string
     }> | null
+    /** Access token de Supabase (JWT) usado para autenticar contra apex-ai. */
+    accessToken?: string | null
+    /** Refresh token de Supabase; se elimina de la sesión del navegador. */
+    refreshToken?: string | null
+    /** Expiración del access token de Supabase (epoch seconds). */
+    expiresAt?: number | null
   }
 }
 

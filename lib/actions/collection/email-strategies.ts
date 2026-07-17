@@ -1,6 +1,7 @@
 'use server'
 
 import { getSupabaseAdminClient } from '@/lib/actions/supabase'
+import { requireUser, requireBusinessAccess } from '@/lib/auth/tenant-guard'
 import { DeliveryStrategy, DeliveryStrategyInsert, DeliveryStrategyUpdate } from '@/lib/models/collection/delivery-strategy'
 import { EmailReputationProfile } from '@/lib/models/collection/email-reputation'
 
@@ -8,6 +9,8 @@ import { EmailReputationProfile } from '@/lib/models/collection/email-reputation
  * Obtiene todas las estrategias de entrega para un negocio
  */
 export async function getBusinessStrategiesAction(businessId: string): Promise<DeliveryStrategy[]> {
+  await requireBusinessAccess(businessId)
+
   const supabase = await getSupabaseAdminClient()
 
   const { data, error } = await supabase
@@ -29,6 +32,8 @@ export async function getBusinessStrategiesAction(businessId: string): Promise<D
  * Obtiene una estrategia por ID
  */
 export async function getStrategyByIdAction(strategyId: string): Promise<DeliveryStrategy | null> {
+  await requireUser()
+
   const supabase = await getSupabaseAdminClient()
 
   const { data, error } = await supabase
@@ -52,6 +57,8 @@ export async function getStrategyByIdAction(strategyId: string): Promise<Deliver
  * Obtiene la estrategia por defecto para un negocio
  */
 export async function getDefaultStrategyAction(businessId: string): Promise<DeliveryStrategy | null> {
+  await requireBusinessAccess(businessId)
+
   const supabase = await getSupabaseAdminClient()
 
   const { data, error } = await supabase
@@ -77,6 +84,8 @@ export async function getDefaultStrategyAction(businessId: string): Promise<Deli
  * Crea una nueva estrategia de entrega
  */
 export async function createDeliveryStrategyAction(strategy: DeliveryStrategyInsert): Promise<DeliveryStrategy> {
+  await requireBusinessAccess(strategy.business_id)
+
   const supabase = await getSupabaseAdminClient()
 
   if (strategy.is_default) {
@@ -105,6 +114,8 @@ export async function createDeliveryStrategyAction(strategy: DeliveryStrategyIns
  * Actualiza una estrategia de entrega
  */
 export async function updateDeliveryStrategyAction(strategyId: string, updates: DeliveryStrategyUpdate): Promise<DeliveryStrategy> {
+  await requireUser()
+
   const supabase = await getSupabaseAdminClient()
 
   if (updates.is_default) {
@@ -142,6 +153,8 @@ export async function updateDeliveryStrategyAction(strategyId: string, updates: 
  * Elimina una estrategia (soft delete)
  */
 export async function deleteDeliveryStrategyAction(strategyId: string): Promise<void> {
+  await requireUser()
+
   const supabase = await getSupabaseAdminClient()
 
   const { error } = await supabase
@@ -159,6 +172,8 @@ export async function deleteDeliveryStrategyAction(strategyId: string): Promise<
  * Establece una estrategia como predeterminada
  */
 export async function setDefaultStrategyAction(strategyId: string): Promise<DeliveryStrategy> {
+  await requireUser()
+
   const supabase = await getSupabaseAdminClient()
 
   const { data: strategy, error: fetchError } = await supabase
@@ -201,6 +216,8 @@ export async function setDefaultStrategyAction(strategyId: string): Promise<Deli
  * Obtiene un resumen de reputación para un negocio (objetos planos)
  */
 export async function getReputationSummaryAction(businessId: string): Promise<EmailReputationProfile[]> {
+  await requireBusinessAccess(businessId)
+
   const supabase = await getSupabaseAdminClient()
 
   const { data, error } = await supabase
@@ -221,6 +238,8 @@ export async function getReputationSummaryAction(businessId: string): Promise<Em
  * Obtiene los dominios únicos configurados para un negocio
  */
 export async function getBusinessDomainsAction(businessId: string): Promise<string[]> {
+  await requireBusinessAccess(businessId)
+
   const supabase = await getSupabaseAdminClient()
 
   // Obtenemos dominios únicos usando distinct
@@ -254,6 +273,8 @@ export async function getExecutionClientsAction(executionId: string): Promise<{
   bounced: number
   failed: number
 }> {
+  await requireUser()
+
   const supabase = await getSupabaseAdminClient()
 
   const { data, error } = await supabase

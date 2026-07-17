@@ -21,7 +21,7 @@ export interface Business {
   updated_at: string
 }
 
-export class Business implements Business {
+export class BusinessModel implements Business {
   id: string
   business_account_id: string
   name: string

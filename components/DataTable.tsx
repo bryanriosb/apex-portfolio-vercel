@@ -18,6 +18,9 @@ import {
   getFilteredRowModel,
   getFacetedRowModel,
   getFacetedUniqueValues,
+  getExpandedRowModel,
+  ExpandedState,
+  Row,
   RowSelectionState,
 } from '@tanstack/react-table'
 
@@ -106,6 +109,8 @@ interface DataTableProps<TData, TValue> {
   getRowId?: (row: TData) => string
   refreshKey?: string
   emptyState?: React.ReactNode
+  /** Contenido de la fila expandida; habilita expansión por fila (chevron en columnas). */
+  renderExpandedRow?: (row: Row<TData>) => React.ReactNode
 }
 
 export interface DataTableRef {
@@ -135,6 +140,7 @@ export const DataTable = forwardRef<DataTableRef, DataTableProps<any, any>>(
       getRowId,
       refreshKey,
       emptyState,
+      renderExpandedRow,
     }: DataTableProps<TData, TValue>,
     ref: React.Ref<DataTableRef>
   ) {
@@ -162,6 +168,7 @@ export const DataTable = forwardRef<DataTableRef, DataTableProps<any, any>>(
     const [internalFilterState, setInternalFilterState] = useState<any[]>([])
     const [loading, setLoading] = useState(isAutonomous) // Iniciar loading si es autónomo
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+    const [expanded, setExpanded] = useState<ExpandedState>({})
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [idsToDelete, setIdsToDelete] = useState<string[]>([])
     const [isDeleting, setIsDeleting] = useState(false)
@@ -474,11 +481,12 @@ export const DataTable = forwardRef<DataTableRef, DataTableProps<any, any>>(
       const selectedRows = Object.keys(rowSelection).filter(
         (key) => rowSelection[key]
       )
+      // Con getRowId, TanStack usa el id real como clave de selección.
+      if (getRowId) return selectedRows
       return selectedRows
         .map((index) => {
           const row = data[parseInt(index)]
           if (!row) return null
-          if (getRowId) return getRowId(row)
           return (row as any).id
         })
         .filter(Boolean) as string[]
@@ -627,6 +635,10 @@ export const DataTable = forwardRef<DataTableRef, DataTableProps<any, any>>(
       onColumnFiltersChange: handleColumnFiltersChange,
       onColumnVisibilityChange: setColumnVisibility,
       onRowSelectionChange: setRowSelection,
+      onExpandedChange: setExpanded,
+      getRowCanExpand: () => !!renderExpandedRow,
+      getExpandedRowModel: getExpandedRowModel(),
+      ...(getRowId ? { getRowId } : {}),
       enableRowSelection: enableRowSelection,
       meta: {
         refreshData: fetchData,
@@ -647,6 +659,7 @@ export const DataTable = forwardRef<DataTableRef, DataTableProps<any, any>>(
         columnFilters: filterState || EMPTY_ARRAY,
         columnVisibility,
         rowSelection,
+        expanded,
       },
     })
 
@@ -730,22 +743,35 @@ export const DataTable = forwardRef<DataTableRef, DataTableProps<any, any>>(
                 </TableRow>
               ) : table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && 'selected'}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        className="px-2 py-3 whitespace-nowrap min-w-[60px] sm:min-w-[80px] md:min-w-[100px]"
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
+                  <React.Fragment key={row.id}>
+                    <TableRow data-state={row.getIsSelected() && 'selected'}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          className="px-2 py-3 whitespace-nowrap min-w-[60px] sm:min-w-[80px] md:min-w-[100px]"
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                    {renderExpandedRow && row.getIsExpanded() && (
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell
+                          colSpan={row.getVisibleCells().length}
+                          className="p-0"
+                        >
+                          {/* w-0 + min-w-full evita que el contenido expandido
+                              ensanche la tabla (no aporta al ancho intrínseco). */}
+                          <div className="w-0 min-w-full">
+                            {renderExpandedRow(row)}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
                 ))
               ) : emptyState ? (
                 <TableRow>

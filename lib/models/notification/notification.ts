@@ -13,7 +13,7 @@ export interface Notification {
   read_at: string | null
 }
 
-export class Notification implements Notification {
+export class NotificationModel implements Notification {
   id: string
   user_id: string
   title: string

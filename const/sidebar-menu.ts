@@ -22,6 +22,8 @@ import {
   Bot,
   GitBranch,
   Wrench,
+  Sparkles,
+  KeyRound,
 } from 'lucide-react'
 import { USER_ROLES, type UserRole } from './roles'
 
@@ -152,9 +154,42 @@ export const SIDE_APP_MENU_ITEMS: MenuItem[] = [
 
 export const SIDE_AGENCY_MENU_ITEMS: MenuItem[] = [
   {
+    title: 'Integraciones',
+    url: '/admin/agentic/integrations',
+    icon: Puzzle,
+    moduleCode: 'ai_assistant',
+    allowedRoles: [
+      USER_ROLES.COMPANY_ADMIN,
+      USER_ROLES.BUSINESS_ADMIN,
+      USER_ROLES.PROFESSIONAL,
+    ],
+  },
+  {
+    title: 'Conectores',
+    url: '/admin/agentic/connectors',
+    icon: Unplug,
+    moduleCode: 'ai_assistant',
+    allowedRoles: [
+      USER_ROLES.COMPANY_ADMIN,
+      USER_ROLES.BUSINESS_ADMIN,
+      USER_ROLES.PROFESSIONAL,
+    ],
+  },
+  {
     title: 'Herramientas',
     url: '/admin/agentic/tools',
     icon: Wrench,
+    moduleCode: 'ai_assistant',
+    allowedRoles: [
+      USER_ROLES.COMPANY_ADMIN,
+      USER_ROLES.BUSINESS_ADMIN,
+      USER_ROLES.PROFESSIONAL,
+    ],
+  },
+  {
+    title: 'Habilidades',
+    url: '/admin/agentic/skills',
+    icon: Sparkles,
     moduleCode: 'ai_assistant',
     allowedRoles: [
       USER_ROLES.COMPANY_ADMIN,
@@ -174,30 +209,7 @@ export const SIDE_AGENCY_MENU_ITEMS: MenuItem[] = [
     ],
   },
   {
-    title: 'Conectores',
-    url: '/admin/agentic/connectors',
-    icon: Unplug,
-    moduleCode: 'ai_assistant',
-    allowedRoles: [
-      USER_ROLES.COMPANY_ADMIN,
-      USER_ROLES.BUSINESS_ADMIN,
-      USER_ROLES.PROFESSIONAL,
-    ],
-  },
-
-  {
-    title: 'Integraciones',
-    url: '/admin/agentic/integrations',
-    icon: Puzzle,
-    moduleCode: 'ai_assistant',
-    allowedRoles: [
-      USER_ROLES.COMPANY_ADMIN,
-      USER_ROLES.BUSINESS_ADMIN,
-      USER_ROLES.PROFESSIONAL,
-    ],
-  },
-  {
-    title: 'Flujo',
+    title: 'Flujos',
     url: '/admin/agentic/flows',
     icon: GitBranch,
     moduleCode: 'ai_assistant',
@@ -267,6 +279,31 @@ export const SIDE_SYSTEM_MENU_ITEMS: MenuItem[] = [
       {
         title: 'Sucursales',
         url: '/admin/businesses',
+      },
+    ],
+  },
+  {
+    title: 'Control de Acceso',
+    url: '/admin/access-control/roles',
+    icon: ShieldCheck,
+    skipPlanCheck: true, // Menú del sistema (RBAC), no depende del plan
+    allowedRoles: [USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN],
+    items: [
+      {
+        title: 'Roles',
+        url: '/admin/access-control/roles',
+      },
+      {
+        title: 'Permisos',
+        url: '/admin/access-control/permissions',
+      },
+      {
+        title: 'Asignaciones',
+        url: '/admin/access-control/assignments',
+      },
+      {
+        title: 'Auditoría',
+        url: '/admin/access-control/audit',
       },
     ],
   },

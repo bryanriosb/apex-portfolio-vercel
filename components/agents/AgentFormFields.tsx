@@ -25,8 +25,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useModels } from '@/hooks/use-models'
+import { useAvailableLlmProviders } from '@/hooks/use-available-llm-providers'
 import { ProviderLogo } from '@/components/agents/ProviderLogo'
+import { NoLlmProvidersConfigured } from '@/components/agents/providers/NoLlmProvidersConfigured'
 import type { AgentFormValues } from '@/lib/models/agents/agent'
 
 const MDEditor = dynamic(() => import('@uiw/react-md-editor'), {
@@ -70,7 +71,16 @@ export function AgentFormFields({ form, isSubmitting }: AgentFormFieldsProps) {
   const { resolvedTheme } = useTheme()
 
   const selectedProvider = form.watch('model_provider')
-  const { models, isLoading: modelsLoading, getModelsForProvider } = useModels()
+  const {
+    isLoading: modelsLoading,
+    getModelsForProvider,
+    isRestricted,
+    configuredOptions,
+    hasConfiguredProviders,
+    configureHref,
+  } = useAvailableLlmProviders()
+  // Restringido → solo proveedores configurados; si no, la lista completa.
+  const providerItems = isRestricted ? configuredOptions : MODEL_PROVIDERS
   const [availableModels, setAvailableModels] = useState<{ id: string; name: string }[]>([])
 
   useEffect(() => {
@@ -139,6 +149,9 @@ export function AgentFormFields({ form, isSubmitting }: AgentFormFieldsProps) {
         )}
       />
 
+      {isRestricted && !hasConfiguredProviders ? (
+        <NoLlmProvidersConfigured href={configureHref} />
+      ) : (
       <div className="grid gap-4 md:grid-cols-2">
         <FormField
           control={form.control}
@@ -163,7 +176,7 @@ export function AgentFormFields({ form, isSubmitting }: AgentFormFieldsProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent className="rounded-none">
-                  {MODEL_PROVIDERS.map((provider) => (
+                  {providerItems.map((provider) => (
                     <SelectItem key={provider.value} value={provider.value} className="rounded-none">
                       <span className="flex items-center gap-2">
                         <ProviderLogo provider={provider.value} />
@@ -224,6 +237,7 @@ export function AgentFormFields({ form, isSubmitting }: AgentFormFieldsProps) {
           )}
         />
       </div>
+      )}
 
       <FormField
         control={form.control}

@@ -1,7 +1,12 @@
 'use client'
 
 import { ReactNode } from 'react'
-import { useModuleAccess, type ModuleCode } from '@/hooks/use-plan-access'
+import {
+  useModuleAccess,
+  useFeatureAccess,
+  type ModuleCode,
+  type FeatureCode,
+} from '@/hooks/use-plan-access'
 import { useLimitCheck, type LimitType } from '@/hooks/use-plan-limits'
 import { UpgradePrompt, LimitReachedPrompt } from './UpgradePrompt'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -150,8 +155,7 @@ export function FeatureGate({
   featureName,
 }: FeatureGateProps) {
   // Usar el mismo hook pero para features
-  const { useFeatureAccess } = require('@/hooks/use-plan-access')
-  const { hasAccess, isLoading } = useFeatureAccess(featureCode)
+  const { hasAccess, isLoading } = useFeatureAccess(featureCode as FeatureCode)
 
   if (isLoading) {
     return (

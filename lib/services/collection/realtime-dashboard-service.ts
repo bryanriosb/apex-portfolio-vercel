@@ -16,7 +16,6 @@ export class RealtimeDashboardService {
 
         // 1. Inyectar en el servicio de Realtime (esto es lo que abre RLS para los eventos)
         try {
-            // @ts-ignore - Acceso directo al cliente de realtime para asegurar el token
             this.supabase.realtime.setAuth(token)
         } catch (err) {
             // Silencioso en producción
@@ -31,7 +30,7 @@ export class RealtimeDashboardService {
 
             if (error) {
                 // Si falla setSession, al menos intentamos inyectar el header manualmente
-                // @ts-ignore
+                // @ts-expect-error - rest.headers no está tipado como mutable en el SDK
                 this.supabase.rest.headers['Authorization'] = `Bearer ${token}`
             }
         } catch (err) {

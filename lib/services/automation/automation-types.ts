@@ -163,6 +163,46 @@ export {
 
 export type { SkillInfo } from '@/lib/types/automation/automation-event-types';
 
+export type AuditJobSource = 'AgentJob' | 'AgentWorkflowJob' | 'ApexJob';
+
+export interface AuditJobItem {
+  id: string;
+  source: AuditJobSource;
+  name: string;
+  category: string;
+  status: string;
+  job_type?: string;
+  module: string;
+  kind: string;
+  user_id?: string;
+  session_id?: string;
+  reference_id?: string;
+  error_message?: string;
+  cron?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AuditJobsQueryParams {
+  status?: string[];
+  source?: string[];
+  module?: string;
+  category?: string;
+  search?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface AuditJobsResponse {
+  items: AuditJobItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  status_counts: Record<string, number>;
+}
+
 export interface AutomationLogEntry {
   id: string;
   job_id: string;

@@ -23,7 +23,7 @@ export interface UsersProfile {
   created_at: string
 }
 
-export class UsersProfile implements UsersProfile {
+export class UsersProfileModel implements UsersProfile {
   id: string
   user_id: string
   role: UserRole

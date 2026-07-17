@@ -46,7 +46,7 @@ export default function AgentStateVisualization({
 
     const length = 30
     const radius = 5.6
-    let rotatevalue = 0.005
+    const rotatevalue = 0.005
     const acceleration = 0
     const pi2 = Math.PI * 2
     let time = 0
@@ -68,7 +68,6 @@ export default function AgentStateVisualization({
     const scene = new THREE.Scene()
     scene.add(group)
 
-    // @ts-ignore - Three.js Curve constructor is protected but works at runtime
     class CustomCurve extends THREE.Curve<THREE.Vector3> {
       override getPoint(t: number): THREE.Vector3 {
         const percent = t
@@ -88,7 +87,7 @@ export default function AgentStateVisualization({
         return new THREE.Vector3(x, y, z)
       }
     }
-    // @ts-ignore
+    // @ts-expect-error - El constructor de THREE.Curve es protected pero funciona en runtime
     const customCurve = new CustomCurve()
 
     const tubeSegments = isLowEnd ? 120 : isMobile ? 150 : 200

@@ -4,7 +4,9 @@ import {
   AgentJob,
   AgentWorkflowJob,
   ResumeWorkflowRequest,
-  AutomationLogEntry
+  AutomationLogEntry,
+  AuditJobsQueryParams,
+  AuditJobsResponse
 } from './automation-types'
 
 export const AutomationService = {
@@ -45,6 +47,27 @@ export const AutomationService = {
       console.warn("Could not fetch automation log, returning empty array")
       return []
     }
+  },
+
+  getAuditJobs: async (params: AuditJobsQueryParams): Promise<AuditJobsResponse> => {
+    const queryParams = new URLSearchParams()
+    if (params.status?.length) queryParams.append('status', params.status.join(','))
+    if (params.source?.length) queryParams.append('source', params.source.join(','))
+    if (params.module) queryParams.append('module', params.module)
+    if (params.category) queryParams.append('category', params.category)
+    if (params.search) queryParams.append('search', params.search)
+    if (params.from) queryParams.append('from', params.from)
+    if (params.to) queryParams.append('to', params.to)
+    if (params.page) queryParams.append('page', String(params.page))
+    if (params.page_size) queryParams.append('page_size', String(params.page_size))
+
+    const { data } = await apiApexAiAuth.get(`/jobs/audit?${queryParams.toString()}`)
+    return data
+  },
+
+  getApexJob: async (id: string): Promise<any> => {
+    const { data } = await apiApexAiAuth.get(`/jobs/${id}`)
+    return data
   },
 
   observeJob: async (params: { job_id?: string; session_id?: string }): Promise<any> => {

@@ -294,7 +294,7 @@ export function Step1Content({
       const result = await fetchCustomersByNitsAction(activeBusinessId, nits)
 
       if (result.success) {
-        let updatedGroupedClients = new Map(fileData.groupedClients)
+        const updatedGroupedClients = new Map(fileData.groupedClients)
         let foundCount = 0
 
         updatedGroupedClients.forEach((client, nit) => {

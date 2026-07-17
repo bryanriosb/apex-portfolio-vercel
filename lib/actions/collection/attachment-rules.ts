@@ -7,6 +7,7 @@ import {
   deleteRecord,
   getSupabaseAdminClient,
 } from '@/lib/actions/supabase'
+import { requireUser, requireBusinessAccess } from '@/lib/auth/tenant-guard'
 import type {
   AttachmentRule,
   AttachmentRuleInsert,
@@ -26,6 +27,8 @@ export async function fetchAttachmentRulesAction(
   businessId: string
 ): Promise<AttachmentRuleListResponse> {
   try {
+    await requireBusinessAccess(businessId)
+
     const supabase = await getSupabaseAdminClient()
 
     const { data, error, count } = await supabase
@@ -57,6 +60,8 @@ export async function fetchRulesByAttachmentAction(
   attachmentId: string
 ): Promise<AttachmentRule[]> {
   try {
+    await requireUser()
+
     const supabase = await getSupabaseAdminClient()
 
     const { data, error } = await supabase
@@ -81,6 +86,8 @@ export async function getAttachmentRuleByIdAction(
   id: string
 ): Promise<AttachmentRule | null> {
   try {
+    await requireUser()
+
     return await getRecordById<AttachmentRule>('attachment_rules', id)
   } catch (error) {
     console.error('Error fetching attachment rule:', error)
@@ -95,6 +102,8 @@ export async function createAttachmentRuleAction(
   data: AttachmentRuleInsert
 ): Promise<{ success: boolean; data?: AttachmentRule; error?: string }> {
   try {
+    await requireBusinessAccess(data.business_id)
+
     const rule = await insertRecord<AttachmentRule>('attachment_rules', {
       ...data,
       is_required: data.is_required ?? false,
@@ -121,6 +130,8 @@ export async function updateAttachmentRuleAction(
   data: Partial<AttachmentRuleInsert>
 ): Promise<{ success: boolean; data?: AttachmentRule; error?: string }> {
   try {
+    await requireUser()
+
     const rule = await updateRecord<AttachmentRule>('attachment_rules', id, data)
 
     if (!rule) {
@@ -141,6 +152,8 @@ export async function deleteAttachmentRuleAction(
   id: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireUser()
+
     await deleteRecord('attachment_rules', id)
     return { success: true }
   } catch (error: any) {
@@ -161,6 +174,8 @@ export async function resolveAttachmentsForClientAction(params: {
   invoice_amount?: number
 }): Promise<ResolvedAttachment[]> {
   try {
+    await requireBusinessAccess(params.business_id)
+
     const supabase = await getSupabaseAdminClient()
 
     const { data, error } = await supabase.rpc('resolve_attachments_by_rules', {
@@ -191,6 +206,8 @@ export async function saveAttachmentRulesAction(
   rules: Omit<AttachmentRuleInsert, 'attachment_id' | 'business_id'>[]
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireBusinessAccess(businessId)
+
     const supabase = await getSupabaseAdminClient()
 
     // Delete existing rules for this attachment
@@ -224,6 +241,8 @@ export async function fetchGlobalAttachmentRulesAction(
   businessId: string
 ): Promise<AttachmentRule[]> {
   try {
+    await requireBusinessAccess(businessId)
+
     const supabase = await getSupabaseAdminClient()
 
     const { data, error } = await supabase
@@ -263,6 +282,8 @@ export async function resolveAttachmentsBulkAction(
   clients: BulkAttachmentInput[]
 ): Promise<Map<string, ResolvedAttachment[]>> {
   try {
+    await requireBusinessAccess(businessId)
+
     const supabase = await getSupabaseAdminClient()
 
     // Convert clients array to JSONB for the RPC function

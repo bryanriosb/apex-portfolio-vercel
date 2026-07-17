@@ -6,6 +6,7 @@ import {
   deleteRecord,
   getSupabaseAdminClient,
 } from '@/lib/actions/supabase'
+import { requireUser, requireBusinessAccess } from '@/lib/auth/tenant-guard'
 import type {
   CollectionExecution,
   CollectionExecutionUpdate,
@@ -75,6 +76,8 @@ export interface ExecutionListResponse {
  */
 export async function getDashboardStatsAction(businessId: string): Promise<DashboardStats> {
   try {
+    await requireBusinessAccess(businessId)
+
     const supabase = await getSupabaseAdminClient()
     const today = new Date().toISOString().split('T')[0]
 
@@ -188,6 +191,8 @@ export async function getDashboardStatsAction(businessId: string): Promise<Dashb
  */
 export async function getActiveExecutionsAction(businessId: string): Promise<ActiveExecution[]> {
   try {
+    await requireBusinessAccess(businessId)
+
     const supabase = await getSupabaseAdminClient()
 
     const { data: executions, error } = await supabase
@@ -233,6 +238,8 @@ export async function getActiveExecutionsAction(businessId: string): Promise<Act
  */
 export async function getRecentExecutionsAction(businessId: string, limit = 5): Promise<CollectionExecution[]> {
   try {
+    await requireBusinessAccess(businessId)
+
     const supabase = await getSupabaseAdminClient()
 
     const { data, error } = await supabase
@@ -285,6 +292,8 @@ export async function fetchExecutionsAction(params?: {
       return { data: [], total: 0, total_pages: 0 }
     }
 
+    await requireBusinessAccess(params.business_id)
+
     const supabase = await getSupabaseAdminClient()
 
     let query = supabase
@@ -336,10 +345,31 @@ export async function fetchExecutionsAction(params?: {
 /**
  * Get execution by ID
  */
+/**
+ * Verifica que la ejecución pertenezca a una sucursal del tenant de la
+ * sesión antes de operar sobre ella (el `id` del cliente no es confiable).
+ */
+async function assertExecutionAccess(id: string): Promise<void> {
+  const supabase = await getSupabaseAdminClient()
+  const { data } = await supabase
+    .from('collection_executions')
+    .select('business_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (!data) {
+    throw new Error('Ejecución no encontrada')
+  }
+
+  await requireBusinessAccess(data.business_id)
+}
+
 export async function getExecutionByIdAction(
   id: string
 ): Promise<CollectionExecution | null> {
   try {
+    await assertExecutionAccess(id)
+
     return await getRecordById<CollectionExecution>('collection_executions', id)
   } catch (error) {
     console.error('Error fetching execution:', error)
@@ -355,6 +385,8 @@ export async function updateExecutionAction(
   data: CollectionExecutionUpdate
 ): Promise<{ success: boolean; data?: CollectionExecution; error?: string }> {
   try {
+    await assertExecutionAccess(id)
+
     const execution = await updateRecord<CollectionExecution>(
       'collection_executions',
       id,
@@ -380,6 +412,8 @@ export async function updateExecutionStatusAction(
   status: 'pending' | 'processing' | 'completed' | 'failed' | 'paused'
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await assertExecutionAccess(id)
+
     const updateData: CollectionExecutionUpdate = { status }
 
     // Set timestamps based on status
@@ -408,9 +442,11 @@ export async function deleteExecutionAction(
   id: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await assertExecutionAccess(id)
+
     const supabase = await getSupabaseAdminClient()
 
-    // Delete execution - all related records (audit_logs, clients, events, batches) 
+    // Delete execution - all related records (audit_logs, clients, events, batches)
     // will be automatically deleted via ON DELETE CASCADE constraints
     const { error } = await supabase
       .from('collection_executions')
@@ -439,6 +475,8 @@ export async function getExecutionStatsAction(businessId: string): Promise<{
   last_execution_date: string | null
 }> {
   try {
+    await requireBusinessAccess(businessId)
+
     const supabase = await getSupabaseAdminClient()
 
     const { data, error } = await supabase
@@ -489,6 +527,8 @@ export async function processExecutionAction(
   executionId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireUser()
+
     const supabase = await getSupabaseAdminClient()
 
     const { data: execution, error: execError } = await supabase

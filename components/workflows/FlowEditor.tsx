@@ -4,14 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   ReactFlowProvider,
+  useReactFlow,
   type Node,
   type Edge,
+  type Connection,
   type OnNodesChange,
   type OnEdgesChange,
   type OnConnect,
   applyNodeChanges,
   applyEdgeChanges,
   addEdge,
+  reconnectEdge,
   MarkerType,
   Panel,
   Position,
@@ -33,6 +36,10 @@ import { NodePropertiesPanel } from './NodePropertiesPanel'
 import { ChannelManager } from './ChannelManager'
 import { ConditionalEdgeManager } from './ConditionalEdgeManager'
 import { EdgeManager } from './EdgeManager'
+import { AgentsService } from '@/lib/services/agents/agents-service'
+import { ToolsService } from '@/lib/services/agents/tools-service'
+import type { Agent } from '@/lib/models/agents/agent'
+import type { ToolDefinition } from '@/lib/models/agents/tool'
 import type {
   GraphDefinition,
   GraphConfig,
@@ -84,7 +91,7 @@ function buildGraphFromState(
     }
   })
 
-  const result = {
+  return {
     ...baseGraph,
     nodes,
     edges,
@@ -93,8 +100,6 @@ function buildGraphFromState(
       positions,
     },
   }
-  console.log('GENERATED GRAPH:', JSON.stringify(result, null, 2))
-  return result
 }
 
 // Stable serialization key to detect real graph changes
@@ -191,6 +196,7 @@ function FlowEditorInner({ value, onChange, sidebarTop }: FlowEditorProps) {
           target: e.to,
           markerEnd: { type: MarkerType.ArrowClosed },
           animated: true,
+          reconnectable: true,
         })
       })
 
@@ -206,6 +212,7 @@ function FlowEditorInner({ value, onChange, sidebarTop }: FlowEditorProps) {
             style: { strokeDasharray: '5,5' },
             markerEnd: { type: MarkerType.ArrowClosed },
             animated: true,
+            reconnectable: false,
           })
         })
       })
@@ -229,6 +236,44 @@ function FlowEditorInner({ value, onChange, sidebarTop }: FlowEditorProps) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [canvasMode, setCanvasMode] = useState<'pan' | 'select'>('pan')
+
+  const { setCenter, getZoom } = useReactFlow()
+
+  // Catálogos cargados una sola vez y compartidos con el panel de propiedades
+  // (evita un fetch por nodo). Scoped al tenant en el backend.
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [agentsLoading, setAgentsLoading] = useState(false)
+  const [tools, setTools] = useState<ToolDefinition[]>([])
+  const [toolsLoading, setToolsLoading] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const agentsService = new AgentsService()
+    const toolsService = new ToolsService()
+    setAgentsLoading(true)
+    setToolsLoading(true)
+    agentsService
+      .listAgents()
+      .then((data) => {
+        if (!cancelled) setAgents(data)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setAgentsLoading(false)
+      })
+    toolsService
+      .listTools()
+      .then((data) => {
+        if (!cancelled) setTools(data)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setToolsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Sync when value changes externally (e.g. form.reset on load)
   // Use a stable key to avoid resetting on every re-render
@@ -293,6 +338,31 @@ function FlowEditorInner({ value, onChange, sidebarTop }: FlowEditorProps) {
     [rfNodes, syncToParent]
   )
 
+  // --- Reconexión de aristas (arrastrar un extremo a otro nodo) ---
+  const edgeReconnectSuccessful = useRef(true)
+
+  const onReconnectStart = useCallback(() => {
+    edgeReconnectSuccessful.current = false
+  }, [])
+
+  const onReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      edgeReconnectSuccessful.current = true
+      setRfEdges((eds) => {
+        const next = reconnectEdge(oldEdge, newConnection, eds)
+        syncToParent(rfNodes, next)
+        return next
+      })
+    },
+    [rfNodes, syncToParent]
+  )
+
+  const onReconnectEnd = useCallback(() => {
+    // Si el extremo se soltó fuera de un handle, conservamos la arista intacta
+    // (no la eliminamos): el usuario pidió poder moverla sin tener que borrarla.
+    edgeReconnectSuccessful.current = true
+  }, [])
+
   const propertiesPanelRef = useRef<HTMLDivElement>(null)
 
   const onNodeClick = useCallback(
@@ -348,38 +418,81 @@ function FlowEditorInner({ value, onChange, sidebarTop }: FlowEditorProps) {
             config: {},
           }
 
-      const rfNode: Node = {
-        id,
-        type,
-        position: {
-          x: 300 + Math.random() * 200,
-          y: 100 + Math.random() * 200,
-        },
-        data: getDataFromGraphNode(newNode),
+      // Posición escalonada (determinista) para evitar solapamiento
+      const position = {
+        x: 320 + (rfNodes.length % 4) * 60,
+        y: 120 + (rfNodes.length % 6) * 70,
       }
 
       setRfNodes((nds) => {
+        const rfNode: Node = {
+          id,
+          type,
+          position,
+          data: getDataFromGraphNode(newNode),
+        }
         const next = [...nds, rfNode]
         syncToParent(next, rfEdges)
         return next
       })
+
+      // Centra la vista en el nodo recién agregado (no hace zoom out global),
+      // conservando el nivel de zoom actual. El ancho del nodo es ~220px.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const zoom = getZoom()
+          setCenter(position.x + 110, position.y + 50, {
+            zoom: zoom < 0.7 ? 0.9 : zoom,
+            duration: 400,
+          })
+        })
+      })
     },
-    [rfEdges, syncToParent]
+    [rfNodes, rfEdges, syncToParent, setCenter, getZoom]
   )
 
   const handleNodeUpdate = useCallback(
     (updatedNode: GraphNode) => {
+      const oldId = selectedNodeId
+      const newId = updatedNode.id
+      const idChanged = !!oldId && newId !== oldId
+
+      // Si cambió el id, remapea las aristas (source/target) para no romperlas.
+      let nextEdges = rfEdges
+      if (idChanged) {
+        nextEdges = rfEdges.map((e) => ({
+          ...e,
+          source: e.source === oldId ? newId : e.source,
+          target: e.target === oldId ? newId : e.target,
+        }))
+        setRfEdges(nextEdges)
+
+        // Remapea también los conditional_edges (viven en el grafo base).
+        const cond = (graphRef.current.conditional_edges || []).map((c) => ({
+          ...c,
+          from: c.from === oldId ? newId : c.from,
+          routes: Object.fromEntries(
+            Object.entries(c.routes).map(([k, v]) => [
+              k,
+              v === oldId ? newId : v,
+            ])
+          ),
+        }))
+        graphRef.current = { ...graphRef.current, conditional_edges: cond }
+        setSelectedNodeId(newId)
+      }
+
       setRfNodes((nds) => {
         const next = nds.map((n) =>
-          n.id === updatedNode.id
-            ? { ...n, data: getDataFromGraphNode(updatedNode) }
+          n.id === (oldId ?? updatedNode.id)
+            ? { ...n, id: newId, data: getDataFromGraphNode(updatedNode) }
             : n
         )
-        syncToParent(next, rfEdges)
+        syncToParent(next, nextEdges)
         return next
       })
     },
-    [rfEdges, syncToParent]
+    [rfEdges, syncToParent, selectedNodeId]
   )
 
   const handleChannelsChange = useCallback(
@@ -432,6 +545,10 @@ function FlowEditorInner({ value, onChange, sidebarTop }: FlowEditorProps) {
                 <div className="border border-primary/20 border-l-2 border-l-primary bg-primary/5 p-3">
                   <NodePropertiesPanel
                     node={selectedNode}
+                    agents={agents}
+                    agentsLoading={agentsLoading}
+                    tools={tools}
+                    toolsLoading={toolsLoading}
                     onChange={handleNodeUpdate}
                     onClose={() => {
                       setSelectedNodeId(null)
@@ -550,6 +667,9 @@ function FlowEditorInner({ value, onChange, sidebarTop }: FlowEditorProps) {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onReconnect={onReconnect}
+          onReconnectStart={onReconnectStart}
+          onReconnectEnd={onReconnectEnd}
           onNodeClick={onNodeClick}
           onPaneClick={onPaneClick}
           nodeTypes={nodeTypes}
@@ -627,6 +747,10 @@ function FlowEditorInner({ value, onChange, sidebarTop }: FlowEditorProps) {
   )
 }
 
+// La definición completa del nodo (`def`) se conserva íntegra dentro de
+// `rfNode.data` para que el round-trip canvas ⇄ grafo no pierda campos como
+// `input_mapper` / `output_mapper` / `config`. Los campos "aplanados" (label,
+// agentId, logic, ...) existen solo para el render de los componentes de nodo.
 function getDataFromGraphNode(node: GraphNode) {
   if (node.type === 'agent') {
     const a = node as GraphNodeAgent
@@ -637,6 +761,7 @@ function getDataFromGraphNode(node: GraphNode) {
       enableUi: a.enable_ui === true,
       interruptBefore: a.interrupt_before === true,
       interruptAfter: a.interrupt_after === true,
+      def: node,
     }
   }
   const f = node as GraphNodeFunction
@@ -646,36 +771,36 @@ function getDataFromGraphNode(node: GraphNode) {
     config: f.config || {},
     interruptBefore: f.interrupt_before === true,
     interruptAfter: f.interrupt_after === true,
+    def: node,
   }
 }
 
 function graphNodeFromRfNode(rfNode: Node): GraphNode {
   const data = rfNode.data as Record<string, any>
+  // Preserva la definición completa; el id se toma del rfNode (fuente de verdad
+  // tras un rename) para mantenerlos sincronizados.
+  if (data?.def) {
+    return { ...(data.def as GraphNode), id: rfNode.id } as GraphNode
+  }
+  // Fallback defensivo (no debería ocurrir): reconstruye lo mínimo.
   if (rfNode.type === 'agent') {
     return {
       type: 'agent',
       id: rfNode.id,
-      agent_id: data.agentId || '',
-      stream: data.stream,
-      enable_ui: data.enableUi,
-      interrupt_before: data.interruptBefore,
-      interrupt_after: data.interruptAfter,
-    }
-  }
-  if (rfNode.type === 'function') {
-    return {
-      type: 'function',
-      id: rfNode.id,
-      logic: data.logic || 'noop',
-      config: data.config || {},
-      interrupt_before: data.interruptBefore,
-      interrupt_after: data.interruptAfter,
+      agent_id: data?.agentId || '',
+      stream: data?.stream,
+      enable_ui: data?.enableUi,
+      interrupt_before: data?.interruptBefore,
+      interrupt_after: data?.interruptAfter,
     }
   }
   return {
     type: 'function',
     id: rfNode.id,
-    logic: 'noop',
+    logic: data?.logic || 'noop',
+    config: data?.config || {},
+    interrupt_before: data?.interruptBefore,
+    interrupt_after: data?.interruptAfter,
   }
 }
 

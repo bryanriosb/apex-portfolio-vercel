@@ -5,6 +5,7 @@ import {
     updateRecord,
     getSupabaseAdminClient,
 } from '@/lib/actions/supabase'
+import { requireUser, requireBusinessAccess } from '@/lib/auth/tenant-guard'
 import type {
     CollectionClient,
     CollectionClientInsert,
@@ -32,6 +33,8 @@ export async function fetchClientsByExecutionAction(params: {
     fallback_type?: string | string[]
 }): Promise<ClientListResponse> {
     try {
+        await requireUser()
+
         const supabase = await getSupabaseAdminClient()
 
         // Preparar parámetros para la función RPC
@@ -137,6 +140,8 @@ export async function bulkInsertClientsAction(
     clients: CollectionClientInsert[]
 ): Promise<{ success: boolean; count: number; error?: string }> {
     try {
+        await requireUser()
+
         const supabase = await getSupabaseAdminClient()
 
         const { data, error } = await supabase
@@ -161,6 +166,8 @@ export async function updateClientStatusAction(
     data: CollectionClientUpdate
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        await requireUser()
+
         await updateRecord('collection_clients', id, data)
         return { success: true }
     } catch (error: any) {
@@ -181,6 +188,8 @@ export async function bulkUpdateClientsByFilterAction(
     update: CollectionClientUpdate
 ): Promise<{ success: boolean; count: number; error?: string }> {
     try {
+        await requireUser()
+
         const supabase = await getSupabaseAdminClient()
 
         let query = supabase
@@ -216,6 +225,10 @@ export async function getClientsRequiringFallbackAction(params: {
     days_threshold?: number
 }): Promise<CollectionClient[]> {
     try {
+        // Alcance de tenant desde la sesión: el filtro por business se aplica
+        // SIEMPRE con el business resuelto por el guard (fail-closed).
+        const { businessId } = await requireBusinessAccess(params.business_id)
+
         const supabase = await getSupabaseAdminClient()
 
         // Calculate the date threshold
@@ -236,9 +249,7 @@ export async function getClientsRequiringFallbackAction(params: {
             query = query.eq('execution_id', params.execution_id)
         }
 
-        if (params.business_id) {
-            query = query.eq('execution.business_id', params.business_id)
-        }
+        query = query.eq('execution.business_id', businessId)
 
         const { data, error } = await query
 

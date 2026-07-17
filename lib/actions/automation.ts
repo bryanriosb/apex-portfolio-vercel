@@ -6,7 +6,9 @@ import {
   AgentJob,
   AgentWorkflowJob,
   ResumeWorkflowRequest,
-  AutomationLogEntry
+  AutomationLogEntry,
+  AuditJobsQueryParams,
+  AuditJobsResponse
 } from '@/lib/services/automation/automation-types'
 
 export async function getMetricsAction(business_id: string): Promise<AutomationMetricsResponse> {
@@ -35,6 +37,14 @@ export async function resumeWorkflowAction(id: string, updates: ResumeWorkflowRe
 
 export async function getAutomationLogAction(module: string, business_id: string): Promise<AutomationLogEntry[]> {
   return await AutomationService.getAutomationLog(module, business_id)
+}
+
+export async function getAuditJobsAction(params: AuditJobsQueryParams): Promise<AuditJobsResponse> {
+  return await AutomationService.getAuditJobs(params)
+}
+
+export async function getApexJobAction(id: string): Promise<any> {
+  return await AutomationService.getApexJob(id)
 }
 
 export async function observeJobAction(params: { job_id?: string; session_id?: string }): Promise<any> {

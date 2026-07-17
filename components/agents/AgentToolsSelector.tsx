@@ -116,7 +116,7 @@ export function AgentToolsSelector({
             <div className="divide-y divide-input">
               {filteredTools.length === 0 ? (
                 <div className="p-4 text-center text-xs text-muted-foreground">
-                  Sin resultados para "{search}"
+                  Sin resultados para &quot;{search}&quot;
                 </div>
               ) : (
                 filteredTools.map((tool) => {

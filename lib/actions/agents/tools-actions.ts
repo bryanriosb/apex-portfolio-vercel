@@ -11,11 +11,18 @@ import type {
 import type { ToolWithAuthStatus } from '@/lib/types/oauth2-types'
 
 function extractApiError(error: unknown): string {
-  const axiosError = error as AxiosError<{ error?: string; message?: string }>
+  const axiosError = error as AxiosError<
+    { error?: string; message?: string } | string
+  >
   if (axiosError.response?.data) {
     const data = axiosError.response.data
-    if (typeof data.error === 'string') return data.error
-    if (typeof data.message === 'string') return data.message
+    // Los 401 del middleware de apex-ai llegan como texto plano
+    // ("Authentication failed: ..."), no como JSON.
+    if (typeof data === 'string' && data) return data
+    if (typeof data === 'object') {
+      if (typeof data.error === 'string') return data.error
+      if (typeof data.message === 'string') return data.message
+    }
   }
   if (error instanceof Error) return error.message
   return 'Error inesperado en la operación'

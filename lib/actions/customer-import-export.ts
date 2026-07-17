@@ -3,6 +3,7 @@
 import * as XLSX from 'xlsx'
 import { getSupabaseAdminClient } from '@/lib/actions/supabase'
 import { createCustomerAuthUser } from '@/lib/actions/customer-auth'
+import { requireUser, requireBusinessAccess } from '@/lib/auth/tenant-guard'
 
 /**
  * Normaliza un nombre de columna para facilitar el mapeo
@@ -78,12 +79,16 @@ export async function exportCustomersToExcelAction(
   error?: string
 }> {
   try {
+    // AC-3: la sucursal efectiva se valida contra la sesión (fail-closed)
+    const { businessId: authorizedBusinessId } =
+      await requireBusinessAccess(businessId)
+
     const supabase = await getSupabaseAdminClient()
 
     const { data: customers, error } = await supabase
       .from('business_customers')
       .select(`*, customer_categories(name)`)
-      .eq('business_id', businessId)
+      .eq('business_id', authorizedBusinessId)
       .order('created_at', { ascending: false })
 
     if (error || !customers) {
@@ -151,6 +156,9 @@ export async function createDefaultCustomersTemplateAction(): Promise<{
   error?: string
 }> {
   try {
+    // AC-3: requiere sesión válida (fail-closed)
+    await requireUser()
+
     const wb = XLSX.utils.book_new()
 
     const wsCustomers = XLSX.utils.json_to_sheet(DEFAULT_CUSTOMER_TEMPLATES)
@@ -186,9 +194,12 @@ export async function importCustomersWithProgress(
   formData: FormData
 ): Promise<{ sessionId: string; status: string }> {
   try {
+    // AC-3: requiere sesión válida antes de procesar el archivo (fail-closed)
+    await requireUser()
+
     const file = formData.get('file') as File
     const sessionId = formData.get('sessionId') as string
-    const businessId = formData.get('businessId') as string
+    const requestedBusinessId = formData.get('businessId') as string
     const createUserAccounts = formData.get('createUserAccounts') === 'true'
     const sendWelcomeEmails = formData.get('sendWelcomeEmails') === 'true'
 
@@ -196,9 +207,12 @@ export async function importCustomersWithProgress(
       throw new Error('Session ID requerido')
     }
 
-    if (!businessId) {
+    if (!requestedBusinessId) {
       throw new Error('Business ID requerido')
     }
+
+    // AC-3: la sucursal efectiva se valida contra la sesión (fail-closed)
+    const { businessId } = await requireBusinessAccess(requestedBusinessId)
 
     const arrayBuffer = await file.arrayBuffer()
     const wb = XLSX.read(arrayBuffer, { type: 'buffer' })

@@ -4,6 +4,7 @@ import {
     insertRecord,
     getSupabaseAdminClient,
 } from '@/lib/actions/supabase'
+import { requireUser } from '@/lib/auth/tenant-guard'
 import type {
     CollectionEvent,
     CollectionEventInsert,
@@ -27,6 +28,8 @@ export async function fetchEventsByExecutionAction(params: {
     event_status?: string
 }): Promise<EventListResponse> {
     try {
+        await requireUser()
+
         const supabase = await getSupabaseAdminClient()
 
         let query = supabase
@@ -79,6 +82,8 @@ export async function fetchEventsByClientAction(
     clientId: string
 ): Promise<CollectionEvent[]> {
     try {
+        await requireUser()
+
         const supabase = await getSupabaseAdminClient()
 
         const { data, error } = await supabase
@@ -103,6 +108,8 @@ export async function createEventAction(
     data: CollectionEventInsert
 ): Promise<{ success: boolean; data?: CollectionEvent; error?: string }> {
     try {
+        await requireUser()
+
         const event = await insertRecord<CollectionEvent>('collection_events', {
             ...data,
             event_status: data.event_status || 'success',
@@ -130,6 +137,8 @@ export async function getEventTimelineAction(executionId: string): Promise<{
     }>
 }> {
     try {
+        await requireUser()
+
         const supabase = await getSupabaseAdminClient()
 
         const { data, error } = await supabase

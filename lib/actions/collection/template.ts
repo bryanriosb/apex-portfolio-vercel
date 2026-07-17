@@ -7,6 +7,7 @@ import {
     deleteRecord,
     getSupabaseAdminClient,
 } from '@/lib/actions/supabase'
+import { requireUser, requireAccountAccess } from '@/lib/auth/tenant-guard'
 import type {
     CollectionTemplate,
     CollectionTemplateInsert,
@@ -31,6 +32,8 @@ export async function fetchTemplatesAction(params: {
     search?: string
 }): Promise<TemplateListResponse> {
     try {
+        await requireAccountAccess(params.business_account_id)
+
         const supabase = await getSupabaseAdminClient()
 
         let query = supabase
@@ -89,6 +92,8 @@ export async function getTemplateByIdAction(
     id: string
 ): Promise<CollectionTemplate | null> {
     try {
+        await requireUser()
+
         return await getRecordById<CollectionTemplate>('collection_templates', id)
     } catch (error) {
         console.error('Error fetching template:', error)
@@ -147,6 +152,8 @@ export async function createTemplateAction(
     data: CollectionTemplateInsert
 ): Promise<{ success: boolean; data?: CollectionTemplate; error?: string }> {
     try {
+        await requireAccountAccess(data.business_account_id)
+
         // Sanitize HTML content before saving
         const sanitizedData = {
             ...data,
@@ -178,6 +185,8 @@ export async function updateTemplateAction(
     data: CollectionTemplateUpdate
 ): Promise<{ success: boolean; data?: CollectionTemplate; error?: string }> {
     try {
+        await requireUser()
+
         // Sanitize HTML content before saving if content_html is being updated
         const sanitizedData: CollectionTemplateUpdate = {
             ...data,
@@ -211,6 +220,8 @@ export async function deleteTemplateAction(
     id: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        await requireUser()
+
         await deleteRecord('collection_templates', id)
         return { success: true }
     } catch (error: any) {
@@ -227,6 +238,8 @@ export async function getActiveTemplatesByTypeAction(
     templateType: 'email' | 'sms' | 'whatsapp'
 ): Promise<CollectionTemplate[]> {
     try {
+        await requireAccountAccess(businessAccountId)
+
         const supabase = await getSupabaseAdminClient()
 
         const { data, error } = await supabase

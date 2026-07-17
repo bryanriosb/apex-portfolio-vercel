@@ -8,6 +8,12 @@ import type {
 } from '@/lib/models/business-account/business-account'
 import { getCurrentUser } from '@/lib/services/auth/supabase-auth'
 import { USER_ROLES } from '@/const/roles'
+import {
+  requireUser,
+  requireRole,
+  requireCompanyAdmin,
+  requireAccountAccess,
+} from '@/lib/auth/tenant-guard'
 import { userRoles } from '../types/enums'
 
 export interface BusinessAccountListResponse {
@@ -89,6 +95,8 @@ export async function getBusinessAccountAction(
   id: string
 ): Promise<BusinessAccount | null> {
   try {
+    await requireAccountAccess(id)
+
     const client = await getSupabaseAdminClient()
     const { data, error } = await client
       .from('business_accounts')
@@ -158,10 +166,9 @@ export async function updateBusinessAccountAction(
   data: BusinessAccountUpdate
 ): Promise<{ data: BusinessAccount | null; error: string | null }> {
   try {
-    const currentUser = await getCurrentUser()
-    if (!currentUser) {
-      return { data: null, error: 'Usuario no autenticado' }
-    }
+    // Valida sesión y que la cuenta `id` pertenezca al tenant del usuario
+    // (company_admin es el único rol cross-tenant).
+    const { user: currentUser } = await requireAccountAccess(id)
 
     // Si es business_admin, solo puede actualizar datos de contacto y generales (no plan ni estado)
     if (currentUser.role === USER_ROLES.BUSINESS_ADMIN) {
@@ -364,6 +371,8 @@ export async function getBusinessAccountByIdAction(
   id: string
 ): Promise<{ data: BusinessAccount | null; error: string | null }> {
   try {
+    await requireAccountAccess(id)
+
     const client = await getSupabaseClient()
     const { data: account, error } = await client
       .from('business_accounts')
@@ -383,6 +392,16 @@ export async function getUserBusinessAccountsAction(
   userId: string
 ): Promise<{ data: BusinessAccount[] | null; error: string | null }> {
   try {
+    // Solo se pueden consultar las cuentas propias; company_admin puede
+    // consultar las de cualquier usuario.
+    const currentUser = await requireUser()
+    if (
+      currentUser.role !== USER_ROLES.COMPANY_ADMIN &&
+      currentUser.id !== userId
+    ) {
+      return { data: null, error: 'No tienes acceso a las cuentas de otro usuario' }
+    }
+
     const client = await getSupabaseClient()
     const { data: accounts, error } = await client.rpc(
       'get_user_business_accounts',
@@ -404,6 +423,8 @@ export async function isAccountAdminAction(
   accountId: string
 ): Promise<{ isAdmin: boolean; error: string | null }> {
   try {
+    await requireAccountAccess(accountId)
+
     const client = await getSupabaseClient()
     const { data, error } = await client.rpc('is_account_admin', {
       user_uuid: userId,
@@ -422,6 +443,8 @@ export async function canCreateBusinessInAccountAction(
   accountId: string
 ): Promise<{ canCreate: boolean; error: string | null }> {
   try {
+    await requireAccountAccess(accountId)
+
     const client = await getSupabaseClient()
     const { data, error } = await client.rpc('can_create_business_in_account', {
       account_uuid: accountId,
@@ -442,6 +465,9 @@ export async function findUserProfileByEmailAction(
   error: string | null
 }> {
   try {
+    // Enumeración de usuarios por email: solo roles de administración.
+    await requireRole(USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN)
+
     const client = await getSupabaseAdminClient()
 
     // Buscar en auth users
@@ -476,6 +502,23 @@ export async function createMemberWithAccountAction(data: {
   accountId: string
 }): Promise<{ success: boolean; error: string | null }> {
   try {
+    // Crear miembros exige ser admin de ESA cuenta (o company_admin), y
+    // solo company_admin puede acuñar otros company_admin (AC-6: previene
+    // escalación de privilegios).
+    const { user: currentUser } = await requireAccountAccess(data.accountId)
+    if (
+      currentUser.role !== USER_ROLES.COMPANY_ADMIN &&
+      currentUser.role !== USER_ROLES.BUSINESS_ADMIN
+    ) {
+      return { success: false, error: 'No tienes permisos para crear miembros' }
+    }
+    if (
+      data.role === USER_ROLES.COMPANY_ADMIN &&
+      currentUser.role !== USER_ROLES.COMPANY_ADMIN
+    ) {
+      return { success: false, error: 'No puedes asignar un rol superior al tuyo' }
+    }
+
     const client = await getSupabaseAdminClient()
 
     // 1. Fetch details from the business_account
@@ -546,6 +589,10 @@ export async function updateAccountEmailLimitAction(
   maxEmails: number | null
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // Override de límites de plataforma: exclusivo de company_admin (un
+    // business_admin no puede ampliar sus propios límites).
+    await requireCompanyAdmin()
+
     const client = await getSupabaseAdminClient()
 
     // Obtener la cuenta actual
@@ -625,6 +672,8 @@ export async function getAccountEmailLimitInfoAction(
   accountId: string
 ): Promise<{ data: AccountEmailLimitInfo | null; error?: string }> {
   try {
+    await requireAccountAccess(accountId)
+
     const client = await getSupabaseAdminClient()
 
     // Obtener la cuenta con su plan

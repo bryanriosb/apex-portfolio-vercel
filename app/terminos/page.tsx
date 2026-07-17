@@ -38,9 +38,9 @@ export default function TerminosUso() {
         <div className="prose prose-gray max-w-none space-y-8">
           <div className="bg-card/50 p-8 border border-border/50">
             <p className="text-lg leading-relaxed text-muted-foreground">
-              Estos Términos de Uso (en adelante, los "Términos") regulan el
+              Estos Términos de Uso (en adelante, los &quot;Términos&quot;) regulan el
               acceso y uso de la plataforma APEX (Agentic AI Planning & Execution Platform) (en adelante, la
-              "Plataforma"), propiedad de BORLS SAS, una empresa especializada en
+              &quot;Plataforma&quot;), propiedad de BORLS SAS, una empresa especializada en
               el desarrollo de soluciones tecnológicas y software empresarial.
             </p>
           </div>

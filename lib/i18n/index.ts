@@ -54,6 +54,14 @@ export function getJobTypeLabel(jobType: string): string {
   return automation.jobTypes[jobType] ?? jobType;
 }
 
+export function getApexJobTypeLabel(jobType: string): string {
+  return automation.apexJobTypes[jobType] ?? jobType;
+}
+
+export function getJobKindLabel(kind: string): string {
+  return automation.jobKinds[kind] ?? kind;
+}
+
 export function getToolTypeLabel(toolType: string): string {
   const label = automation.toolTypes[toolType] ?? automation.toolTypes[toolType.charAt(0).toUpperCase() + toolType.slice(1)] ?? toolType;
   return label.toLowerCase().includes('mcp') ? label.toUpperCase() : label;

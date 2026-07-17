@@ -1,6 +1,7 @@
 'use server'
 
 import { getSupabaseAdminClient } from '@/lib/actions/supabase'
+import { requireUser, requireAccountAccess } from '@/lib/auth/tenant-guard'
 import {
   mercadoPagoClient,
   mpConfig,
@@ -63,6 +64,8 @@ export async function getOrCreateMPCustomerAction(
   error?: string
 }> {
   try {
+    await requireAccountAccess(businessAccountId)
+
     const client = await getSupabaseAdminClient()
 
     const { data: account } = await client
@@ -115,6 +118,8 @@ export async function saveCardToCustomerAction(
   cardholderName: string
 ): Promise<{ success: boolean; card?: MPCustomerCard; error?: string }> {
   try {
+    await requireAccountAccess(businessAccountId)
+
     const client = await getSupabaseAdminClient()
 
     const { data: account } = await client
@@ -175,6 +180,8 @@ export async function getSavedCardsAction(
   businessAccountId: string
 ): Promise<SavedCard[]> {
   try {
+    await requireAccountAccess(businessAccountId)
+
     const client = await getSupabaseAdminClient()
 
     const { data, error } = await client
@@ -197,6 +204,8 @@ export async function deleteCardAction(
   cardId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireAccountAccess(businessAccountId)
+
     const client = await getSupabaseAdminClient()
 
     const { data: card } = await client
@@ -259,6 +268,8 @@ export async function setDefaultCardAction(
   cardId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireAccountAccess(businessAccountId)
+
     const client = await getSupabaseAdminClient()
 
     const { data: card } = await client
@@ -372,6 +383,8 @@ export async function createSubscriptionAction(
   cardholderName?: string
 ): Promise<{ success: boolean; subscriptionId?: string; error?: string }> {
   try {
+    await requireAccountAccess(businessAccountId)
+
     const client = await getSupabaseAdminClient()
 
     const { data: plan } = await client
@@ -510,6 +523,8 @@ export async function cancelSubscriptionAction(
   businessAccountId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireAccountAccess(businessAccountId)
+
     const client = await getSupabaseAdminClient()
 
     const { data: account } = await client
@@ -543,6 +558,8 @@ export async function pauseSubscriptionAction(
   businessAccountId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireAccountAccess(businessAccountId)
+
     const client = await getSupabaseAdminClient()
 
     const { data: account } = await client
@@ -576,6 +593,8 @@ export async function reactivateSubscriptionAction(
   businessAccountId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireAccountAccess(businessAccountId)
+
     const client = await getSupabaseAdminClient()
 
     const { data: account } = await client
@@ -650,6 +669,8 @@ export async function getSubscriptionStatusAction(
   businessAccountId: string
 ): Promise<SubscriptionStatusInfo | null> {
   try {
+    await requireAccountAccess(businessAccountId)
+
     const client = await getSupabaseAdminClient()
 
     const { data: account, error } = await client
@@ -711,6 +732,8 @@ export async function getPaymentHistoryAction(
   limit = 10
 ): Promise<PaymentHistory[]> {
   try {
+    await requireAccountAccess(businessAccountId)
+
     const client = await getSupabaseAdminClient()
 
     const { data, error } = await client
@@ -732,6 +755,10 @@ export async function insertPaymentHistoryAction(
   payment: PaymentHistoryInsert
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // El historial de pagos solo puede insertarse para la cuenta propia; el
+    // webhook de MercadoPago usa processPaymentNotificationAction, no esta.
+    await requireAccountAccess(payment.business_account_id)
+
     const client = await getSupabaseAdminClient()
 
     const { error } = await client.from('payment_history').insert(payment)
@@ -788,6 +815,8 @@ export async function getMPSubscriptionDetailsAction(
   subscriptionId: string
 ): Promise<any | null> {
   try {
+    await requireUser()
+
     const subscription = await preApproval.get({ id: subscriptionId })
     return subscription
   } catch (error) {
@@ -871,6 +900,8 @@ export async function changePlanAction(
   billingCycle: BillingCycle
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireAccountAccess(businessAccountId)
+
     const client = await getSupabaseAdminClient()
 
     const { data: account } = await client

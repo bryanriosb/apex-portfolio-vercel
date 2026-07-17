@@ -12,6 +12,12 @@ import type {
   SendTemplateMessageParams,
 } from '@/lib/models/whatsapp/whatsapp-config'
 import { validateFeatureAccess } from '@/lib/helpers/feature-permission-guard'
+import {
+  requireAccountAccess,
+  requireBusinessAccess,
+  requireCompanyAdmin,
+  resolveAccountScope,
+} from '@/lib/auth/tenant-guard'
 
 const WHATSAPP_API_VERSION = 'v21.0'
 const WHATSAPP_API_URL = 'https://graph.facebook.com'
@@ -360,6 +366,8 @@ export async function fetchWhatsAppMessagesAction(params: {
   page?: number
   page_size?: number
 }): Promise<{ data: WhatsAppMessage[]; total: number; total_pages: number }> {
+  const { businessId } = await requireBusinessAccess(params.business_id)
+
   const supabase = await getSupabaseAdminClient()
   const page = params.page || 1
   const pageSize = params.page_size || 50
@@ -368,7 +376,7 @@ export async function fetchWhatsAppMessagesAction(params: {
   let query = supabase
     .from('whatsapp_messages')
     .select('*', { count: 'exact' })
-    .eq('business_id', params.business_id)
+    .eq('business_id', businessId)
     .order('created_at', { ascending: false })
 
   if (params.conversation_id) {
@@ -397,6 +405,8 @@ export async function fetchWhatsAppConversationsAction(params: {
   page?: number
   page_size?: number
 }): Promise<{ data: WhatsAppConversation[]; total: number }> {
+  const { businessId } = await requireBusinessAccess(params.business_id)
+
   const supabase = await getSupabaseAdminClient()
   const page = params.page || 1
   const pageSize = params.page_size || 50
@@ -405,7 +415,7 @@ export async function fetchWhatsAppConversationsAction(params: {
   let query = supabase
     .from('whatsapp_conversations')
     .select('*', { count: 'exact' })
-    .eq('business_id', params.business_id)
+    .eq('business_id', businessId)
     .order('last_message_at', { ascending: false })
 
   if (params.only_active) {
@@ -429,11 +439,15 @@ export async function getWhatsAppConfigAction(
   business_account_id: string,
   business_id?: string
 ): Promise<WhatsAppConfig | null> {
-  return getWhatsAppConfig(business_account_id, business_id)
+  const ctx = await requireAccountAccess(business_account_id)
+  return getWhatsAppConfig(ctx.businessAccountId, business_id)
 }
 
 // Obtener la config compartida (global)
 export async function fetchSharedWhatsAppConfigAction(): Promise<WhatsAppConfig | null> {
+  // Config global de plataforma (incluye credenciales): solo company_admin
+  await requireCompanyAdmin()
+
   const supabase = await getSupabaseAdminClient()
 
   const { data, error } = await supabase
@@ -454,12 +468,14 @@ export async function fetchSharedWhatsAppConfigAction(): Promise<WhatsAppConfig 
 export async function fetchWhatsAppConfigAction(
   business_account_id: string
 ): Promise<WhatsAppConfig | null> {
+  const { businessAccountId } = await requireAccountAccess(business_account_id)
+
   const supabase = await getSupabaseAdminClient()
 
   const { data, error } = await supabase
     .from('whatsapp_configs')
     .select('*')
-    .eq('business_account_id', business_account_id)
+    .eq('business_account_id', businessAccountId)
     .is('business_id', null)
     .eq('is_shared', false)
     .single()
@@ -477,6 +493,9 @@ export async function saveSharedWhatsAppConfigAction(
   data: Omit<WhatsAppConfigInsert, 'business_account_id' | 'business_id' | 'is_shared'>
 ): Promise<{ success: boolean; data?: WhatsAppConfig; error?: string }> {
   try {
+    // Config global de plataforma: solo company_admin puede escribirla
+    await requireCompanyAdmin()
+
     const supabase = await getSupabaseAdminClient()
 
     // Verificar si ya existe una config compartida
@@ -533,6 +552,16 @@ export async function createWhatsAppConfigAction(
   data: WhatsAppConfigInsert
 ): Promise<{ success: boolean; data?: WhatsAppConfig; error?: string }> {
   try {
+    // El tenant efectivo sale de la sesión: no se confía en el parámetro
+    const { businessAccountId } = await requireAccountAccess(
+      data.business_account_id
+    )
+    data = { ...data, business_account_id: businessAccountId }
+
+    if (data.business_id) {
+      await requireBusinessAccess(data.business_id)
+    }
+
     const supabase = await getSupabaseAdminClient()
 
     // Verificar si ya existe
@@ -583,6 +612,24 @@ export async function updateWhatsAppConfigAction(
   try {
     const supabase = await getSupabaseAdminClient()
 
+    // La autorización depende del registro: la config compartida (global)
+    // es de plataforma; las demás pertenecen a una cuenta concreta.
+    const { data: existing } = await supabase
+      .from('whatsapp_configs')
+      .select('business_account_id, is_shared')
+      .eq('id', id)
+      .single()
+
+    if (!existing) {
+      return { success: false, error: 'Configuración no encontrada' }
+    }
+
+    if (existing.is_shared) {
+      await requireCompanyAdmin()
+    } else {
+      await requireAccountAccess(existing.business_account_id)
+    }
+
     const { data: config, error } = await supabase
       .from('whatsapp_configs')
       .update(data)
@@ -613,13 +660,16 @@ export async function deleteWhatsAppConfigAction(
     // No permitir eliminar la config compartida desde aquí
     const { data: config } = await supabase
       .from('whatsapp_configs')
-      .select('is_shared')
+      .select('is_shared, business_account_id')
       .eq('id', id)
       .single()
 
     if (config?.is_shared) {
       return { success: false, error: 'No se puede eliminar la configuración compartida' }
     }
+
+    // Solo la cuenta dueña de la config (o company_admin) puede eliminarla
+    await requireAccountAccess(config?.business_account_id)
 
     const { error } = await supabase
       .from('whatsapp_configs')
@@ -702,7 +752,7 @@ export async function processIncomingWhatsAppMessageAction(
 
     // Si es config compartida, buscar a qué business_account pertenece el teléfono
     // basándose en la conversación más reciente
-    let businessAccountId = config.business_account_id
+    const businessAccountId = config.business_account_id
 
     if (config.is_shared || !businessAccountId) {
       // Buscar conversación activa en cualquier cuenta
@@ -808,6 +858,9 @@ export async function getWhatsAppConfigByPhoneNumberIdAction(
 
 // Listar todas las configs (compartida + específicas)
 export async function fetchAllWhatsAppConfigsAction(): Promise<WhatsAppConfig[]> {
+  // Listado cross-tenant con credenciales: solo company_admin
+  await requireCompanyAdmin()
+
   const supabase = await getSupabaseAdminClient()
 
   const { data, error } = await supabase
@@ -853,6 +906,10 @@ export async function createScheduledReminderAction(data: {
   reminder_type?: 'appointment_reminder' | 'appointment_confirmation' | 'custom'
 }): Promise<{ success: boolean; data?: ScheduledReminder; error?: string }> {
   try {
+    // Ambos IDs de tenant vienen del cliente: se validan contra la sesión
+    await requireAccountAccess(data.business_account_id)
+    await requireBusinessAccess(data.business_id)
+
     const supabase = await getSupabaseAdminClient()
 
     const { data: reminder, error } = await supabase
@@ -885,13 +942,22 @@ export async function cancelScheduledRemindersAction(
   appointment_id: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // La cancelación se limita al tenant de la sesión (company_admin: global)
+    const { businessAccountId } = await resolveAccountScope()
+
     const supabase = await getSupabaseAdminClient()
 
-    const { error } = await supabase
+    let query = supabase
       .from('whatsapp_scheduled_reminders')
       .update({ status: 'cancelled' })
       .eq('appointment_id', appointment_id)
       .eq('status', 'pending')
+
+    if (businessAccountId) {
+      query = query.eq('business_account_id', businessAccountId)
+    }
+
+    const { error } = await query
 
     if (error) {
       console.error('Error cancelling scheduled reminders:', error)

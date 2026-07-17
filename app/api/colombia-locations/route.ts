@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import statesJson from '@/assets/data/col/states.json'
+import citiesJson from '@/assets/data/col/cities.json'
 
 // Force dynamic route
 export const dynamic = 'force-dynamic'
@@ -15,9 +17,9 @@ interface City {
   state_id: number
 }
 
-// Cargar datos estáticos de los archivos JSON
-const statesData: State[] = require('@/assets/data/col/states.json')
-const citiesData: City[] = require('@/assets/data/col/cities.json')
+// Datos estáticos cargados desde los archivos JSON
+const statesData = statesJson as State[]
+const citiesData = citiesJson as City[]
 
 export async function GET(request: NextRequest) {
   try {

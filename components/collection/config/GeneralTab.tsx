@@ -173,7 +173,7 @@ export function GeneralTab() {
             <p className="text-sm text-muted-foreground">
               Selecciona el formato que usualmente tienen las fechas
               (`invoice_date`, `due_date`) en tus archivos. Si seleccionas
-              "Detectar automáticamente", intentaremos inferir el formato.
+              &quot;Detectar automáticamente&quot;, intentaremos inferir el formato.
             </p>
             <Select value={inputFormat} onValueChange={setInputFormat}>
               <SelectTrigger id="input-format" className="w-full sm:w-[350px]">

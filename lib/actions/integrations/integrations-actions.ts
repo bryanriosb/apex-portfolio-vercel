@@ -2,6 +2,7 @@
 
 import type { AxiosError } from 'axios'
 import apiApexAiAuth from '@/lib/actions/api/apex-ai'
+import { requireAccountAccess } from '@/lib/auth/tenant-guard'
 import type {
   IntegrationConfig,
   IntegrationConfigInsert,
@@ -40,6 +41,10 @@ export async function listConnectorsAction(
   businessAccountId: string
 ): Promise<ListConnectorsResponse> {
   return handleApiCall(async () => {
+    // Defensa en profundidad: aunque apex-ai valida el JWT, sin sesión el
+    // interceptor usaría el fallback APEX_AI_SECRET; se exige sesión y que
+    // la cuenta solicitada pertenezca al tenant del usuario.
+    await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.get('/integrations')
     return response.data
   })
@@ -51,6 +56,7 @@ export async function checkConnectorHealthAction(
   businessAccountId: string
 ): Promise<HealthCheckResponse> {
   return handleApiCall(async () => {
+    await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.get(
       `/integrations/${connectorName}/health`
     )
@@ -65,6 +71,7 @@ export async function fetchConnectorRecordsAction(
   businessAccountId: string
 ): Promise<ConnectorOperationResponse> {
   return handleApiCall(async () => {
+    await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.post(
       `/integrations/${connectorName}`,
       body
@@ -80,6 +87,7 @@ export async function createConnectorRecordsAction(
   businessAccountId: string
 ): Promise<ConnectorOperationResponse> {
   return handleApiCall(async () => {
+    await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.put(
       `/integrations/${connectorName}`,
       body
@@ -95,6 +103,7 @@ export async function updateConnectorRecordsAction(
   businessAccountId: string
 ): Promise<ConnectorOperationResponse> {
   return handleApiCall(async () => {
+    await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.patch(
       `/integrations/${connectorName}`,
       body
@@ -110,6 +119,7 @@ export async function deleteConnectorRecordsAction(
   businessAccountId: string
 ): Promise<ConnectorOperationResponse> {
   return handleApiCall(async () => {
+    await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.delete(
       `/integrations/${connectorName}`,
       {
@@ -125,6 +135,7 @@ export async function listIntegrationConfigsAction(
   businessAccountId: string
 ): Promise<IntegrationConfig[]> {
   return handleApiCall(async () => {
+    await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.get('/integrations/config')
     return response.data.integrations || []
   })
@@ -136,6 +147,7 @@ export async function getIntegrationConfigAction(
   businessAccountId: string
 ): Promise<IntegrationConfig> {
   return handleApiCall(async () => {
+    await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.get(`/integrations/config/${id}`)
     return response.data
   })
@@ -147,6 +159,7 @@ export async function createIntegrationConfigAction(
   businessAccountId: string
 ): Promise<IntegrationConfig> {
   return handleApiCall(async () => {
+    await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.post('/integrations/config', data)
     return response.data
   })
@@ -159,6 +172,7 @@ export async function updateIntegrationConfigAction(
   businessAccountId: string
 ): Promise<IntegrationConfig> {
   return handleApiCall(async () => {
+    await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.patch(
       `/integrations/config/${id}`,
       data
@@ -173,6 +187,7 @@ export async function deleteIntegrationConfigAction(
   businessAccountId: string
 ): Promise<void> {
   return handleApiCall(async () => {
+    await requireAccountAccess(businessAccountId)
     await apiApexAiAuth.delete(`/integrations/config/${id}`)
   })
 }

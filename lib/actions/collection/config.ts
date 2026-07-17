@@ -1,6 +1,7 @@
 'use server'
 
 import { getSupabaseAdminClient } from '../supabase'
+import { requireBusinessAccess } from '@/lib/auth/tenant-guard'
 import { CollectionConfig, CollectionConfigUpdate } from '@/lib/models/collection/config'
 
 /**
@@ -10,6 +11,8 @@ export async function getCollectionConfigAction(
     businessId: string
 ): Promise<{ success: boolean; data?: CollectionConfig; error?: string }> {
     try {
+        await requireBusinessAccess(businessId)
+
         const supabase = await getSupabaseAdminClient()
 
         const { data, error } = await supabase
@@ -41,6 +44,8 @@ export async function updateCollectionConfigAction(
     configData: CollectionConfigUpdate
 ): Promise<{ success: boolean; data?: CollectionConfig; error?: string }> {
     try {
+        await requireBusinessAccess(businessId)
+
         const supabase = await getSupabaseAdminClient()
 
         // fetch existing to preserve values

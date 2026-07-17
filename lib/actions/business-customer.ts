@@ -14,6 +14,11 @@ import type {
   BusinessCustomerUpdate,
   CreateCustomerInput,
 } from '@/lib/models/customer/business-customer'
+import {
+  requireAccountAccess,
+  requireBusinessAccess,
+  requireUser,
+} from '@/lib/auth/tenant-guard'
 
 export interface BusinessCustomerListResponse {
   data: BusinessCustomer[]
@@ -30,6 +35,8 @@ export async function fetchBusinessCustomersAction(params?: {
   category?: string
 }): Promise<BusinessCustomerListResponse> {
   try {
+    await requireBusinessAccess(params?.business_id)
+
     if (!params?.business_id) {
       return { data: [], total: 0, total_pages: 0 }
     }
@@ -85,7 +92,20 @@ export async function getBusinessCustomerByIdAction(
   id: string
 ): Promise<BusinessCustomer | null> {
   try {
-    return await getRecordById<BusinessCustomer>('business_customers', id)
+    await requireUser()
+
+    const customer = await getRecordById<BusinessCustomer>(
+      'business_customers',
+      id
+    )
+
+    if (!customer) return null
+
+    // Autorización por pertenencia: el cliente debe ser de una sucursal
+    // accesible desde la sesión (el ID llega del cliente y no es confiable)
+    await requireBusinessAccess(customer.business_id)
+
+    return customer
   } catch (error) {
     console.error('Error fetching business customer:', error)
     return null
@@ -97,6 +117,8 @@ export async function getBusinessCustomerByNitAction(
   nit: string
 ): Promise<BusinessCustomer | null> {
   try {
+    await requireBusinessAccess(businessId)
+
     const supabase = await getSupabaseAdminClient()
     const { data, error } = await supabase
       .from('business_customers')
@@ -117,6 +139,8 @@ export async function createBusinessCustomerAction(
   data: BusinessCustomerInsert
 ): Promise<{ success: boolean; data?: BusinessCustomer; error?: string }> {
   try {
+    await requireBusinessAccess(data.business_id)
+
     const customer = await insertRecord<BusinessCustomer>(
       'business_customers',
       {
@@ -146,6 +170,13 @@ export async function bulkUpsertFullCustomersAction(
   duplicatesRemoved?: number
 }> {
   try {
+    await requireUser()
+
+    // El lote puede mezclar sucursales: se valida acceso a cada una
+    for (const businessId of new Set(inputs.map((input) => input.business_id))) {
+      await requireBusinessAccess(businessId)
+    }
+
     const supabase = await getSupabaseAdminClient()
 
     if (!inputs.length) {
@@ -236,6 +267,8 @@ export async function createFullCustomerAction(
   let generatedPassword: string | null = null
 
   try {
+    await requireBusinessAccess(input.business_id)
+
     // Verificar si ya existe el cliente
     const { data: existingCustomer } = await supabase
       .from('business_customers')
@@ -349,19 +382,24 @@ export async function updateBusinessCustomerAction(
   data: BusinessCustomerUpdate
 ): Promise<{ success: boolean; data?: BusinessCustomer; error?: string }> {
   try {
+    await requireUser()
+
     const supabase = await getSupabaseAdminClient()
-    
+
     // 1. Obtener el customer actual para verificar si tiene user_id
     const { data: existingCustomer, error: fetchError } = await supabase
       .from('business_customers')
-      .select('id, user_id, emails')
+      .select('id, user_id, emails, business_id')
       .eq('id', id)
       .single()
-    
+
     if (fetchError || !existingCustomer) {
       return { success: false, error: 'Cliente no encontrado' }
     }
-    
+
+    // Autorización por pertenencia: solo sucursales accesibles desde la sesión
+    await requireBusinessAccess(existingCustomer.business_id)
+
     // 2. Actualizar el business_customer
     const { data: customer, error: updateError } = await supabase
       .from('business_customers')
@@ -400,20 +438,25 @@ export async function deleteBusinessCustomerAction(
   id: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireUser()
+
     const supabase = await getSupabaseAdminClient()
-    
+
     // 1. Obtener el customer para verificar si tiene user_id
     const { data: customer, error: fetchError } = await supabase
       .from('business_customers')
-      .select('user_id')
+      .select('user_id, business_id')
       .eq('id', id)
       .single()
-    
+
     if (fetchError) {
       console.error('Error fetching customer for deletion:', fetchError)
       return { success: false, error: 'Error al obtener el cliente' }
     }
-    
+
+    // Autorización por pertenencia: solo sucursales accesibles desde la sesión
+    await requireBusinessAccess(customer?.business_id)
+
     // 2. Eliminar el registro de business_customers
     const { error: deleteError } = await supabase
       .from('business_customers')
@@ -449,6 +492,8 @@ export async function searchBusinessCustomersAction(
   limit: number = 10
 ): Promise<BusinessCustomer[]> {
   try {
+    await requireBusinessAccess(businessId)
+
     const supabase = await getSupabaseAdminClient()
     const searchTerm = `%${query}%`
 
@@ -476,6 +521,8 @@ export async function getRecentBusinessCustomersAction(
   limit: number = 10
 ): Promise<BusinessCustomer[]> {
   try {
+    await requireBusinessAccess(businessId)
+
     const supabase = await getSupabaseAdminClient()
 
     const { data, error } = await supabase
@@ -499,6 +546,8 @@ export async function fetchCustomerCategoriesAction(
   businessAccountId: string
 ): Promise<{ success: boolean; data?: any[]; error?: string }> {
   try {
+    await requireAccountAccess(businessAccountId)
+
     const supabase = await getSupabaseAdminClient()
 
     const { data, error } = await supabase
@@ -520,19 +569,29 @@ export async function deleteBusinessCustomersAction(
   ids: string[]
 ): Promise<{ success: boolean; deletedCount: number; error?: string }> {
   try {
+    await requireUser()
+
     const supabase = await getSupabaseAdminClient()
-    
+
     // 1. Obtener los customers para verificar user_ids
     const { data: customers, error: fetchError } = await supabase
       .from('business_customers')
-      .select('id, user_id')
+      .select('id, user_id, business_id')
       .in('id', ids)
-    
+
     if (fetchError) {
       console.error('Error fetching customers for batch deletion:', fetchError)
       return { success: false, deletedCount: 0, error: 'Error al obtener los clientes' }
     }
-    
+
+    // Autorización por pertenencia: cada sucursal del lote debe ser
+    // accesible desde la sesión antes de borrar nada (fail-closed)
+    for (const businessId of new Set(
+      (customers ?? []).map((customer) => customer.business_id)
+    )) {
+      await requireBusinessAccess(businessId)
+    }
+
     // 2. Eliminar los registros de business_customers
     const { error: deleteError } = await supabase
       .from('business_customers')
@@ -573,6 +632,8 @@ export async function deleteBusinessCustomersAction(
 
 export async function getCustomerCountAction(businessId: string): Promise<number> {
   try {
+    await requireBusinessAccess(businessId)
+
     const supabase = await getSupabaseAdminClient()
     const { count } = await supabase
       .from('business_customers')

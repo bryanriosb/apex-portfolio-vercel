@@ -7,11 +7,13 @@ import type { ChatStatus } from 'ai'
 import { useAgentChat } from '@/lib/services/agent'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { useModels } from '@/hooks/use-models'
+import { useAvailableLlmProviders } from '@/hooks/use-available-llm-providers'
 import {
   buildLlmProviderOptions,
   findLlmProviderOption,
 } from '@/lib/models/agents/llm-provider'
 import { ProviderLogo } from '@/components/agents/ProviderLogo'
+import { NoLlmProvidersConfigured } from '@/components/agents/providers/NoLlmProvidersConfigured'
 import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import { useGlobalChatStore } from '@/lib/store/global-chat-store'
@@ -101,6 +103,18 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
 
   const { allModels, getModelsForProvider } = useModels()
 
+  // Política de proveedores de la cuenta (block_apex_llm_providers)
+  const {
+    isRestricted,
+    hasConfiguredProviders,
+    allowedProviderValues,
+    configureHref,
+  } = useAvailableLlmProviders()
+
+  // Restringido y sin proveedores configurados → no se puede chatear: hay que
+  // definir un proveedor primero.
+  const providersUnavailable = isRestricted && !hasConfiguredProviders
+
   // Providers soportados por el backend (nativos + OpenAI-compatible) que
   // existen en models.dev con al menos un modelo
   const providerOptions = useMemo(() => {
@@ -112,9 +126,20 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
     return [...providerOptions.native, ...providerOptions.compatible].filter(
       (option) =>
         allModels[option.value] &&
-        Object.keys(allModels[option.value].models).length > 0
+        Object.keys(allModels[option.value].models).length > 0 &&
+        // Restringido → solo los proveedores globales configurados
+        (!isRestricted || allowedProviderValues.has(option.value))
     )
-  }, [providerOptions, allModels])
+  }, [providerOptions, allModels, isRestricted, allowedProviderValues])
+
+  // Si el provider seleccionado ya no está permitido (p. ej. tras activar la
+  // restricción), caer al primero disponible.
+  useEffect(() => {
+    if (availableProviders.length === 0) return
+    if (!availableProviders.some((p) => p.value === selectedProvider)) {
+      setSelectedProvider(availableProviders[0].value)
+    }
+  }, [availableProviders, selectedProvider])
 
   const providerModels = useMemo(
     () => getModelsForProvider(selectedProvider),
@@ -230,6 +255,7 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
   const handleSubmit = useCallback(
     (message: PromptInputMessage) => {
       if (!isConnected || !message.text?.trim()) return
+      if (providersUnavailable) return
 
       const providerOption = findLlmProviderOption(
         providerOptions,
@@ -244,7 +270,7 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
       setInputValue('')
       openPanel() // Open side panel when sending a message
     },
-    [send, selectedModel, selectedProvider, providerOptions, isConnected, openPanel]
+    [send, selectedModel, selectedProvider, providerOptions, isConnected, openPanel, providersUnavailable]
   )
 
   const copyToClipboard = useCallback((text: string) => {
@@ -381,7 +407,9 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
               <PromptInputBody>
                 <PromptInputTextarea
                   placeholder={
-                    isConnected
+                    providersUnavailable
+                      ? 'Define un proveedor LLM para poder chatear...'
+                      : isConnected
                       ? 'Pregúntale a APEX o da una instrucción...'
                       : reconnectAttempt > 0
                         ? `Reconectando -Intento ${reconnectAttempt} de ${maxRetries}  ${reconnectCountdown} s`
@@ -391,10 +419,10 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                     setInputValue(e.target.value)
                   }
                   value={inputValue}
-                  disabled={!isConnected}
+                  disabled={!isConnected || providersUnavailable}
                   className={cn(
                     'bg-background text-foreground !placeholder:text-muted-foreground min-h-[50px] pt-3',
-                    !isConnected && 'opacity-50 cursor-not-allowed',
+                    (!isConnected || providersUnavailable) && 'opacity-50 cursor-not-allowed',
                     '!rounded-none'
                   )}
                   onFocus={() => {
@@ -428,26 +456,32 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                       </PromptInputSelectItem>
                     </PromptInputSelectContent>
                   </PromptInputSelect>
-                  <Combobox
-                    options={providerComboboxOptions}
-                    value={selectedProvider}
-                    onChange={(value) => value && setSelectedProvider(value)}
-                    placeholder="Proveedor"
-                    searchPlaceholder="Buscar proveedor..."
-                    disabled={!isConnected || availableProviders.length === 0}
-                    className="h-8 w-auto min-w-[130px] text-xs border-input"
-                    popoverClassName="w-[240px]"
-                  />
-                  <Combobox
-                    options={modelComboboxOptions}
-                    value={selectedModel}
-                    onChange={(value) => value && setSelectedModel(value)}
-                    placeholder="Modelo"
-                    searchPlaceholder="Buscar modelo..."
-                    disabled={!isConnected || providerModels.length === 0}
-                    className="h-8 w-auto max-w-[200px] text-xs border-input"
-                    popoverClassName="w-[320px]"
-                  />
+                  {isRestricted && !hasConfiguredProviders ? (
+                    <NoLlmProvidersConfigured href={configureHref} compact />
+                  ) : (
+                    <>
+                      <Combobox
+                        options={providerComboboxOptions}
+                        value={selectedProvider}
+                        onChange={(value) => value && setSelectedProvider(value)}
+                        placeholder="Proveedor"
+                        searchPlaceholder="Buscar proveedor..."
+                        disabled={!isConnected || availableProviders.length === 0}
+                        className="h-8 w-auto min-w-[130px] text-xs border-input"
+                        popoverClassName="w-[240px]"
+                      />
+                      <Combobox
+                        options={modelComboboxOptions}
+                        value={selectedModel}
+                        onChange={(value) => value && setSelectedModel(value)}
+                        placeholder="Modelo"
+                        searchPlaceholder="Buscar modelo..."
+                        disabled={!isConnected || providerModels.length === 0}
+                        className="h-8 w-auto max-w-[200px] text-xs border-input"
+                        popoverClassName="w-[320px]"
+                      />
+                    </>
+                  )}
                   <div
                     className={cn(
                       !isConnected && 'opacity-50',
@@ -476,7 +510,11 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                     <BrainCircuit className={cn("!h-5 !w-5", isPanelOpen && "text-white")} />
                   </Button>
                   <PromptInputSubmit
-                    disabled={!isConnected || (!inputValue.trim() && !isStreaming)}
+                    disabled={
+                      !isConnected ||
+                      providersUnavailable ||
+                      (!inputValue.trim() && !isStreaming)
+                    }
                     status={getStatus()}
                     onStop={stop}
                     className="h-8 rounded-md"

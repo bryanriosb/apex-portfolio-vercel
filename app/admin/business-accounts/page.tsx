@@ -19,6 +19,7 @@ import {
   Eye,
   Clock,
   Mail,
+  BrainCircuit,
 } from 'lucide-react'
 import BusinessAccountService from '@/lib/services/business-account/business-account-service'
 import { BUSINESS_ACCOUNTS_COLUMNS } from '@/lib/models/business-account/const/data-table/business-accounts-columns'
@@ -26,6 +27,7 @@ import { BusinessAccountModal } from '@/components/business-accounts/BusinessAcc
 import { BusinessAccountDetailModal } from '@/components/business-accounts/BusinessAccountDetailModal'
 import { TrialAssignmentModal } from '@/components/trial'
 import { EmailLimitManagerModal } from '@/components/business-accounts/EmailLimitManagerModal'
+import { LlmProviderPolicyModal } from '@/components/business-accounts/LlmProviderPolicyModal'
 import { useRef, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import type {
@@ -66,6 +68,9 @@ export default function BusinessAccountsPage() {
   } | null>(null)
   const [emailLimitModalOpen, setEmailLimitModalOpen] = useState(false)
   const [selectedAccountForEmailLimit, setSelectedAccountForEmailLimit] =
+    useState<BusinessAccount | null>(null)
+  const [llmPolicyModalOpen, setLlmPolicyModalOpen] = useState(false)
+  const [selectedAccountForLlmPolicy, setSelectedAccountForLlmPolicy] =
     useState<BusinessAccount | null>(null)
 
   const searchConfig: SearchConfig = useMemo(
@@ -113,6 +118,11 @@ export default function BusinessAccountsPage() {
   const handleManageEmailLimit = (account: BusinessAccount) => {
     setSelectedAccountForEmailLimit(account)
     setEmailLimitModalOpen(true)
+  }
+
+  const handleManageLlmPolicy = (account: BusinessAccount) => {
+    setSelectedAccountForLlmPolicy(account)
+    setLlmPolicyModalOpen(true)
   }
 
   const handleDeleteAccount = (accountId: string) => {
@@ -260,6 +270,14 @@ export default function BusinessAccountsPage() {
                       Límite de Emails
                     </DropdownMenuItem>
                   )}
+                  {canEditFull && (
+                    <DropdownMenuItem
+                      onClick={() => handleManageLlmPolicy(account)}
+                    >
+                      <BrainCircuit className="mr-2 h-4 w-4" />
+                      Proveedores LLM
+                    </DropdownMenuItem>
+                  )}
                   {canDelete && (
                     <>
                       <DropdownMenuSeparator />
@@ -358,6 +376,13 @@ export default function BusinessAccountsPage() {
         open={emailLimitModalOpen}
         onOpenChange={setEmailLimitModalOpen}
         account={selectedAccountForEmailLimit}
+        onSuccess={() => dataTableRef.current?.refreshData()}
+      />
+
+      <LlmProviderPolicyModal
+        open={llmPolicyModalOpen}
+        onOpenChange={setLlmPolicyModalOpen}
+        account={selectedAccountForLlmPolicy}
         onSuccess={() => dataTableRef.current?.refreshData()}
       />
     </div>

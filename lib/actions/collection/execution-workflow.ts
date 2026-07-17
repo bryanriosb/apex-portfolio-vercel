@@ -1,6 +1,7 @@
 'use server'
 
 import { getSupabaseAdminClient } from '@/lib/actions/supabase'
+import { requireUser, requireBusinessAccess } from '@/lib/auth/tenant-guard'
 import { CollectionExecutionInsert } from '@/lib/models/collection/execution'
 import { CollectionClientInsert } from '@/lib/models/collection/client'
 import { BatchStrategyService } from '@/lib/services/collection/batch-strategy-service'
@@ -46,6 +47,8 @@ export async function createExecutionWithClientsAction({
   const supabase = await getSupabaseAdminClient()
 
   try {
+    await requireBusinessAccess(executionData.business_id)
+
     if (!strategyConfig) {
       throw new Error('Strategy configuration is required. Must specify strategyType and domain.')
     }
@@ -275,6 +278,8 @@ export async function getExecutionProgressAction(
   error?: string
 }> {
   try {
+    await requireUser()
+
     const progress = await BatchStrategyService.getExecutionProgress(executionId)
 
     return {

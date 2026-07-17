@@ -10,6 +10,7 @@ import {
   QueryCommandInput,
   GetCommandInput,
 } from '@aws-sdk/lib-dynamodb'
+import { requireUser } from '@/lib/auth/tenant-guard'
 
 const accessKeyId = process.env.AWS_ACCESS_KEY_ID!
 const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY!
@@ -34,6 +35,7 @@ export async function scanTable<T = any>(
   }
 ): Promise<{ items: T[]; lastEvaluatedKey?: Record<string, any> }> {
   try {
+    await requireUser()
     const params: ScanCommandInput = {
       TableName: tableName,
       Limit: options?.limit,
@@ -69,6 +71,7 @@ export async function queryTable<T = any>(
   }
 ): Promise<{ items: T[]; lastEvaluatedKey?: Record<string, any> }> {
   try {
+    await requireUser()
     const params: QueryCommandInput = {
       TableName: tableName,
       KeyConditionExpression: options.keyConditionExpression,
@@ -99,6 +102,7 @@ export async function getItem<T = any>(
   key: Record<string, any>
 ): Promise<T | null> {
   try {
+    await requireUser()
     const params: GetCommandInput = {
       TableName: tableName,
       Key: key,
@@ -125,6 +129,8 @@ export async function queryAllItems<T = any>(
     scanIndexForward?: boolean
   }
 ): Promise<T[]> {
+  await requireUser()
+
   const items: T[] = []
   let lastEvaluatedKey: Record<string, any> | undefined
 
@@ -149,6 +155,8 @@ export async function getAllItems<T = any>(
     expressionAttributeValues?: Record<string, any>
   }
 ): Promise<T[]> {
+  await requireUser()
+
   const items: T[] = []
   let lastEvaluatedKey: Record<string, any> | undefined
 
@@ -176,6 +184,7 @@ export async function getAllItemsOrderedByCreatedAt<T = any>(
   }
 ): Promise<T[]> {
   try {
+    await requireUser()
     // Obtener todos los elementos
     const items = await getAllItems<T>(tableName, {
       filterExpression: options?.filterExpression,
@@ -213,6 +222,7 @@ export async function queryByCreatedAtIndex<T = any>(
   }
 ): Promise<T[]> {
   try {
+    await requireUser()
     let keyConditionExpression: string
     const expressionAttributeNames: Record<string, string> = {}
     const expressionAttributeValues: Record<string, any> = {}

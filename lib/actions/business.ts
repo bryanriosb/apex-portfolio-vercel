@@ -15,6 +15,13 @@ import type {
   BusinessWithAccount,
 } from '@/lib/models/business/business'
 import { getSupabaseClient } from './supabase'
+import { USER_ROLES } from '@/const/roles'
+import {
+  requireRole,
+  requireAccountAccess,
+  requireBusinessAccess,
+  resolveAccountScope,
+} from '@/lib/auth/tenant-guard'
 
 export interface BusinessListResponse {
   data: BusinessWithAccount[]
@@ -92,11 +99,17 @@ export async function fetchBusinessesAction(params?: {
   business_account_id?: string
 }): Promise<BusinessListResponse> {
   try {
+    // Alcance de tenant desde la sesión: solo company_admin puede listar
+    // sin filtro de cuenta; el resto queda restringido a la suya.
+    const { businessAccountId } = await resolveAccountScope(
+      params?.business_account_id
+    )
+
     // Construir filtros para la consulta
     const filters: Record<string, any> = {}
 
-    if (params?.business_account_id) {
-      filters.business_account_id = params.business_account_id
+    if (businessAccountId) {
+      filters.business_account_id = businessAccountId
     }
 
     const businesses = await getAllRecords<BusinessWithAccount>('businesses', {
@@ -145,6 +158,8 @@ export async function getBusinessByIdAction(
   id: string
 ): Promise<Business | null> {
   try {
+    await requireBusinessAccess(id)
+
     return await getRecordById<Business>('businesses', id)
   } catch (error) {
     console.error('Error fetching business:', error)
@@ -159,6 +174,14 @@ export async function createBusinessAction(
   data: BusinessInsert
 ): Promise<{ success: boolean; data?: Business; error?: string }> {
   try {
+    // Crear sucursales exige rol de administración y que la cuenta destino
+    // sea la del tenant de la sesión (company_admin puede en cualquiera).
+    await requireRole(USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN)
+    const { businessAccountId } = await requireAccountAccess(
+      data.business_account_id
+    )
+    data = { ...data, business_account_id: businessAccountId }
+
     // Validar límites del plan antes de crear
     const limitValidation = await validateBusinessLimitsForAccount(
       data.business_account_id
@@ -192,6 +215,14 @@ export async function updateBusinessAction(
   data: BusinessUpdate
 ): Promise<{ success: boolean; data?: Business; error?: string }> {
   try {
+    const { user } = await requireBusinessAccess(id)
+
+    // Nadie salvo company_admin puede reasignar una sucursal a otra cuenta.
+    if (user.role !== USER_ROLES.COMPANY_ADMIN) {
+      data = { ...data }
+      delete (data as { business_account_id?: string }).business_account_id
+    }
+
     const business = await updateRecord<Business>('businesses', id, data)
 
     if (!business) {
@@ -212,6 +243,9 @@ export async function deleteBusinessAction(
   id: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireRole(USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN)
+    await requireBusinessAccess(id)
+
     await deleteRecord('businesses', id)
     return { success: true }
   } catch (error: any) {
@@ -224,6 +258,11 @@ export async function deleteBusinessesAction(
   ids: string[]
 ): Promise<{ success: boolean; deletedCount: number; error?: string }> {
   try {
+    await requireRole(USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN)
+    for (const id of ids) {
+      await requireBusinessAccess(id)
+    }
+
     return await deleteRecords('businesses', ids)
   } catch (error: any) {
     console.error('Error batch deleting businesses:', error)
@@ -239,6 +278,8 @@ export async function getBusinessWithLogoByAccountAction(
   businessAccountId: string
 ): Promise<{ id: string; name: string; logo_url: string | null } | null> {
   try {
+    await requireAccountAccess(businessAccountId)
+
     const client = await getSupabaseClient()
 
     const { data, error } = await client

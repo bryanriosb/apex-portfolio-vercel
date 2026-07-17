@@ -209,7 +209,7 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                     <Progress
                       value={Math.min(100, profile.delivery_rate)}
                       className="h-2"
-                      // @ts-ignore
+                      // @ts-expect-error - indicatorClassName es una prop custom de Progress
                       indicatorClassName={getProgressColor(
                         profile.delivery_rate,
                         'good'
@@ -238,7 +238,7 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                     <Progress
                       value={Math.min(100, profile.open_rate)}
                       className="h-2"
-                      // @ts-ignore
+                      // @ts-expect-error - indicatorClassName es una prop custom de Progress
                       indicatorClassName={getProgressColor(
                         profile.open_rate,
                         'good'
@@ -267,7 +267,7 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                     <Progress
                       value={Math.min(profile.bounce_rate * 10, 100)}
                       className="h-2"
-                      // @ts-ignore
+                      // @ts-expect-error - indicatorClassName es una prop custom de Progress
                       indicatorClassName={getProgressColor(
                         profile.bounce_rate,
                         'bad'
@@ -296,7 +296,7 @@ export const ReputationOverview: React.FC<ReputationOverviewProps> = ({
                     <Progress
                       value={Math.min(profile.complaint_rate * 20, 100)}
                       className="h-2"
-                      // @ts-ignore
+                      // @ts-expect-error - indicatorClassName es una prop custom de Progress
                       indicatorClassName={getProgressColor(
                         profile.complaint_rate,
                         'bad'

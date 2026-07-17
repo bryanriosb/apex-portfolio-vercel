@@ -651,7 +651,7 @@ export function BusinessAccountModal({
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    No hay configuraciones personalizadas. Haz clic en "Agregar"
+                    No hay configuraciones personalizadas. Haz clic en &quot;Agregar&quot;
                     para añadir valores.
                   </p>
                 )}

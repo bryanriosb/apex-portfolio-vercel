@@ -7,6 +7,7 @@ import {
   deleteRecord,
   getSupabaseAdminClient,
 } from '@/lib/actions/supabase'
+import { requireUser, requireAccountAccess } from '@/lib/auth/tenant-guard'
 import type {
   CollectionAttachment,
   CollectionAttachmentInsert,
@@ -30,6 +31,8 @@ export async function fetchAttachmentsAction(params: {
   search?: string
 }): Promise<AttachmentListResponse> {
   try {
+    await requireAccountAccess(params.business_account_id)
+
     const supabase = await getSupabaseAdminClient()
 
     let query = supabase
@@ -81,6 +84,8 @@ export async function getAttachmentByIdAction(
   id: string
 ): Promise<CollectionAttachment | null> {
   try {
+    await requireUser()
+
     return await getRecordById<CollectionAttachment>(
       'collection_attachments',
       id
@@ -98,6 +103,8 @@ export async function createAttachmentAction(
   data: CollectionAttachmentInsert
 ): Promise<{ success: boolean; data?: CollectionAttachment; error?: string }> {
   try {
+    await requireAccountAccess(data.business_account_id)
+
     const attachment = await insertRecord<CollectionAttachment>(
       'collection_attachments',
       {
@@ -125,6 +132,8 @@ export async function updateAttachmentAction(
   data: CollectionAttachmentUpdate
 ): Promise<{ success: boolean; data?: CollectionAttachment; error?: string }> {
   try {
+    await requireUser()
+
     const attachment = await updateRecord<CollectionAttachment>(
       'collection_attachments',
       id,
@@ -149,6 +158,8 @@ export async function deleteAttachmentAction(
   id: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    await requireUser()
+
     // Get attachment to delete file from storage
     const attachment = await getAttachmentByIdAction(id)
 
@@ -181,6 +192,8 @@ export async function getActiveAttachmentsAction(
   businessAccountId: string
 ): Promise<CollectionAttachment[]> {
   try {
+    await requireAccountAccess(businessAccountId)
+
     const supabase = await getSupabaseAdminClient()
 
     const { data, error } = await supabase
@@ -217,6 +230,8 @@ export async function uploadAttachmentFileAction(
           'Faltan datos requeridos (file, businessAccountId, attachmentId)',
       }
     }
+
+    await requireAccountAccess(businessAccountId)
 
     const supabase = await getSupabaseAdminClient()
     // const fileExt = file.name.split('.').pop() // Unused

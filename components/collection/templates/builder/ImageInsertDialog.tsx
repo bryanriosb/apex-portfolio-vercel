@@ -212,7 +212,7 @@ export function ImageInsertDialog({ open, onOpenChange, onInsert, businessId }: 
                             <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                                 <ImageIcon className="h-12 w-12 mx-auto mb-3 text-gray-300 dark:text-gray-700" />
                                 <p>No hay imágenes disponibles</p>
-                                <p className="text-sm mt-1">Sube tu primera imagen en la pestaña "Subir Nueva"</p>
+                                <p className="text-sm mt-1">Sube tu primera imagen en la pestaña &quot;Subir Nueva&quot;</p>
                             </div>
                         ) : (
                             <ScrollArea className="h-96">

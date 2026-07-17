@@ -1,23 +1,47 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { X, Bot, Cog, Eye } from 'lucide-react'
+import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { X, Bot, Cog, Eye, Wrench, Layers, Info } from 'lucide-react'
 import { AgentNodeDetailDialog } from './AgentNodeDetailDialog'
 import type { GraphNode } from '@/lib/models/workflows/workflow'
+import type { Agent } from '@/lib/models/agents/agent'
+import type { ToolDefinition } from '@/lib/models/agents/tool'
+
+// Lógicas "core" implementadas en el motor (Rust). No corresponden a un
+// tool_definition y NO deben mezclarse con la selección de tools deterministas.
+const CORE_LOGICS = ['noop', 'hitl_gate', 'state_transform'] as const
+const isCoreLogic = (logic: string) =>
+  (CORE_LOGICS as readonly string[]).includes(logic)
 
 interface NodePropertiesPanelProps {
   node: GraphNode
+  agents: Agent[]
+  agentsLoading: boolean
+  tools: ToolDefinition[]
+  toolsLoading: boolean
   onChange: (node: GraphNode) => void
   onClose: () => void
 }
 
 export function NodePropertiesPanel({
   node,
+  agents,
+  agentsLoading,
+  tools,
+  toolsLoading,
   onChange,
   onClose,
 }: NodePropertiesPanelProps) {
@@ -26,6 +50,61 @@ export function NodePropertiesPanel({
 
   const updatePartial = (patch: Partial<GraphNode>) => {
     onChange({ ...node, ...patch } as GraphNode)
+  }
+
+  // --- Modo del Function node: lógica core vs. tool determinista ---
+  const currentLogic = node.type === 'function' ? node.logic || '' : ''
+  const [functionMode, setFunctionMode] = useState<'core' | 'tool'>(
+    isCoreLogic(currentLogic) || !currentLogic ? 'core' : 'tool'
+  )
+  // Reinicia el modo al cambiar de nodo (dep en id: al renombrar se recomputa
+  // de forma coherente y al saltar a otro nodo se ajusta a su lógica actual).
+  useEffect(() => {
+    setFunctionMode(
+      isCoreLogic(currentLogic) || !currentLogic ? 'core' : 'tool'
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [node.id])
+
+  const agentOptions: ComboboxOption[] = useMemo(
+    () =>
+      agents.map((a) => ({
+        value: a.id,
+        label: a.name,
+        description: `${a.model_provider} · ${a.model_name}`,
+        icon: <Bot className="h-3.5 w-3.5 text-primary" />,
+      })),
+    [agents]
+  )
+
+  // Solo los tool_definitions de tipo Function pueden invocarse como función
+  // dinámica determinista (logic = tool.name; el backend los resuelve por name).
+  const toolOptions: ComboboxOption[] = useMemo(
+    () =>
+      tools
+        .filter((t) => t.tool_type === 'Function')
+        .map((t) => ({
+          value: t.name,
+          label: t.name,
+          description: t.description || undefined,
+          icon: <Wrench className="h-3.5 w-3.5 text-orange-500" />,
+        })),
+    [tools]
+  )
+
+  const handleFunctionModeChange = (mode: 'core' | 'tool') => {
+    setFunctionMode(mode)
+    if (mode === 'core') {
+      // Si venía de un tool, cae a un core seguro por defecto.
+      if (!isCoreLogic(currentLogic)) {
+        updatePartial({ logic: 'noop' } as Partial<GraphNode>)
+      }
+    } else {
+      // Al pasar a tool, limpia el logic core para forzar una selección explícita.
+      if (isCoreLogic(currentLogic)) {
+        updatePartial({ logic: '' } as Partial<GraphNode>)
+      }
+    }
   }
 
   return (
@@ -87,14 +166,18 @@ export function NodePropertiesPanel({
       {node.type === 'agent' && (
         <>
           <div className="space-y-2">
-            <Label className="text-xs">Agent ID</Label>
-            <Input
-              value={node.agent_id || ''}
-              onChange={(e) =>
-                updatePartial({ agent_id: e.target.value } as any)
+            <Label className="text-xs">Agente</Label>
+            <Combobox
+              options={agentOptions}
+              value={node.agent_id || null}
+              onChange={(value) =>
+                updatePartial({ agent_id: value || '' } as Partial<GraphNode>)
               }
+              isLoading={agentsLoading}
+              placeholder="Seleccionar agente..."
+              searchPlaceholder="Buscar agente..."
+              emptyText="No hay agentes disponibles"
               className="h-7 text-xs rounded-none"
-              placeholder="UUID del agente"
             />
           </div>
 
@@ -211,16 +294,81 @@ export function NodePropertiesPanel({
       {node.type === 'function' && (
         <>
           <div className="space-y-2">
-            <Label className="text-xs">Logic</Label>
-            <Input
-              value={node.logic || ''}
-              onChange={(e) =>
-                updatePartial({ logic: e.target.value } as any)
-              }
-              className="h-7 text-xs rounded-none"
-              placeholder="noop | hitl_gate | state_transform"
-            />
+            <Label className="text-xs">Tipo de lógica</Label>
+            <div className="flex overflow-hidden rounded-none border">
+              <Button
+                type="button"
+                variant={functionMode === 'core' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="flex-1 h-7 rounded-none text-xs gap-1"
+                onClick={() => handleFunctionModeChange('core')}
+              >
+                <Layers className="h-3 w-3" />
+                Lógica core
+              </Button>
+              <Button
+                type="button"
+                variant={functionMode === 'tool' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="flex-1 h-7 rounded-none text-xs gap-1 border-l"
+                onClick={() => handleFunctionModeChange('tool')}
+              >
+                <Wrench className="h-3 w-3" />
+                Tool determinista
+              </Button>
+            </div>
           </div>
+
+          {functionMode === 'core' ? (
+            <div className="space-y-2">
+              <Label className="text-xs">Lógica</Label>
+              <Select
+                value={isCoreLogic(currentLogic) ? currentLogic : ''}
+                onValueChange={(value) =>
+                  updatePartial({ logic: value } as Partial<GraphNode>)
+                }
+              >
+                <SelectTrigger className="h-7 text-xs rounded-none w-full">
+                  <SelectValue placeholder="Seleccionar lógica" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="noop" className="text-xs">
+                    noop — paso / punto de reunión
+                  </SelectItem>
+                  <SelectItem value="hitl_gate" className="text-xs">
+                    hitl_gate — compuerta Human-in-the-Loop
+                  </SelectItem>
+                  <SelectItem value="state_transform" className="text-xs">
+                    state_transform — reestructura el estado
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label className="text-xs">Tool (tool_definition)</Label>
+              <Combobox
+                options={toolOptions}
+                value={currentLogic && !isCoreLogic(currentLogic) ? currentLogic : null}
+                onChange={(value) =>
+                  updatePartial({ logic: value || '' } as Partial<GraphNode>)
+                }
+                isLoading={toolsLoading}
+                placeholder="Seleccionar tool..."
+                searchPlaceholder="Buscar tool..."
+                emptyText="No hay tools de tipo Function"
+                className="h-7 text-xs rounded-none"
+              />
+              <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground">
+                <Info className="h-3 w-3 shrink-0 mt-0.5" />
+                <span>
+                  Se ejecuta de forma determinista en sandbox aislado. El{' '}
+                  <code className="font-mono">config</code> se fusiona como
+                  valores por defecto del estado.
+                </span>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label className="text-xs">Config (JSON)</Label>

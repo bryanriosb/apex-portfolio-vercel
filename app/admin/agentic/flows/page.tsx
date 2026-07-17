@@ -42,6 +42,8 @@ export default function FlowsPage() {
   const [workflowToDelete, setWorkflowToDelete] =
     useState<WorkflowDefinition | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  // Id del flujo cuya edición se está navegando (feedback de carga inmediato)
+  const [navigatingId, setNavigatingId] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -61,6 +63,7 @@ export default function FlowsPage() {
 
   const handleEdit = useCallback(
     (workflow: WorkflowDefinition) => {
+      setNavigatingId(workflow.id)
       router.push(`/admin/agentic/flows/edit/${workflow.id}`)
     },
     [router]
@@ -113,17 +116,34 @@ export default function FlowsPage() {
           ...col,
           cell: ({ row }: { row: any }) => {
             const workflow = row.original as WorkflowDefinition
+            const isNavigating = navigatingId === workflow.id
             return (
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                    <MoreHorizontal className="h-4 w-4" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    disabled={isNavigating}
+                  >
+                    {isNavigating ? (
+                      <Loading className="h-4 w-4" />
+                    ) : (
+                      <MoreHorizontal className="h-4 w-4" />
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => handleEdit(workflow)}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Editar
+                  <DropdownMenuItem
+                    onSelect={() => handleEdit(workflow)}
+                    disabled={isNavigating}
+                  >
+                    {isNavigating ? (
+                      <Loading className="mr-2 h-4 w-4" />
+                    ) : (
+                      <Pencil className="mr-2 h-4 w-4" />
+                    )}
+                    {isNavigating ? 'Abriendo…' : 'Editar'}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onSelect={() => handleToggleActive(workflow)}
@@ -155,7 +175,7 @@ export default function FlowsPage() {
       }
       return col
     })
-  }, [timezone, handleEdit, handleToggleActive, handleDeleteClick])
+  }, [timezone, handleEdit, handleToggleActive, handleDeleteClick, navigatingId])
 
   if (businessLoading) {
     return (

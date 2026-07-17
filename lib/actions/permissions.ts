@@ -1,6 +1,7 @@
 'use server'
 
 import { getSupabaseAdminClient } from '@/lib/actions/supabase'
+import { requireAccountAccess } from '@/lib/auth/tenant-guard'
 import type { PlanLimits } from '@/lib/store/unified-permissions-store'
 
 // Cache en memoria para permisos (TTL: 2 minutos)
@@ -83,6 +84,11 @@ export async function getUnifiedPermissionsAction(
   businessAccountId: string
 ): Promise<UnifiedPermissionsData> {
   try {
+    // El tenant consultado debe ser el de la sesión (cross-tenant solo
+    // company_admin); de lo contrario un usuario podría leer los permisos,
+    // límites y uso de otra cuenta.
+    await requireAccountAccess(businessAccountId)
+
     // Verificar cache
     const cached = permissionsCache.get(businessAccountId)
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {

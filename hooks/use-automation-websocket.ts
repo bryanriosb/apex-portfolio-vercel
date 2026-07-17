@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { type AutomationServerEvent } from '@/lib/services/automation/automation-types'
 import { getAuthTicket } from '@/lib/actions/api/auth-ticket'
-import { selectedEnvironment } from '@/lib/actions/api/index'
+import { getSelectedEnvironment } from '@/lib/actions/api/index'
 import { WebSocketService, type ConnectionStatus } from '@/lib/services/websocket'
 import { useWebSocketReconnectionStore } from '@/lib/store/websocket-reconnection-store'
 import { normalizeToolType } from '@/lib/utils/tool-type'
@@ -46,7 +46,7 @@ export function useAutomationWebSocket(onEvent: (event: AutomationServerEvent) =
         )
         const { ticket } = await Promise.race([ticketPromise, timeoutPromise])
 
-        const url = new URL(`${selectedEnvironment.APEX_WS_URL}/automation`)
+        const url = new URL(`${getSelectedEnvironment().APEX_WS_URL}/automation`)
         if (ticket) {
           url.searchParams.set('token', ticket)
         }

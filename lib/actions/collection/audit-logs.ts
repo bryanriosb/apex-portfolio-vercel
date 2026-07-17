@@ -1,6 +1,7 @@
 'use server'
 
 import { getSupabaseAdminClient } from '@/lib/actions/supabase'
+import { requireUser, requireBusinessAccess } from '@/lib/auth/tenant-guard'
 
 export interface AuditLogEntry {
     id: string
@@ -29,6 +30,8 @@ export async function getExecutionAuditLogs(
     limit: number = 50
 ): Promise<{ success: boolean; data: AuditLogEntry[]; error?: string }> {
     try {
+        await requireUser()
+
         const supabase = await getSupabaseAdminClient()
 
         const { data, error } = await supabase
@@ -60,6 +63,8 @@ export interface LockStatus {
  */
 export async function getSchedulerLockStatus(): Promise<{ success: boolean; lock: LockStatus; error?: string }> {
     try {
+        await requireUser()
+
         const supabase = await getSupabaseAdminClient()
 
         const { data, error } = await supabase
@@ -107,6 +112,8 @@ export async function getControlTowerStats(
     businessId: string
 ): Promise<{ success: boolean; stats: ControlTowerStats; error?: string }> {
     try {
+        await requireBusinessAccess(businessId)
+
         const supabase = await getSupabaseAdminClient()
 
         // We first get active executions for this business to filter logs

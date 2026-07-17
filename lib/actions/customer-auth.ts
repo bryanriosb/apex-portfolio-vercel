@@ -2,6 +2,14 @@
 
 import { getSupabaseAdminClient } from './supabase'
 import { sendEmailMailgun } from './mailgun'
+import {
+  requireUser,
+  requireRole,
+  requireBusinessAccess,
+  AccessDeniedError,
+} from '@/lib/auth/tenant-guard'
+import { USER_ROLES } from '@/const/roles'
+import type { AuthUser } from '@/lib/services/auth/supabase-auth'
 import type { BusinessCustomer } from '@/lib/models/customer/business-customer'
 
 export interface CreateCustomerAuthResult {
@@ -40,12 +48,85 @@ function generateRandomPassword(length: number = 12): string {
 }
 
 /**
+ * AC-3/AC-6 (fail-closed): autoriza operaciones sobre el usuario auth de un
+ * customer. Se permite al propio usuario, a company_admin (cross-tenant) y a
+ * miembros del tenant dueño de algún business_customer vinculado al userId
+ * (con `adminOnly`, solo si además el rol es business_admin).
+ */
+async function assertCustomerUserAccess(
+  userId: string,
+  options: { adminOnly?: boolean } = {}
+): Promise<AuthUser> {
+  const user = await requireUser()
+
+  // El propio usuario siempre puede operar sobre su cuenta
+  if (user.id === userId) {
+    return user
+  }
+
+  // company_admin es el único rol cross-tenant
+  if (user.role === USER_ROLES.COMPANY_ADMIN) {
+    return user
+  }
+
+  if (options.adminOnly && user.role !== USER_ROLES.BUSINESS_ADMIN) {
+    throw new AccessDeniedError(
+      'No tienes permisos para gestionar este usuario'
+    )
+  }
+
+  const client = await getSupabaseAdminClient()
+
+  // Buscar los business_customers vinculados al usuario auth
+  const { data: links } = await client
+    .from('business_customers')
+    .select('business_id')
+    .eq('user_id', userId)
+
+  const linkedBusinessIds = (links ?? [])
+    .map((link) => link.business_id)
+    .filter(Boolean) as string[]
+
+  if (linkedBusinessIds.length > 0) {
+    // 1. Sucursales presentes en la sesión
+    const sessionBusinessIds = new Set(
+      [user.business_id, ...(user.businesses?.map((b) => b.id) ?? [])].filter(
+        Boolean
+      ) as string[]
+    )
+
+    if (linkedBusinessIds.some((id) => sessionBusinessIds.has(id))) {
+      return user
+    }
+
+    // 2. Fallback a BD: alguna sucursal vinculada pertenece a la cuenta
+    if (user.business_account_id) {
+      const { data: owned } = await client
+        .from('businesses')
+        .select('id')
+        .in('id', linkedBusinessIds)
+        .eq('business_account_id', user.business_account_id)
+        .limit(1)
+
+      if (owned && owned.length > 0) {
+        return user
+      }
+    }
+  }
+
+  throw new AccessDeniedError('No tienes permisos sobre este usuario')
+}
+
+/**
  * Busca un usuario existente en auth.users por email
  */
 export async function findExistingAuthUser(
   email: string
 ): Promise<{ id: string; email: string } | null> {
   try {
+    // AC-3: requiere sesión válida (guard defensivo; helper server-side)
+    await requireUser()
+
     const client = await getSupabaseAdminClient()
     const { data: { users }, error } = await client.auth.admin.listUsers()
     
@@ -86,8 +167,11 @@ export async function createCustomerAuthUser(params: {
   generatePassword?: boolean
 }): Promise<CreateCustomerAuthResult> {
   const { email, password, fullName, businessId, businessCustomerId, phone, generatePassword = false } = params
-  
+
   try {
+    // AC-3: la sucursal destino debe pertenecer al tenant de la sesión
+    await requireBusinessAccess(businessId)
+
     const client = await getSupabaseAdminClient()
     
     // 1. Verificar si el usuario ya existe
@@ -189,9 +273,12 @@ export async function sendCustomerWelcomeEmail(params: {
   businessName?: string
 }): Promise<{ success: boolean; error?: string }> {
   const { email, fullName, password, businessName } = params
-  
+
   try {
-    const loginUrl = process.env.NEXT_PUBLIC_APP_URL 
+    // AC-3: requiere sesión válida (guard defensivo; helper server-side)
+    await requireUser()
+
+    const loginUrl = process.env.NEXT_PUBLIC_APP_URL
       ? `${process.env.NEXT_PUBLIC_APP_URL}/auth/sign-in`
       : 'https://agentic.borls.com/auth/sign-in'
     
@@ -301,8 +388,11 @@ export async function createCustomerWithAuthAction(input: {
   let userId: string | null = null
   let isNewUser = false
   let generatedPassword: string | null = null
-  
+
   try {
+    // AC-3: la sucursal destino debe pertenecer al tenant de la sesión
+    await requireBusinessAccess(input.businessId)
+
     // 1. Crear el business_customer primero
     const customerData = {
       business_id: input.businessId,
@@ -407,19 +497,26 @@ export async function activateCustomerAccountAction(params: {
   isNewUser?: boolean
 }> {
   const client = await getSupabaseAdminClient()
-  
+
   try {
+    // AC-3: la sucursal solicitada debe pertenecer al tenant de la sesión
+    await requireBusinessAccess(params.businessId)
+
     // 1. Obtener el customer existente
     const { data: customer, error: customerError } = await client
       .from('business_customers')
       .select('*')
       .eq('id', params.customerId)
       .single()
-    
+
     if (customerError || !customer) {
       return { success: false, error: 'Cliente no encontrado' }
     }
-    
+
+    // AC-3: el customer debe pertenecer a una sucursal del tenant de la
+    // sesión (evita operar sobre customers de otros tenants por ID)
+    await requireBusinessAccess(customer.business_id)
+
     // 2. Verificar si ya tiene cuenta de usuario
     if (customer.user_id) {
       return { success: false, error: 'Este cliente ya tiene una cuenta de usuario activa' }
@@ -494,10 +591,14 @@ export async function updateCustomerAuthUser(params: {
   businessCustomerId?: string
 }): Promise<{ success: boolean; error?: string }> {
   const { userId, email, fullName, phone, businessCustomerId } = params
-  
+
   try {
+    // AC-3: solo el propio usuario, company_admin o un miembro del tenant
+    // dueño del customer vinculado pueden modificar el usuario auth
+    await assertCustomerUserAccess(userId)
+
     const client = await getSupabaseAdminClient()
-    
+
     // Normalizar phone: quitar el símbolo + del inicio
     const normalizedPhone = phone ? (phone.startsWith('+') ? phone.substring(1) : phone) : null
     
@@ -553,8 +654,12 @@ export async function changeCustomerPassword(params: {
   newPassword: string
 }): Promise<{ success: boolean; error?: string }> {
   const { userId, newPassword } = params
-  
+
   try {
+    // AC-3/AC-6: solo el propio usuario, company_admin o un business_admin
+    // del tenant dueño del customer pueden cambiar la contraseña
+    await assertCustomerUserAccess(userId, { adminOnly: true })
+
     if (!newPassword || newPassword.length < 8) {
       return { success: false, error: 'La contraseña debe tener al menos 8 caracteres' }
     }
@@ -584,8 +689,13 @@ export async function changeCustomerPassword(params: {
  */
 export async function deleteCustomerAuthUser(userId: string): Promise<{ success: boolean; error?: string }> {
   try {
+    // AC-6: solo roles admin. No se puede validar el tenant por
+    // business_customers porque los callers (delete de business-customer)
+    // invocan este helper DESPUÉS de borrar el registro vinculado.
+    await requireRole(USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN)
+
     const client = await getSupabaseAdminClient()
-    
+
     const { error } = await client.auth.admin.deleteUser(userId)
     
     if (error) {
@@ -609,23 +719,42 @@ export async function removeCustomerAccessAction(params: {
   customerId: string
 }): Promise<{ success: boolean; error?: string }> {
   try {
+    // AC-3: requiere sesión válida (fail-closed)
+    const user = await requireUser()
+
     const client = await getSupabaseAdminClient()
-    
-    // 1. Obtener el customer para verificar user_id
+
+    // 1. Obtener el customer para verificar user_id y tenant dueño
     const { data: customer, error: fetchError } = await client
       .from('business_customers')
-      .select('id, user_id')
+      .select('id, user_id, business_id')
       .eq('id', params.customerId)
       .single()
-    
+
     if (fetchError || !customer) {
       return { success: false, error: 'Cliente no encontrado' }
     }
-    
+
     if (!customer.user_id) {
       return { success: false, error: 'Este cliente no tiene cuenta de acceso' }
     }
-    
+
+    // AC-3/AC-6: solo el propio usuario o un admin del tenant dueño del
+    // customer pueden remover el acceso
+    if (user.id !== customer.user_id) {
+      if (
+        user.role !== USER_ROLES.COMPANY_ADMIN &&
+        user.role !== USER_ROLES.BUSINESS_ADMIN
+      ) {
+        throw new AccessDeniedError(
+          'No tienes permisos para remover este acceso'
+        )
+      }
+      // Valida que la sucursal del customer pertenezca al tenant de la sesión
+      // (company_admin pasa por ser el único rol cross-tenant)
+      await requireBusinessAccess(customer.business_id)
+    }
+
     // 2. Eliminar el usuario de Supabase Auth
     const { error: deleteError } = await client.auth.admin.deleteUser(customer.user_id)
     

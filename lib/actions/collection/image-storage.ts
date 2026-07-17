@@ -1,6 +1,7 @@
 'use server'
 
 import { getSupabaseAdminClient } from '@/lib/actions/supabase'
+import { requireUser, requireBusinessAccess } from '@/lib/auth/tenant-guard'
 
 /**
  * Upload an image to the images/collection bucket
@@ -19,6 +20,8 @@ export async function uploadCollectionImageAction(
         if (!businessId) {
             return { success: false, error: 'No se proporcionó business_id' }
         }
+
+        await requireBusinessAccess(businessId)
 
         // Validate file type
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
@@ -76,6 +79,8 @@ export async function listCollectionImagesAction(
             return { success: false, error: 'No se proporcionó business_id' }
         }
 
+        await requireBusinessAccess(businessId)
+
         const supabase = await getSupabaseAdminClient()
 
         const { data, error } = await supabase.storage
@@ -112,6 +117,8 @@ export async function deleteCollectionImageAction(
     imageUrl: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        await requireUser()
+
         const url = new URL(imageUrl)
         const pathParts = url.pathname.split('images/')
         if (pathParts.length < 2) {

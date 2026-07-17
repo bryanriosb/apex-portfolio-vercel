@@ -38,7 +38,7 @@ export interface BusinessAccount {
   created_by: string
 }
 
-export class BusinessAccount implements BusinessAccount {
+export class BusinessAccountModel implements BusinessAccount {
   id: string
   company_name: string
   tax_id: string | null
