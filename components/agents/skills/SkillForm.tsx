@@ -1,10 +1,6 @@
 'use client'
 
-<<<<<<< HEAD
 import { useEffect, useState } from 'react'
-=======
-import { useEffect } from 'react'
->>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
 import dynamic from 'next/dynamic'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -33,7 +29,6 @@ import {
   buildSkillTemplate,
   skillFormSchema,
   type SkillFormValues,
-<<<<<<< HEAD
   type SkillReferenceDraft,
   type SkillReferenceOps,
 } from '@/lib/models/agents/skill'
@@ -43,9 +38,6 @@ import {
 } from '@/lib/models/agents/skill-frontmatter'
 import { SkillLogicFields } from '@/components/agents/skills/SkillLogicFields'
 import { SkillReferencesEditor } from '@/components/agents/skills/SkillReferencesEditor'
-=======
-} from '@/lib/models/agents/skill'
->>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
 
 const MDEditor = dynamic(() => import('@uiw/react-md-editor'), {
   ssr: false,
@@ -59,7 +51,6 @@ const MDEditor = dynamic(() => import('@uiw/react-md-editor'), {
 interface SkillFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-<<<<<<< HEAD
   onSubmit: (values: SkillFormValues, references: SkillReferenceOps) => Promise<void>
   isSubmitting: boolean
   /** Valores iniciales al editar; null al crear. */
@@ -70,12 +61,6 @@ interface SkillFormProps {
   initialReferences: string[]
   /** Descarga el contenido de una reference persistida (modo edición). */
   loadReferenceContent: (filename: string) => Promise<string>
-=======
-  onSubmit: (values: SkillFormValues) => Promise<void>
-  isSubmitting: boolean
-  /** Valores iniciales al editar; null al crear. */
-  initialValues: SkillFormValues | null
->>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
   /** Contenido cargándose desde el catálogo (modo edición). */
   isLoadingContent?: boolean
 }
@@ -86,11 +71,8 @@ export function SkillForm({
   onSubmit,
   isSubmitting,
   initialValues,
-<<<<<<< HEAD
   initialReferences,
   loadReferenceContent,
-=======
->>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
   isLoadingContent = false,
 }: SkillFormProps) {
   const { resolvedTheme } = useTheme()
@@ -101,7 +83,6 @@ export function SkillForm({
     defaultValues: initialValues ?? { name: '', content: buildSkillTemplate('') },
   })
 
-<<<<<<< HEAD
   const [referenceDrafts, setReferenceDrafts] = useState<SkillReferenceDraft[]>([])
 
   useEffect(() => {
@@ -152,17 +133,6 @@ export function SkillForm({
       {/* La base del DialogContent trae `sm:max-w-lg`: el override debe usar
           el mismo breakpoint o tailwind-merge no lo reemplaza. */}
       <DialogContent className="max-h-[90vh] w-[95vw] overflow-y-auto sm:max-w-6xl">
-=======
-  useEffect(() => {
-    if (open) {
-      form.reset(initialValues ?? { name: '', content: buildSkillTemplate('') })
-    }
-  }, [open, initialValues, form])
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
->>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
         <DialogHeader>
           <DialogTitle>
             {isEditing ? 'Editar habilidad' : 'Nueva habilidad'}
@@ -176,7 +146,6 @@ export function SkillForm({
 
         <Form {...form}>
           <form
-<<<<<<< HEAD
             onSubmit={form.handleSubmit(handleSubmit)}
             className="flex flex-col gap-4"
           >
@@ -292,83 +261,6 @@ export function SkillForm({
                 />
               </div>
             </div>
-=======
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="flex flex-col gap-4"
-          >
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nombre</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="seguimiento-facturas"
-                      disabled={isEditing || isSubmitting}
-                      onChange={(e) => {
-                        field.onChange(e)
-                        if (!isEditing && !form.formState.dirtyFields.content) {
-                          form.setValue(
-                            'content',
-                            buildSkillTemplate(e.target.value)
-                          )
-                        }
-                      }}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Identificador único. No se puede cambiar después de crearla.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="content"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Contenido</FormLabel>
-                  <FormControl>
-                    {isLoadingContent ? (
-                      <div className="flex h-[320px] items-center justify-center border border-input">
-                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                      </div>
-                    ) : (
-                      <div
-                        data-color-mode={
-                          resolvedTheme === 'dark' ? 'dark' : 'light'
-                        }
-                        className="min-w-0 overflow-hidden"
-                      >
-                        <MDEditor
-                          value={field.value || ''}
-                          onChange={(value) => field.onChange(value ?? '')}
-                          onBlur={field.onBlur}
-                          height={320}
-                          preview="edit"
-                          className="rounded-none!"
-                          textareaProps={{
-                            placeholder:
-                              '---\nname: mi-habilidad\ndescription: ...\n---\nInstrucciones...',
-                            disabled: isSubmitting,
-                          }}
-                        />
-                      </div>
-                    )}
-                  </FormControl>
-                  <FormDescription>
-                    Markdown con frontmatter YAML. El backend valida el formato
-                    antes de guardar.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
->>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
 
             <DialogFooter>
               <Button

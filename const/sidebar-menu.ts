@@ -23,10 +23,7 @@ import {
   GitBranch,
   Wrench,
   Sparkles,
-<<<<<<< HEAD
   KeyRound,
-=======
->>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
 } from 'lucide-react'
 import { USER_ROLES, type UserRole } from './roles'
 
@@ -212,45 +209,7 @@ export const SIDE_AGENCY_MENU_ITEMS: MenuItem[] = [
     ],
   },
   {
-<<<<<<< HEAD
     title: 'Flujos',
-=======
-    title: 'Habilidades',
-    url: '/admin/agentic/skills',
-    icon: Sparkles,
-    moduleCode: 'ai_assistant',
-    allowedRoles: [
-      USER_ROLES.COMPANY_ADMIN,
-      USER_ROLES.BUSINESS_ADMIN,
-      USER_ROLES.PROFESSIONAL,
-    ],
-  },
-  {
-    title: 'Conectores',
-    url: '/admin/agentic/connectors',
-    icon: Unplug,
-    moduleCode: 'ai_assistant',
-    allowedRoles: [
-      USER_ROLES.COMPANY_ADMIN,
-      USER_ROLES.BUSINESS_ADMIN,
-      USER_ROLES.PROFESSIONAL,
-    ],
-  },
-
-  {
-    title: 'Integraciones',
-    url: '/admin/agentic/integrations',
-    icon: Puzzle,
-    moduleCode: 'ai_assistant',
-    allowedRoles: [
-      USER_ROLES.COMPANY_ADMIN,
-      USER_ROLES.BUSINESS_ADMIN,
-      USER_ROLES.PROFESSIONAL,
-    ],
-  },
-  {
-    title: 'Flujo',
->>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
     url: '/admin/agentic/flows',
     icon: GitBranch,
     moduleCode: 'ai_assistant',

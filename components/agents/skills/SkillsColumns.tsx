@@ -1,5 +1,4 @@
 import { ColumnDef } from '@tanstack/react-table'
-<<<<<<< HEAD
 import { FileCode2, Wrench } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import type { SkillListItem } from '@/lib/models/agents/skill'
@@ -28,11 +27,6 @@ function BadgeOverflow({ values }: { values: string[] }) {
   )
 }
 
-=======
-import { Badge } from '@/components/ui/badge'
-import type { SkillListItem } from '@/lib/models/agents/skill'
-
->>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
 export const getSkillsColumns = (): ColumnDef<SkillListItem>[] => [
   {
     accessorKey: 'name',
@@ -43,7 +37,6 @@ export const getSkillsColumns = (): ColumnDef<SkillListItem>[] => [
     },
   },
   {
-<<<<<<< HEAD
     id: 'description',
     header: 'Descripción',
     accessorFn: (item) => item.metadata?.description ?? '',
@@ -111,10 +104,6 @@ export const getSkillsColumns = (): ColumnDef<SkillListItem>[] => [
   {
     accessorKey: 'sha256',
     header: 'Versión',
-=======
-    accessorKey: 'sha256',
-    header: 'Versión de contenido',
->>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
     cell: ({ row }) => {
       const sha = row.getValue('sha256') as string
       return (

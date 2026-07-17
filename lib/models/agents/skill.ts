@@ -3,7 +3,6 @@ import { z } from 'zod'
 export interface SkillListItem {
   name: string
   sha256: string
-<<<<<<< HEAD
   /** Metadata Logic-as-Data del listado; null si el objeto está corrupto. */
   metadata?: SkillMetadata | null
 }
@@ -55,14 +54,11 @@ export interface SkillMetadata {
   references: string[]
   trigger: boolean
   hint: string | null
-=======
->>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
 }
 
 export interface Skill {
   name: string
   content: string
-<<<<<<< HEAD
   /** null si el objeto del catálogo está corrupto (el content igual llega). */
   metadata?: SkillMetadata | null
 }
@@ -71,8 +67,6 @@ export interface Skill {
 export interface SkillWriteResponse {
   name: string
   metadata: SkillMetadata
-=======
->>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
 }
 
 export const SKILL_NAME_REGEX = /^[a-zA-Z0-9_-]{1,128}$/
