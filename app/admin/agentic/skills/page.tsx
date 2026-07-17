@@ -20,7 +20,10 @@ import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import type {
   SkillFormValues,
   SkillListItem,
+<<<<<<< HEAD
   SkillReferenceOps,
+=======
+>>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
 } from '@/lib/models/agents/skill'
 
 export default function SkillsPage() {
@@ -35,7 +38,10 @@ export default function SkillsPage() {
   const [editingValues, setEditingValues] = useState<SkillFormValues | null>(
     null
   )
+<<<<<<< HEAD
   const [editingReferences, setEditingReferences] = useState<string[]>([])
+=======
+>>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
   const [isLoadingContent, setIsLoadingContent] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -65,25 +71,35 @@ export default function SkillsPage() {
 
   const handleCreate = useCallback(() => {
     setEditingValues(null)
+<<<<<<< HEAD
     setEditingReferences([])
+=======
+>>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
     setFormOpen(true)
   }, [])
 
   const handleEdit = useCallback(
     async (skill: SkillListItem) => {
       setEditingValues({ name: skill.name, content: '' })
+<<<<<<< HEAD
       setEditingReferences([])
+=======
+>>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
       setIsLoadingContent(true)
       setFormOpen(true)
       try {
         const full = await service.getSkill(skill.name)
         setEditingValues({ name: full.name, content: full.content })
+<<<<<<< HEAD
         setEditingReferences(
           (full.metadata?.references ?? []).map((path) =>
             path.replace(/^references\//, '')
           )
         )
       } catch {
+=======
+      } catch (err) {
+>>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
         toast.error('No se pudo cargar el contenido de la habilidad')
         setFormOpen(false)
       } finally {
@@ -93,6 +109,7 @@ export default function SkillsPage() {
     [service]
   )
 
+<<<<<<< HEAD
   const loadReferenceContent = useCallback(
     async (filename: string) => {
       const name = editingValues?.name
@@ -103,6 +120,8 @@ export default function SkillsPage() {
     [service, editingValues]
   )
 
+=======
+>>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
   const handleDeleteClick = useCallback((skill: SkillListItem) => {
     setSkillToDelete(skill)
     setDeleteDialogOpen(true)
@@ -127,11 +146,16 @@ export default function SkillsPage() {
   }, [service, skillToDelete, loadData])
 
   const handleSubmit = useCallback(
+<<<<<<< HEAD
     async (values: SkillFormValues, references: SkillReferenceOps) => {
+=======
+    async (values: SkillFormValues) => {
+>>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
       setIsSubmitting(true)
       try {
         if (editingValues) {
           await service.updateSkill(values.name, values.content)
+<<<<<<< HEAD
         } else {
           await service.createSkill(values)
         }
@@ -156,6 +180,15 @@ export default function SkillsPage() {
         setFormOpen(false)
         setEditingValues(null)
         setEditingReferences([])
+=======
+          toast.success('Habilidad actualizada')
+        } else {
+          await service.createSkill(values)
+          toast.success('Habilidad creada')
+        }
+        setFormOpen(false)
+        setEditingValues(null)
+>>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
         loadData()
       } catch (err) {
         toast.error(
@@ -268,8 +301,11 @@ export default function SkillsPage() {
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
         initialValues={editingValues}
+<<<<<<< HEAD
         initialReferences={editingReferences}
         loadReferenceContent={loadReferenceContent}
+=======
+>>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
         isLoadingContent={isLoadingContent}
       />
 

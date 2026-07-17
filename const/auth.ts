@@ -64,6 +64,7 @@ export const AUTH_OPTIONS: AuthOptions = {
       // antes que la sesión de NextAuth (8 h), y las llamadas al API de
       // apex-ai se autentican con este JWT. Margen de 60 s para no usar un
       // token que expire en vuelo.
+<<<<<<< HEAD
       //
       // Sesiones legacy (previas al SSO): si el JWT no guardó `expiresAt`,
       // se recupera del propio access token — un JWT sin expiración
@@ -89,16 +90,33 @@ export const AUTH_OPTIONS: AuthOptions = {
         return { ...token, accessToken: null, authError: AUTH_ERROR_SESSION_EXPIRED }
       }
 
+=======
+      const expiresAt = typeof token.expiresAt === 'number' ? token.expiresAt : 0
+      const needsRefresh = expiresAt > 0 && Date.now() / 1000 > expiresAt - 60
+
+      if (!needsRefresh || typeof token.refreshToken !== 'string') {
+        return token
+      }
+
+>>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
       const { refreshSupabaseSession } = await import(
         '@/lib/services/auth/supabase-auth'
       )
       const refreshed = await refreshSupabaseSession(token.refreshToken)
 
       if (!refreshed) {
+<<<<<<< HEAD
         // Refresh imposible (token rotado/revocado): mismo tratamiento que
         // la sesión legacy — nunca servir un access token muerto.
         console.error('No fue posible refrescar el access token de Supabase')
         return { ...token, accessToken: null, authError: AUTH_ERROR_SESSION_EXPIRED }
+=======
+        // La sesión de NextAuth se conserva para no romper el resto de la
+        // app; solo las llamadas autenticadas con JWT de Supabase caerán al
+        // fallback hasta un nuevo login.
+        console.error('No fue posible refrescar el access token de Supabase')
+        return { ...token, accessToken: null }
+>>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
       }
 
       return {
@@ -106,15 +124,23 @@ export const AUTH_OPTIONS: AuthOptions = {
         accessToken: refreshed.accessToken,
         refreshToken: refreshed.refreshToken,
         expiresAt: refreshed.expiresAt,
+<<<<<<< HEAD
         authError: undefined,
+=======
+>>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
       }
     },
     async session({ session, token }) {
       // El refresh token nunca viaja al navegador: solo vive en el JWT
       // cifrado de NextAuth (cookie httpOnly) para la rotación server-side.
+<<<<<<< HEAD
       const user = { ...(token as Record<string, unknown>) }
       delete user.refreshToken
       session.user = user as unknown as typeof session.user
+=======
+      const { refreshToken: _refreshToken, ...user } = token as any
+      session.user = user
+>>>>>>> ea092bee9537f06f5f3ca5f85183d1c08da795d8
       return session
     },
   },
