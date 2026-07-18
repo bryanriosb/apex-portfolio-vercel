@@ -18,16 +18,10 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { useAvailableLlmProviders } from '@/hooks/use-available-llm-providers'
-import { ProviderLogo } from '@/components/agents/ProviderLogo'
 import { NoLlmProvidersConfigured } from '@/components/agents/providers/NoLlmProvidersConfigured'
+import { ProviderCombobox } from '@/components/agents/providers/ProviderCombobox'
+import { ModelCombobox } from '@/components/agents/providers/ModelCombobox'
 import { Spinner } from '@/components/ui/spinner'
 import type { AgentFormValues } from '@/lib/models/agents/agent'
 
@@ -170,33 +164,18 @@ export function AgentFormFields({ form, isSubmitting }: AgentFormFieldsProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Proveedor</FormLabel>
-              <Select
-                onValueChange={(value) => {
+              <ProviderCombobox
+                options={providerItems}
+                value={field.value || null}
+                onChange={(value) => {
                   field.onChange(value)
                   const providerModels = getModelsForProvider(value)
                   if (providerModels.length > 0) {
                     form.setValue('model_name', providerModels[0].id)
                   }
                 }}
-                defaultValue={field.value}
-                value={field.value}
-              >
-                <FormControl>
-                  <SelectTrigger className="w-full rounded-none">
-                    <SelectValue placeholder="Selecciona un proveedor" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent className="rounded-none">
-                  {providerItems.map((provider) => (
-                    <SelectItem key={provider.value} value={provider.value} className="rounded-none">
-                      <span className="flex items-center gap-2">
-                        <ProviderLogo provider={provider.value} />
-                        {provider.label}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                className="w-full rounded-none"
+              />
               <FormMessage />
             </FormItem>
           )}
@@ -208,36 +187,20 @@ export function AgentFormFields({ form, isSubmitting }: AgentFormFieldsProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Modelo</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-                value={field.value}
+              <ModelCombobox
+                models={availableModels}
+                value={field.value || null}
+                onChange={field.onChange}
+                placeholder={
+                  !selectedProvider
+                    ? 'Selecciona un proveedor primero'
+                    : 'Selecciona un modelo'
+                }
                 disabled={!selectedProvider || modelsLoading}
-              >
-                <FormControl>
-                  <SelectTrigger className="w-full rounded-none">
-                    {modelsLoading ? (
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Cargando modelos...</span>
-                      </div>
-                    ) : (
-                      <SelectValue placeholder={
-                        !selectedProvider
-                          ? 'Selecciona un proveedor primero'
-                          : 'Selecciona un modelo'
-                      } />
-                    )}
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent className="rounded-none max-h-[300px]">
-                  {availableModels.map((model) => (
-                    <SelectItem key={model.id} value={model.id} className="rounded-none">
-                      {model.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                isLoading={modelsLoading}
+                className="w-full rounded-none"
+                popoverClassName="max-h-[300px]"
+              />
               {selectedProvider && !modelsLoading && availableModels.length === 0 && (
                 <FormDescription className="text-orange-600">
                   No se encontraron modelos para este proveedor.

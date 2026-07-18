@@ -14,8 +14,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
-import { ProviderLogo } from '@/components/agents/ProviderLogo'
+import { ProviderCombobox, type ProviderComboboxItem } from './ProviderCombobox'
 import {
   findLlmProviderOption,
   type LlmProviderFormValues,
@@ -43,18 +42,16 @@ export function LlmProviderFormFields({
     selectedProvider
   )
 
-  const providerComboboxOptions = useMemo<ComboboxOption[]>(
+  const providerComboboxOptions = useMemo<ProviderComboboxItem[]>(
     () => [
       ...providerOptions.native.map((option) => ({
         value: option.value,
         label: option.label,
-        icon: <ProviderLogo provider={option.value} />,
         group: 'Clientes nativos',
       })),
       ...providerOptions.compatible.map((option) => ({
         value: option.value,
         label: option.label,
-        icon: <ProviderLogo provider={option.value} />,
         group: 'OpenAI compatible',
       })),
     ],
@@ -69,21 +66,16 @@ export function LlmProviderFormFields({
         render={({ field }) => (
           <FormItem>
             <FormLabel>Proveedor</FormLabel>
-            <Combobox
+            <ProviderCombobox
               options={providerComboboxOptions}
               value={field.value || null}
               onChange={(value) => {
-                // Campo requerido: ignorar la deselección del combobox
-                if (!value) return
                 field.onChange(value)
                 const option = findLlmProviderOption(providerOptions, value)
                 form.setValue('base_url', option?.baseUrl || '', {
                   shouldValidate: form.formState.isSubmitted,
                 })
               }}
-              placeholder="Selecciona un proveedor"
-              searchPlaceholder="Buscar proveedor..."
-              emptyText="No se encontraron proveedores"
               disabled={isSubmitting || isEditing}
               className="w-full rounded-none"
             />
