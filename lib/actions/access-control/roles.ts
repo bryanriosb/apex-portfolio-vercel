@@ -63,7 +63,7 @@ export async function fetchRolesAction(params?: {
   businessAccountId?: string
 }): Promise<{ data: RbacRole[]; error: string | null }> {
   try {
-    const { businessAccountId } = await resolveAccountScope(
+    const { user, businessAccountId } = await resolveAccountScope(
       params?.businessAccountId
     )
 
@@ -83,11 +83,19 @@ export async function fetchRolesAction(params?: {
     const { data, error } = await query
     if (error) throw error
 
-    const roles: RbacRole[] = (data ?? []).map((row: any) => ({
+    let roles: RbacRole[] = (data ?? []).map((row: any) => ({
       ...row,
       permissions_count: row.rbac_role_permissions?.[0]?.count ?? 0,
       rbac_role_permissions: undefined,
     }))
+
+    // El rol de plataforma (company_admin) solo existe para la sesión de
+    // plataforma: a un tenant no le aporta y filtra el modelo interno.
+    if (user.role !== USER_ROLES.COMPANY_ADMIN) {
+      roles = roles.filter(
+        (r) => !(r.is_system && r.name === USER_ROLES.COMPANY_ADMIN)
+      )
+    }
 
     return { data: roles, error: null }
   } catch (error: any) {

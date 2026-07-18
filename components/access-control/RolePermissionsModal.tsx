@@ -84,9 +84,25 @@ export function RolePermissionsModal({
       return
     }
 
-    setCatalog(catalogResult.data)
-    setSelected(new Set(currentResult.data.map((p) => p.id)))
-  }, [role])
+    // Para sesiones de tenant los permisos reservados a plataforma no se
+    // muestran ni viajan en el guardado (el servidor los revalida igual):
+    // no son otorgables y solo agregan ruido de otro nivel de gestión.
+    const visibleCatalog = canGrantPlatform
+      ? catalogResult.data
+      : catalogResult.data.filter(
+          (p) => !isPlatformReservedPermission(p.code)
+        )
+    const visibleIds = new Set(visibleCatalog.map((p) => p.id))
+
+    setCatalog(visibleCatalog)
+    setSelected(
+      new Set(
+        currentResult.data
+          .filter((p) => visibleIds.has(p.id))
+          .map((p) => p.id)
+      )
+    )
+  }, [role, canGrantPlatform])
 
   useEffect(() => {
     if (open && role) {
