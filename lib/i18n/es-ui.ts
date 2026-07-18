@@ -9,7 +9,7 @@ export const ui: Record<string, string> = {
   registrosDeDecision: 'Registros de Decisión',
   conectando: 'Conectando...',
   reconectando: 'Reconectando...',
-  sinActividadReciente: 'Sin actividad reciente',
+  sinActividadReciente: 'Sin Actividad',
   reconectar: 'Reconectar',
   enviandoDecision: 'Enviando decisión...',
   verMas: 'Ver más',
