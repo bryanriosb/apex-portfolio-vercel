@@ -34,6 +34,7 @@ import {
 import { groupPermissionsByEntity } from '@/components/access-control/format'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { USER_ROLES } from '@/const/roles'
+import { isPlatformReservedPermission } from '@/lib/models/access-control/access-control'
 import type { RbacPermission } from '@/lib/models/access-control/access-control'
 
 export default function PermissionsPage() {
