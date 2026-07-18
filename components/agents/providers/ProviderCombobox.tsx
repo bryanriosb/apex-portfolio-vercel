@@ -20,6 +20,8 @@ interface ProviderComboboxProps {
   disabled?: boolean
   className?: string
   popoverClassName?: string
+  /** Clase para la etiqueta del trigger (ver Combobox). */
+  triggerLabelClassName?: string
 }
 
 /**
@@ -35,6 +37,7 @@ export function ProviderCombobox({
   disabled = false,
   className,
   popoverClassName,
+  triggerLabelClassName,
 }: ProviderComboboxProps) {
   const comboboxOptions = useMemo<ComboboxOption[]>(
     () =>
@@ -58,6 +61,7 @@ export function ProviderCombobox({
       disabled={disabled}
       className={className}
       popoverClassName={popoverClassName}
+      triggerLabelClassName={triggerLabelClassName}
     />
   )
 }
