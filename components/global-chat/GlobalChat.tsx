@@ -12,9 +12,9 @@ import {
   buildLlmProviderOptions,
   findLlmProviderOption,
 } from '@/lib/models/agents/llm-provider'
-import { ProviderLogo } from '@/components/agents/ProviderLogo'
 import { NoLlmProvidersConfigured } from '@/components/agents/providers/NoLlmProvidersConfigured'
-import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
+import { ProviderCombobox } from '@/components/agents/providers/ProviderCombobox'
+import { ModelCombobox } from '@/components/agents/providers/ModelCombobox'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import { useGlobalChatStore } from '@/lib/store/global-chat-store'
 import { useWebSocketReconnectionStore } from '@/lib/store/websocket-reconnection-store'
@@ -148,27 +148,6 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
   const providerModels = useMemo(
     () => getModelsForProvider(selectedProvider),
     [getModelsForProvider, selectedProvider]
-  )
-
-  const providerComboboxOptions: ComboboxOption[] = useMemo(
-    () =>
-      availableProviders.map((option) => ({
-        value: option.value,
-        label: option.label,
-        icon: <ProviderLogo provider={option.value} />,
-      })),
-    [availableProviders]
-  )
-
-  const modelComboboxOptions: ComboboxOption[] = useMemo(
-    () =>
-      providerModels.map((model) => ({
-        value: model.id,
-        label: model.name,
-        // El id permite buscar por slug (ej. google/gemma-4-31B-it)
-        description: model.id,
-      })),
-    [providerModels]
   )
 
   // Si el modelo seleccionado no pertenece al provider actual, elegir el default o el primero
@@ -470,22 +449,20 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                     <NoLlmProvidersConfigured href={configureHref} compact />
                   ) : (
                     <>
-                      <Combobox
-                        options={providerComboboxOptions}
+                      <ProviderCombobox
+                        options={availableProviders}
                         value={selectedProvider}
-                        onChange={(value) => value && setSelectedProvider(value)}
+                        onChange={setSelectedProvider}
                         placeholder="Proveedor"
-                        searchPlaceholder="Buscar proveedor..."
                         disabled={!isConnected || availableProviders.length === 0}
                         className="h-8 w-auto min-w-[110px] max-w-[150px] sm:min-w-[130px] sm:max-w-none text-xs border-input"
                         popoverClassName="w-[240px]"
                       />
-                      <Combobox
-                        options={modelComboboxOptions}
+                      <ModelCombobox
+                        models={providerModels}
                         value={selectedModel}
-                        onChange={(value) => value && setSelectedModel(value)}
+                        onChange={setSelectedModel}
                         placeholder="Modelo"
-                        searchPlaceholder="Buscar modelo..."
                         disabled={!isConnected || providerModels.length === 0}
                         className="h-8 w-auto max-w-[150px] sm:max-w-[200px] text-xs border-input"
                         popoverClassName="w-[320px]"
