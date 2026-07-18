@@ -478,7 +478,7 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                         onChange={setSelectedModel}
                         placeholder="Modelo"
                         disabled={!isConnected || providerModels.length === 0}
-                        className="h-8 w-auto max-w-[132px] sm:max-w-[200px] max-sm:px-2 text-xs border-input"
+                        className="h-8 w-auto max-sm:max-w-[88px] sm:max-w-[200px] max-sm:px-2 text-xs border-input"
                         popoverClassName="w-[320px]"
                       />
                     </>
