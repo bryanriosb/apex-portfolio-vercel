@@ -23,6 +23,8 @@ export interface ComboboxOption {
   label: string
   description?: string
   icon?: React.ReactNode
+  /** Encabezado de grupo; las opciones con el mismo `group` se agrupan juntas. */
+  group?: string
 }
 
 interface ComboboxProps {
@@ -67,6 +69,22 @@ export function Combobox({
         opt.description?.toLowerCase().includes(searchLower)
     )
   }, [options, search])
+
+  // Agrupa preservando el orden de aparición; las opciones sin `group` van
+  // en un grupo sin encabezado al inicio.
+  const groupedOptions = useMemo(() => {
+    const groups = new Map<string, ComboboxOption[]>()
+    for (const option of filteredOptions) {
+      const key = option.group ?? ''
+      const bucket = groups.get(key)
+      if (bucket) {
+        bucket.push(option)
+      } else {
+        groups.set(key, [option])
+      }
+    }
+    return Array.from(groups.entries())
+  }, [filteredOptions])
 
   const handleSelect = (optionValue: string) => {
     onChange(optionValue === value ? null : optionValue)
@@ -122,33 +140,38 @@ export function Combobox({
             ) : (
               <>
                 <CommandEmpty>{emptyText}</CommandEmpty>
-                <CommandGroup>
-                  {filteredOptions.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.value}
-                  onSelect={() => handleSelect(option.value)}
-                >
-                  <Check
-                    className={cn(
-                      'mr-2 h-4 w-4',
-                      value === option.value ? 'opacity-100' : 'opacity-0'
-                    )}
-                  />
-                  <div className="flex flex-col min-w-0">
-                    <span className="truncate flex items-center gap-2">
-                      {option.icon}
-                      {option.label}
-                    </span>
-                    {option.description && (
-                      <span className="text-xs text-muted-foreground truncate">
-                        {option.description}
-                      </span>
-                    )}
-                  </div>
-                </CommandItem>
-              ))}
-                </CommandGroup>
+                {groupedOptions.map(([groupLabel, groupOptions]) => (
+                  <CommandGroup
+                    key={groupLabel || '__default__'}
+                    heading={groupLabel || undefined}
+                  >
+                    {groupOptions.map((option) => (
+                      <CommandItem
+                        key={option.value}
+                        value={option.value}
+                        onSelect={() => handleSelect(option.value)}
+                      >
+                        <Check
+                          className={cn(
+                            'mr-2 h-4 w-4',
+                            value === option.value ? 'opacity-100' : 'opacity-0'
+                          )}
+                        />
+                        <div className="flex flex-col min-w-0">
+                          <span className="truncate flex items-center gap-2">
+                            {option.icon}
+                            {option.label}
+                          </span>
+                          {option.description && (
+                            <span className="text-xs text-muted-foreground truncate">
+                              {option.description}
+                            </span>
+                          )}
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                ))}
               </>
             )}
           </CommandList>

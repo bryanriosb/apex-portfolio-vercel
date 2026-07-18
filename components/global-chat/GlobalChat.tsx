@@ -109,11 +109,15 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
     hasConfiguredProviders,
     allowedProviderValues,
     configureHref,
+    availabilityLoading: providersValidating,
   } = useAvailableLlmProviders()
 
   // Restringido y sin proveedores configurados → no se puede chatear: hay que
-  // definir un proveedor primero.
-  const providersUnavailable = isRestricted && !hasConfiguredProviders
+  // definir un proveedor primero. Solo se afirma cuando la validación de
+  // disponibilidad terminó; al guardarse una key, notifyLlmProvidersChanged()
+  // refresca el hook y esta bandera se apaga sola, habilitando el input.
+  const providersUnavailable =
+    !providersValidating && isRestricted && !hasConfiguredProviders
 
   // Providers soportados por el backend (nativos + OpenAI-compatible) que
   // existen en models.dev con al menos un modelo
@@ -407,7 +411,9 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
               <PromptInputBody>
                 <PromptInputTextarea
                   placeholder={
-                    providersUnavailable
+                    providersValidating
+                      ? 'Validando proveedores disponibles...'
+                      : providersUnavailable
                       ? 'Define un proveedor LLM para poder chatear...'
                       : isConnected
                       ? 'Pregúntale a APEX o da una instrucción...'
@@ -419,10 +425,10 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                     setInputValue(e.target.value)
                   }
                   value={inputValue}
-                  disabled={!isConnected || providersUnavailable}
+                  disabled={!isConnected || providersValidating || providersUnavailable}
                   className={cn(
                     'bg-background text-foreground !placeholder:text-muted-foreground min-h-[50px] pt-3',
-                    (!isConnected || providersUnavailable) && 'opacity-50 cursor-not-allowed',
+                    (!isConnected || providersValidating || providersUnavailable) && 'opacity-50 cursor-not-allowed',
                     '!rounded-none'
                   )}
                   onFocus={() => {
@@ -456,7 +462,11 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                       </PromptInputSelectItem>
                     </PromptInputSelectContent>
                   </PromptInputSelect>
-                  {isRestricted && !hasConfiguredProviders ? (
+                  {providersValidating ? (
+                    <div className="flex h-8 items-center px-2">
+                      <Spinner className="h-4 w-4" />
+                    </div>
+                  ) : providersUnavailable ? (
                     <NoLlmProvidersConfigured href={configureHref} compact />
                   ) : (
                     <>
@@ -512,6 +522,7 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                   <PromptInputSubmit
                     disabled={
                       !isConnected ||
+                      providersValidating ||
                       providersUnavailable ||
                       (!inputValue.trim() && !isStreaming)
                     }

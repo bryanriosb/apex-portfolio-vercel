@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { UseFormReturn } from 'react-hook-form'
 import { Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -14,15 +14,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
 import { ProviderLogo } from '@/components/agents/ProviderLogo'
 import {
   findLlmProviderOption,
@@ -51,6 +43,24 @@ export function LlmProviderFormFields({
     selectedProvider
   )
 
+  const providerComboboxOptions = useMemo<ComboboxOption[]>(
+    () => [
+      ...providerOptions.native.map((option) => ({
+        value: option.value,
+        label: option.label,
+        icon: <ProviderLogo provider={option.value} />,
+        group: 'Clientes nativos',
+      })),
+      ...providerOptions.compatible.map((option) => ({
+        value: option.value,
+        label: option.label,
+        icon: <ProviderLogo provider={option.value} />,
+        group: 'OpenAI compatible',
+      })),
+    ],
+    [providerOptions]
+  )
+
   return (
     <div className="space-y-5">
       <FormField
@@ -59,47 +69,24 @@ export function LlmProviderFormFields({
         render={({ field }) => (
           <FormItem>
             <FormLabel>Proveedor</FormLabel>
-            <Select
-              onValueChange={(value) => {
+            <Combobox
+              options={providerComboboxOptions}
+              value={field.value || null}
+              onChange={(value) => {
+                // Campo requerido: ignorar la deselección del combobox
+                if (!value) return
                 field.onChange(value)
                 const option = findLlmProviderOption(providerOptions, value)
                 form.setValue('base_url', option?.baseUrl || '', {
                   shouldValidate: form.formState.isSubmitted,
                 })
               }}
-              value={field.value}
+              placeholder="Selecciona un proveedor"
+              searchPlaceholder="Buscar proveedor..."
+              emptyText="No se encontraron proveedores"
               disabled={isSubmitting || isEditing}
-            >
-              <FormControl>
-                <SelectTrigger className="w-full rounded-none">
-                  <SelectValue placeholder="Selecciona un proveedor" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel>Clientes nativos</SelectLabel>
-                  {providerOptions.native.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <span className="flex items-center gap-2">
-                        <ProviderLogo provider={option.value} />
-                        {option.label}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-                <SelectGroup>
-                  <SelectLabel>OpenAI compatible</SelectLabel>
-                  {providerOptions.compatible.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <span className="flex items-center gap-2">
-                        <ProviderLogo provider={option.value} />
-                        {option.label}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+              className="w-full rounded-none"
+            />
             {isEditing ? (
               <FormDescription>
                 El proveedor no se puede cambiar; elimina y crea uno nuevo.
