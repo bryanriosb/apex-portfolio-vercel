@@ -61,6 +61,28 @@ export const ADMIN_ROUTE_ACCESS: Record<string, readonly UserRole[]> = {
 }
 
 /**
+ * Destino post-login por rol. Cada ruta debe existir en ADMIN_ROUTE_ACCESS
+ * con el rol correspondiente permitido; el middleware valida esa invariante
+ * con `isAdminRouteAllowed` antes de redirigir para evitar loops.
+ *
+ * Nota: `business_monitor` (EMPLOYEE) hoy no tiene ninguna ruta admin en el
+ * mapa, por lo que su home efectivo cae al landing público hasta que se le
+ * asigne un destino.
+ */
+export function roleHomePath(role: string | undefined): string {
+  switch (role) {
+    case USER_ROLES.COMPANY_ADMIN:
+      return '/admin/company-dashboard'
+    case USER_ROLES.CUSTOMER:
+      return '/admin/customer-dashboard'
+    case USER_ROLES.BUSINESS_ADMIN:
+    case USER_ROLES.PROFESSIONAL:
+    default:
+      return '/admin/dashboard'
+  }
+}
+
+/**
  * Resuelve si `role` puede acceder a `pathname` por coincidencia del
  * prefijo más específico del mapa. Sin coincidencia → denegado.
  */
