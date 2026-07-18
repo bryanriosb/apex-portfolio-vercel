@@ -34,6 +34,7 @@ import {
 import { groupPermissionsByEntity } from '@/components/access-control/format'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { USER_ROLES } from '@/const/roles'
+import { isPlatformReservedPermission } from '@/lib/models/access-control/access-control'
 import type { RbacPermission } from '@/lib/models/access-control/access-control'
 
 export default function PermissionsPage() {
@@ -66,9 +67,19 @@ export default function PermissionsPage() {
     loadPermissions()
   }, [loadPermissions])
 
+  // Los permisos reservados a plataforma solo se listan para company_admin:
+  // un tenant no puede otorgarlos y pertenecen a otro nivel de gestión.
+  const visiblePermissions = useMemo(
+    () =>
+      isCompanyAdmin
+        ? permissions
+        : permissions.filter((p) => !isPlatformReservedPermission(p.code)),
+    [permissions, isCompanyAdmin]
+  )
+
   const groups = useMemo(
-    () => groupPermissionsByEntity(permissions),
-    [permissions]
+    () => groupPermissionsByEntity(visiblePermissions),
+    [visiblePermissions]
   )
 
   const columnCount = isCompanyAdmin ? 4 : 3
@@ -181,7 +192,7 @@ export default function PermissionsPage() {
                     ))}
                   </TableRow>
                 ))
-              ) : permissions.length === 0 ? (
+              ) : visiblePermissions.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={columnCount}
