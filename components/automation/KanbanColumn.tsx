@@ -10,7 +10,7 @@ interface KanbanColumnProps {
 
 export function KanbanColumn({ title, count, icon, colorClass = "text-muted-foreground border-border/60", children }: KanbanColumnProps) {
   return (
-    <div className="flex flex-col flex-1 min-w-[120px] h-full bg-card border-r border-border/60 last:border-r-0 overflow-hidden">
+    <div className="flex flex-col flex-1 min-w-[120px] max-md:min-w-[76vw] max-md:snap-start h-full bg-card border-r border-border/60 last:border-r-0 overflow-hidden">
       <div className={`px-3 py-2 flex items-center justify-between border-b border-border/60 ${colorClass}`}>
         <div className="flex items-center gap-2">
           {icon}
