@@ -188,7 +188,7 @@ export function ChatHistory({
                   size="icon-xs"
                   onClick={(e) => handleDelete(session.session_id, e)}
                   disabled={deletingId === session.session_id}
-                  className="opacity-0 group-hover/item:opacity-100 text-muted-foreground hover:text-destructive"
+                  className="opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 max-md:opacity-100 text-muted-foreground hover:text-destructive"
                 >
                   <Trash2Icon className="size-3" />
                 </Button>
