@@ -437,7 +437,7 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                 />
               </PromptInputBody>
               <PromptInputFooter className="!bg-background/95 backdrop-blur border-t border-primary/10 py-2">
-                <PromptInputTools className="flex-1 overflow-x-auto scrollbar-none [&>*]:shrink-0">
+                <PromptInputTools className="flex-1 min-w-0 max-sm:flex-wrap sm:overflow-x-auto scrollbar-none [&>*]:shrink-0">
                   <PromptInputSelect
                     value={agentMode}
                     onValueChange={(val) => setAgentMode(val as 'simple' | 'workflow')}
@@ -445,7 +445,7 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                   >
                     <PromptInputSelectTrigger
                       className={cn(
-                        'h-8 text-xs whitespace-nowrap',
+                        'h-8 text-xs whitespace-nowrap max-sm:px-2 max-sm:gap-1',
                         !isConnected && 'opacity-50 cursor-not-allowed'
                       )}
                     >
@@ -453,10 +453,12 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                     </PromptInputSelectTrigger>
                     <PromptInputSelectContent>
                       <PromptInputSelectItem value="simple">
-                        Agente Simple
+                        <span className="sm:hidden">Simple</span>
+                        <span className="hidden sm:inline">Agente Simple</span>
                       </PromptInputSelectItem>
                       <PromptInputSelectItem value="workflow">
-                        Workflow Multiagente
+                        <span className="sm:hidden">Workflow</span>
+                        <span className="hidden sm:inline">Workflow Multiagente</span>
                       </PromptInputSelectItem>
                     </PromptInputSelectContent>
                   </PromptInputSelect>
@@ -475,7 +477,7 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                         placeholder="Proveedor"
                         searchPlaceholder="Buscar proveedor..."
                         disabled={!isConnected || availableProviders.length === 0}
-                        className="h-8 w-auto min-w-[130px] text-xs border-input"
+                        className="h-8 w-auto min-w-[110px] max-w-[150px] sm:min-w-[130px] sm:max-w-none text-xs border-input"
                         popoverClassName="w-[240px]"
                       />
                       <Combobox
@@ -485,7 +487,7 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                         placeholder="Modelo"
                         searchPlaceholder="Buscar modelo..."
                         disabled={!isConnected || providerModels.length === 0}
-                        className="h-8 w-auto max-w-[200px] text-xs border-input"
+                        className="h-8 w-auto max-w-[150px] sm:max-w-[200px] text-xs border-input"
                         popoverClassName="w-[320px]"
                       />
                     </>
@@ -508,7 +510,7 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                     />
                   </div>
                 </PromptInputTools>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 max-sm:self-end">
                   <Button
                     variant={isPanelOpen ? "default" : "outline"}
                     size="icon"
