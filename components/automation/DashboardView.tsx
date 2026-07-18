@@ -137,8 +137,8 @@ export function DashboardView({ metrics, onJobClick, lastWsEvent }: DashboardVie
   }
 
   return (
-    <div className="p-4 h-full overflow-y-auto min-w-0">
-      <h1 className="text-xl font-bold mb-4 ml-4">{t('ui.tableroDeAutomatizacion')}</h1>
+    <div className="p-2 md:p-4 h-full overflow-y-auto min-w-0">
+      <h1 className="text-xl font-bold mb-3 ml-1 md:mb-4 md:ml-4">{t('ui.tableroDeAutomatizacion')}</h1>
       <div className="flex flex-col gap-2 min-w-0 h-[calc(100vh-11.5rem)]">
         {activeModules.map(m => (
           <DashboardModuleBlock

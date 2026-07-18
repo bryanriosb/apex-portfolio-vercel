@@ -283,16 +283,16 @@ export function AutomationTicker({ isConnected, reconnectAttempt, reconnectCount
                   backfaceVisibility: 'hidden',
                 }}
               >
-                <div className={cn('flex items-center justify-center gap-2 w-full pr-6', isCurrent ? 'text-black select-text' : 'pointer-events-none select-none')}>
-                  <div className="flex gap-4 flex-1 items-center justify-center truncate">
+                <div className={cn('flex items-center justify-center gap-2 w-full min-w-0 pr-0 sm:pr-6', isCurrent ? 'text-black select-text' : 'pointer-events-none select-none')}>
+                  <div className="flex gap-2 sm:gap-4 flex-1 min-w-0 items-center justify-start sm:justify-center">
                     <ConnectionIndicator
                       isConnected={isConnected}
                       reconnectAttempt={reconnectAttempt}
                     />
 
-                    <Badge>{event.module}</Badge>
+                    <Badge className="shrink-0">{event.module}</Badge>
 
-                    <div className="flex gap-3 items-center">
+                    <div className="flex gap-2 sm:gap-3 items-center min-w-0">
                       <span>{event.icon}</span>
                       {event.jobName && (
                         <div className="font-bold mr-1.5 truncate max-w-[160px] sm:max-w-[200px] text-foreground">
@@ -302,11 +302,11 @@ export function AutomationTicker({ isConnected, reconnectAttempt, reconnectCount
                     </div>
 
 
-                    <Badge variant="secondary" className="truncate text-muted-foreground">
+                    <Badge variant="secondary" className="truncate min-w-0 text-muted-foreground hidden sm:inline-flex">
                       {event.label}
                     </Badge>
                     {event.timeStr && (
-                      <span className="text-xs shrink-0 font-mono">
+                      <span className="text-xs shrink-0 font-mono hidden md:inline">
                         {event.timeStr}
                       </span>
                     )}
@@ -327,7 +327,7 @@ function ConnectionIndicator({
   reconnectAttempt,
 }: { isConnected: boolean, reconnectAttempt: number }) {
   return (
-    <div className="relative mr-2">
+    <div className="relative mr-1 sm:mr-2 shrink-0">
       <div className="flex items-center justify-center pointer-events-none">
         {reconnectAttempt > 0 ? (
           <span className="relative flex items-center justify-center h-2 w-2">

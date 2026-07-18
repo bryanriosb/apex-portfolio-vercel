@@ -29,10 +29,10 @@ export function KanbanBlock({ moduleName, jobs, onJobClick }: KanbanBlockProps) 
   };
 
   return (
-    <div className="flex w-full mb-3 border border-border/40 rounded-sm overflow-hidden h-full bg-slate-50 dark:bg-secondary">
+    <div className="flex max-md:flex-col w-full mb-3 border border-border/40 rounded-sm overflow-hidden h-full bg-slate-50 dark:bg-secondary">
       {/* Columna 1: Metricas del Modulo */}
-      <div className="w-[150px] bg-slate-200/50 dark:bg-secondary p-3 flex flex-col flex-shrink-0 border-r border-border/40">
-        <div className="flex items-center gap-1.5 mb-2">
+      <div className="w-[150px] bg-slate-200/50 dark:bg-secondary p-3 flex flex-col flex-shrink-0 border-r border-border/40 max-md:w-full max-md:flex-row max-md:items-center max-md:gap-3 max-md:border-r-0 max-md:border-b max-md:p-2 max-md:overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-1.5 mb-2 max-md:mb-0 max-md:shrink-0">
           <Activity className="w-3.5 h-3.5 text-emerald-500" />
           <h2 className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">
             {moduleName.toLowerCase() === "collection" ? "Cartera" : moduleName}
@@ -40,7 +40,7 @@ export function KanbanBlock({ moduleName, jobs, onJobClick }: KanbanBlockProps) 
         </div>
 
         {
-          actionRequiredCount > 0 && <div className="bg-white dark:bg-secondary border border-border/40 p-2 rounded-sm mb-2 flex items-center gap-2 shadow-sm">
+          actionRequiredCount > 0 && <div className="bg-white dark:bg-secondary border border-border/40 p-2 rounded-sm mb-2 flex items-center gap-2 shadow-sm max-md:mb-0 max-md:shrink-0">
             <div className="flex-shrink-0">
               <AlertCircle className="w-4 h-4 text-amber-500" />
             </div>
@@ -53,7 +53,7 @@ export function KanbanBlock({ moduleName, jobs, onJobClick }: KanbanBlockProps) 
 
         }
 
-        <div className="bg-white dark:bg-secondary border border-border/40 p-2 rounded-sm flex items-center gap-2 mb-4 shadow-sm">
+        <div className="bg-white dark:bg-secondary border border-border/40 p-2 rounded-sm flex items-center gap-2 mb-4 shadow-sm max-md:mb-0 max-md:shrink-0">
           <div className="flex-shrink-0">
             <CheckCircle2 className="w-4 h-4 text-primary" />
           </div>
@@ -63,7 +63,7 @@ export function KanbanBlock({ moduleName, jobs, onJobClick }: KanbanBlockProps) 
           </div>
         </div>
 
-          <div className="flex flex-col gap-1 mt-auto">
+          <div className="flex flex-col gap-1 mt-auto max-md:mt-0 max-md:ml-auto max-md:shrink-0">
             <div className="flex flex-col gap-1">
               <span className="text-[10px] text-slate-500 dark:text-slate-400">Completitud</span>
               <span className="text-xs font-bold text-emerald-500">
@@ -74,8 +74,8 @@ export function KanbanBlock({ moduleName, jobs, onJobClick }: KanbanBlockProps) 
       </div>
 
       {/* Columna 2: Kanban Columns */}
-      <div className="flex-1 bg-card/90 overflow-hidden flex flex-col min-w-0">
-        <div className="flex h-full w-full min-w-0">
+      <div className="flex-1 bg-card/90 overflow-hidden flex flex-col min-w-0 min-h-0">
+        <div className="flex h-full w-full min-w-0 max-md:overflow-x-auto max-md:snap-x max-md:snap-mandatory scrollbar-none">
           <KanbanColumn
             title={t('ui.pendiente')}
             count={pendingJobs.length}
