@@ -10,6 +10,7 @@ import {
   AccessDeniedError,
 } from '@/lib/auth/tenant-guard'
 import { assertCanGrantPermissions } from '@/lib/auth/rbac'
+import { isPlatformReservedPermission } from '@/lib/models/access-control/access-control'
 
 import type {
   RbacRole,
@@ -204,6 +205,123 @@ export async function deleteRoleAction(
   } catch (error: any) {
     console.error('Error deleting role:', error)
     return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Duplica un rol (y sus permisos) dentro del alcance del solicitante.
+ * Es la vía para personalizar roles del sistema o globales sin tocarlos:
+ * - business_admin: la copia se crea SIEMPRE en su cuenta y los permisos
+ *   reservados a plataforma se filtran (AC-6, el servidor decide).
+ * - company_admin: la copia va a la cuenta indicada o queda global (NULL).
+ */
+export async function duplicateRoleAction(
+  roleId: string,
+  params?: { businessAccountId?: string | null }
+): Promise<{ data: RbacRole | null; error: string | null }> {
+  try {
+    const user = await requireRole(
+      USER_ROLES.COMPANY_ADMIN,
+      USER_ROLES.BUSINESS_ADMIN
+    )
+
+    const client = await getSupabaseAdminClient()
+    const { data: source } = await client
+      .from('rbac_roles')
+      .select('*')
+      .eq('id', roleId)
+      .maybeSingle()
+
+    if (!source) {
+      throw new AccessDeniedError('Rol no encontrado', 404)
+    }
+
+    // Alcance de la copia
+    let targetAccountId: string | null
+    if (user.role === USER_ROLES.COMPANY_ADMIN) {
+      targetAccountId =
+        params?.businessAccountId !== undefined
+          ? params.businessAccountId
+          : user.business_account_id ?? null
+    } else {
+      // El origen debe ser visible para el tenant: global o de su cuenta
+      if (source.business_account_id) {
+        await requireAccountAccess(source.business_account_id)
+      }
+      const { businessAccountId } = await requireAccountAccess()
+      targetAccountId = businessAccountId
+    }
+
+    // Permisos del rol fuente, filtrando los no otorgables por la sesión
+    const { data: sourcePerms, error: permsError } = await client
+      .from('rbac_role_permissions')
+      .select('permission:rbac_permissions(id, code)')
+      .eq('role_id', roleId)
+    if (permsError) throw permsError
+
+    let permissions = (sourcePerms ?? [])
+      .map((row: any) => row.permission)
+      .filter(Boolean) as Array<{ id: string; code: string }>
+
+    if (user.role !== USER_ROLES.COMPANY_ADMIN) {
+      permissions = permissions.filter(
+        (p) => !isPlatformReservedPermission(p.code)
+      )
+      if (targetAccountId && permissions.length > 0) {
+        await assertCanGrantPermissions(
+          user,
+          targetAccountId,
+          permissions.map((p) => p.code)
+        )
+      }
+    }
+
+    // Nombre único con reintentos: «name (copia)», «name (copia 2)», ...
+    let created: RbacRole | null = null
+    for (let attempt = 1; attempt <= 5 && !created; attempt++) {
+      const suffix = attempt === 1 ? ' (copia)' : ` (copia ${attempt})`
+      const { data, error } = await client
+        .from('rbac_roles')
+        .insert({
+          name: `${source.name}${suffix}`.slice(0, 120),
+          description: source.description,
+          business_account_id: targetAccountId,
+          is_system: false,
+        })
+        .select()
+        .single()
+
+      if (error) {
+        if (error.code === '23505') continue
+        throw error
+      }
+      created = data
+    }
+
+    if (!created) {
+      return {
+        data: null,
+        error: 'Ya existen demasiadas copias de este rol; renombra alguna',
+      }
+    }
+
+    if (permissions.length > 0) {
+      const { error: insertError } = await client
+        .from('rbac_role_permissions')
+        .insert(
+          permissions.map((p) => ({
+            role_id: created!.id,
+            permission_id: p.id,
+            granted_by: user.id,
+          }))
+        )
+      if (insertError) throw insertError
+    }
+
+    return { data: created, error: null }
+  } catch (error: any) {
+    console.error('Error duplicating role:', error)
+    return { data: null, error: error.message }
   }
 }
 

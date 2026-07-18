@@ -16,7 +16,8 @@ import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, KeyRound } from 'lucide-react'
+import { Loader2, KeyRound, Search, Copy, Lock } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 import { fetchPermissionsAction } from '@/lib/actions/access-control/permissions'
 import {
   getRolePermissionsAction,
@@ -39,6 +40,8 @@ interface RolePermissionsModalProps {
   readOnly?: boolean
   /** Se invoca tras guardar para refrescar el listado de roles. */
   onSaved?: () => void
+  /** CTA "Duplicar" cuando el rol es de solo lectura para la sesión. */
+  onDuplicate?: (role: RbacRole) => void
 }
 
 export function RolePermissionsModal({
@@ -47,11 +50,13 @@ export function RolePermissionsModal({
   role,
   readOnly = false,
   onSaved,
+  onDuplicate,
 }: RolePermissionsModalProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [catalog, setCatalog] = useState<RbacPermission[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [search, setSearch] = useState('')
 
   // business_admin es super-usuario de su cuenta, pero los permisos de
   // plataforma no son otorgables por un tenant (el servidor lo revalida).
@@ -85,11 +90,48 @@ export function RolePermissionsModal({
 
   useEffect(() => {
     if (open && role) {
+      setSearch('')
       loadData()
     }
   }, [open, role, loadData])
 
-  const groups = useMemo(() => groupPermissionsByEntity(catalog), [catalog])
+  const filteredCatalog = useMemo(() => {
+    if (!search.trim()) return catalog
+    const term = search.trim().toLowerCase()
+    return catalog.filter(
+      (p) =>
+        p.code.toLowerCase().includes(term) ||
+        p.description?.toLowerCase().includes(term)
+    )
+  }, [catalog, search])
+
+  const groups = useMemo(
+    () => groupPermissionsByEntity(filteredCatalog),
+    [filteredCatalog]
+  )
+
+  /** Permisos que ESTA sesión puede otorgar (excluye reservados de plataforma). */
+  const grantableCatalog = useMemo(
+    () => catalog.filter((p) => !isReservedForSession(p)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [catalog, canGrantPlatform]
+  )
+
+  const selectAllGrantable = () => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      for (const p of grantableCatalog) next.add(p.id)
+      return next
+    })
+  }
+
+  const clearAllGrantable = () => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      for (const p of grantableCatalog) next.delete(p.id)
+      return next
+    })
+  }
 
   const togglePermission = (permissionId: string, checked: boolean) => {
     setSelected((prev) => {
@@ -164,13 +206,78 @@ export function RolePermissionsModal({
           </p>
         ) : (
           <>
+            {readOnly && role && (
+              <div className="flex items-center gap-3 border border-dashed border-muted-foreground/40 bg-muted/30 p-3 text-xs text-muted-foreground rounded-none">
+                <Lock className="h-4 w-4 shrink-0" />
+                <span className="flex-1">
+                  {role.is_system
+                    ? 'Rol del sistema: sus permisos son fijos.'
+                    : 'Rol global de la plataforma: no es editable por tu cuenta.'}{' '}
+                  {onDuplicate && 'Duplícalo para personalizarlo.'}
+                </span>
+                {onDuplicate && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 gap-1.5 rounded-none"
+                    onClick={() => onDuplicate(role)}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Duplicar
+                  </Button>
+                )}
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar permiso por código o descripción..."
+                  className="h-8 pl-8 text-sm rounded-none"
+                />
+              </div>
+              {!readOnly && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 text-xs rounded-none"
+                    onClick={selectAllGrantable}
+                  >
+                    Todos
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 text-xs rounded-none"
+                    onClick={clearAllGrantable}
+                  >
+                    Ninguno
+                  </Button>
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>
                 {selected.size} de {catalog.length} permiso(s) seleccionado(s)
               </span>
+              {search.trim() && (
+                <span className="text-xs">
+                  {filteredCatalog.length} coincidencia(s)
+                </span>
+              )}
             </div>
             <ScrollArea className="max-h-[50vh] pr-4">
               <div className="space-y-4">
+                {groups.length === 0 && (
+                  <p className="py-6 text-center text-sm text-muted-foreground">
+                    Sin coincidencias para "{search.trim()}"
+                  </p>
+                )}
                 {groups.map(({ entity, permissions }, index) => (
                   <div key={entity} className="space-y-2">
                     {index > 0 && <Separator />}

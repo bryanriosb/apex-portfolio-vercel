@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { KeyRound, Pencil, Plus, ShieldCheck, Trash2 } from 'lucide-react'
+import { Copy, KeyRound, Pencil, Plus, Search, ShieldCheck, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -26,6 +27,7 @@ import { RolePermissionsModal } from '@/components/access-control/RolePermission
 import {
   createRoleAction,
   deleteRoleAction,
+  duplicateRoleAction,
   fetchRolesAction,
   updateRoleAction,
 } from '@/lib/actions/access-control/roles'
@@ -54,6 +56,8 @@ export default function RolesPage() {
   const [selectedRole, setSelectedRole] = useState<RbacRole | null>(null)
   const [roleToDelete, setRoleToDelete] = useState<RbacRole | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [search, setSearch] = useState('')
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
 
   const loadRoles = useCallback(async () => {
     setIsLoading(true)
@@ -82,8 +86,8 @@ export default function RolesPage() {
 
   const readOnlyReason = (role: RbacRole) =>
     role.is_system
-      ? 'Rol del sistema, solo lectura'
-      : 'Rol global, solo administrable por la plataforma'
+      ? 'Rol del sistema, solo lectura — duplícalo para personalizarlo'
+      : 'Rol global de la plataforma — duplícalo en tu cuenta para personalizarlo'
 
   const scopeBadge = (role: RbacRole) => {
     if (role.is_system) {
@@ -112,6 +116,30 @@ export default function RolesPage() {
 
   const handleManagePermissions = (role: RbacRole) => {
     setSelectedRole(role)
+    setPermissionsModalOpen(true)
+  }
+
+  /**
+   * Duplica el rol en el alcance de la sesión y abre de inmediato el modal
+   * de permisos de la copia: el flujo natural es duplicar → ajustar → guardar.
+   */
+  const handleDuplicate = async (role: RbacRole) => {
+    setDuplicatingId(role.id)
+    const result = await duplicateRoleAction(
+      role.id,
+      isCompanyAdmin && accountId ? { businessAccountId: accountId } : undefined
+    )
+    setDuplicatingId(null)
+
+    if (result.error || !result.data) {
+      toast.error(result.error || 'No se pudo duplicar el rol')
+      return
+    }
+
+    toast.success(`Rol "${result.data.name}" creado — ajusta sus permisos`)
+    await loadRoles()
+    setPermissionsModalOpen(false)
+    setSelectedRole(result.data)
     setPermissionsModalOpen(true)
   }
 
@@ -178,6 +206,16 @@ export default function RolesPage() {
     await loadRoles()
   }
 
+  const visibleRoles = useMemo(() => {
+    if (!search.trim()) return roles
+    const term = search.trim().toLowerCase()
+    return roles.filter(
+      (r) =>
+        r.name.toLowerCase().includes(term) ||
+        r.description?.toLowerCase().includes(term)
+    )
+  }, [roles, search])
+
   const permissionsReadOnly = useMemo(
     () => (selectedRole ? !canManageRole(selectedRole) : true),
     [selectedRole, canManageRole]
@@ -199,6 +237,16 @@ export default function RolesPage() {
             <Plus className="mr-2 h-4 w-4" />
             Nuevo rol
           </Button>
+        </div>
+
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar rol..."
+            className="h-9 pl-8 rounded-none"
+          />
         </div>
 
         <div className="rounded-md border">
@@ -226,17 +274,19 @@ export default function RolesPage() {
                     ))}
                   </TableRow>
                 ))
-              ) : roles.length === 0 ? (
+              ) : visibleRoles.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={6}
                     className="h-24 text-center text-muted-foreground"
                   >
-                    No hay roles registrados
+                    {search.trim()
+                      ? `Sin coincidencias para "${search.trim()}"`
+                      : 'No hay roles registrados'}
                   </TableCell>
                 </TableRow>
               ) : (
-                roles.map((role) => {
+                visibleRoles.map((role) => {
                   const manageable = canManageRole(role)
                   return (
                     <TableRow key={role.id}>
@@ -246,9 +296,19 @@ export default function RolesPage() {
                       </TableCell>
                       <TableCell>{scopeBadge(role)}</TableCell>
                       <TableCell className="text-center">
-                        <Badge variant="outline">
-                          {role.permissions_count ?? 0}
-                        </Badge>
+                        <button
+                          type="button"
+                          onClick={() => handleManagePermissions(role)}
+                          className="cursor-pointer"
+                          title={manageable ? 'Gestionar permisos' : 'Ver permisos'}
+                        >
+                          <Badge
+                            variant="outline"
+                            className="hover:bg-muted transition-colors"
+                          >
+                            {role.permissions_count ?? 0}
+                          </Badge>
+                        </button>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-muted-foreground">
                         {formatDate(role.created_at)}
@@ -273,6 +333,26 @@ export default function RolesPage() {
                               {manageable
                                 ? 'Gestionar permisos'
                                 : 'Ver permisos'}
+                            </TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                disabled={duplicatingId === role.id}
+                                onClick={() => handleDuplicate(role)}
+                              >
+                                <Copy className="h-4 w-4" />
+                                <span className="sr-only">Duplicar</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {isCompanyAdmin
+                                ? 'Duplicar rol'
+                                : 'Duplicar en mi cuenta para personalizarlo'}
                             </TooltipContent>
                           </Tooltip>
 
@@ -339,6 +419,7 @@ export default function RolesPage() {
           role={selectedRole}
           readOnly={permissionsReadOnly}
           onSaved={loadRoles}
+          onDuplicate={handleDuplicate}
         />
 
         <ConfirmDeleteDialog
