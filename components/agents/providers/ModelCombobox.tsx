@@ -19,6 +19,8 @@ interface ModelComboboxProps {
   isLoading?: boolean
   className?: string
   popoverClassName?: string
+  /** Clase para la etiqueta del trigger (ver Combobox). */
+  triggerLabelClassName?: string
 }
 
 /**
@@ -35,6 +37,7 @@ export function ModelCombobox({
   isLoading = false,
   className,
   popoverClassName,
+  triggerLabelClassName,
 }: ModelComboboxProps) {
   const comboboxOptions = useMemo<ComboboxOption[]>(
     () =>
@@ -58,6 +61,7 @@ export function ModelCombobox({
       isLoading={isLoading}
       className={className}
       popoverClassName={popoverClassName}
+      triggerLabelClassName={triggerLabelClassName}
     />
   )
 }

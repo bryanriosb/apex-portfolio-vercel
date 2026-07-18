@@ -1,7 +1,7 @@
 'use client'
 
 import { ChangeEvent, Fragment, useCallback, useEffect, useMemo, useState, useRef } from 'react'
-import { CopyIcon, RefreshCcwIcon, HistoryIcon, ChevronRightIcon, BotIcon, BrainCog, PanelRightOpen, BrainCircuit, RefreshCw, AlertTriangleIcon } from 'lucide-react'
+import { CopyIcon, RefreshCcwIcon, HistoryIcon, ChevronRightIcon, BotIcon, WorkflowIcon, BrainCog, PanelRightOpen, BrainCircuit, RefreshCw, AlertTriangleIcon } from 'lucide-react'
 import type { ChatStatus } from 'ai'
 
 import { useAgentChat } from '@/lib/services/agent'
@@ -416,7 +416,7 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                 />
               </PromptInputBody>
               <PromptInputFooter className="!bg-background/95 backdrop-blur border-t border-primary/10 py-2">
-                <PromptInputTools className="flex-1 min-w-0 max-sm:flex-wrap sm:overflow-x-auto scrollbar-none [&>*]:shrink-0">
+                <PromptInputTools className="flex-1 min-w-0 overflow-x-auto scrollbar-none [&>*]:shrink-0">
                   <PromptInputSelect
                     value={agentMode}
                     onValueChange={(val) => setAgentMode(val as 'simple' | 'workflow')}
@@ -424,20 +424,33 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                   >
                     <PromptInputSelectTrigger
                       className={cn(
-                        'h-8 text-xs whitespace-nowrap max-sm:px-2 max-sm:gap-1',
+                        'h-8 text-xs whitespace-nowrap max-sm:px-1.5 max-sm:gap-1',
                         !isConnected && 'opacity-50 cursor-not-allowed'
                       )}
                     >
-                      <PromptInputSelectValue />
+                      <PromptInputSelectValue>
+                        {isWorkflow ? (
+                          <WorkflowIcon className="size-4 sm:hidden" />
+                        ) : (
+                          <BotIcon className="size-4 sm:hidden" />
+                        )}
+                        <span className="hidden sm:inline">
+                          {isWorkflow ? 'Workflow Multiagente' : 'Agente Simple'}
+                        </span>
+                      </PromptInputSelectValue>
                     </PromptInputSelectTrigger>
                     <PromptInputSelectContent>
                       <PromptInputSelectItem value="simple">
-                        <span className="sm:hidden">Simple</span>
-                        <span className="hidden sm:inline">Agente Simple</span>
+                        <span className="flex items-center gap-2">
+                          <BotIcon className="size-4" />
+                          Agente Simple
+                        </span>
                       </PromptInputSelectItem>
                       <PromptInputSelectItem value="workflow">
-                        <span className="sm:hidden">Workflow</span>
-                        <span className="hidden sm:inline">Workflow Multiagente</span>
+                        <span className="flex items-center gap-2">
+                          <WorkflowIcon className="size-4" />
+                          Workflow Multiagente
+                        </span>
                       </PromptInputSelectItem>
                     </PromptInputSelectContent>
                   </PromptInputSelect>
@@ -455,7 +468,8 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                         onChange={setSelectedProvider}
                         placeholder="Proveedor"
                         disabled={!isConnected || availableProviders.length === 0}
-                        className="h-8 w-auto min-w-[110px] max-w-[150px] sm:min-w-[130px] sm:max-w-none text-xs border-input"
+                        className="h-8 w-auto max-sm:px-2 sm:min-w-[130px] text-xs border-input"
+                        triggerLabelClassName="max-sm:hidden"
                         popoverClassName="w-[240px]"
                       />
                       <ModelCombobox
@@ -464,7 +478,7 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                         onChange={setSelectedModel}
                         placeholder="Modelo"
                         disabled={!isConnected || providerModels.length === 0}
-                        className="h-8 w-auto max-w-[150px] sm:max-w-[200px] text-xs border-input"
+                        className="h-8 w-auto max-w-[132px] sm:max-w-[200px] max-sm:px-2 text-xs border-input"
                         popoverClassName="w-[320px]"
                       />
                     </>
@@ -487,7 +501,7 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                     />
                   </div>
                 </PromptInputTools>
-                <div className="flex items-center gap-2 shrink-0 max-sm:self-end">
+                <div className="flex items-center gap-2 shrink-0">
                   <Button
                     variant={isPanelOpen ? "default" : "outline"}
                     size="icon"

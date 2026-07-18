@@ -37,6 +37,8 @@ interface ComboboxProps {
   disabled?: boolean
   className?: string
   popoverClassName?: string
+  /** Clase para la etiqueta del trigger (p. ej. ocultarla en móvil y dejar solo el icono). */
+  triggerLabelClassName?: string
   isLoading?: boolean
 }
 
@@ -50,6 +52,7 @@ export function Combobox({
   disabled = false,
   className,
   popoverClassName,
+  triggerLabelClassName,
   isLoading = false,
 }: ComboboxProps) {
   const [open, setOpen] = useState(false)
@@ -109,7 +112,9 @@ export function Combobox({
         >
           <span className="truncate flex-1 text-left flex items-center gap-2">
             {selectedOption?.icon}
-            {selectedOption ? selectedOption.label : placeholder}
+            <span className={cn('truncate', triggerLabelClassName)}>
+              {selectedOption ? selectedOption.label : placeholder}
+            </span>
           </span>
           {isLoading ? (
             <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin" />
