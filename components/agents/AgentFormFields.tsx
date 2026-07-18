@@ -28,6 +28,7 @@ import {
 import { useAvailableLlmProviders } from '@/hooks/use-available-llm-providers'
 import { ProviderLogo } from '@/components/agents/ProviderLogo'
 import { NoLlmProvidersConfigured } from '@/components/agents/providers/NoLlmProvidersConfigured'
+import { Spinner } from '@/components/ui/spinner'
 import type { AgentFormValues } from '@/lib/models/agents/agent'
 
 const MDEditor = dynamic(() => import('@uiw/react-md-editor'), {
@@ -73,6 +74,7 @@ export function AgentFormFields({ form, isSubmitting }: AgentFormFieldsProps) {
   const selectedProvider = form.watch('model_provider')
   const {
     isLoading: modelsLoading,
+    availabilityLoading,
     getModelsForProvider,
     isRestricted,
     configuredOptions,
@@ -149,7 +151,16 @@ export function AgentFormFields({ form, isSubmitting }: AgentFormFieldsProps) {
         )}
       />
 
-      {isRestricted && !hasConfiguredProviders ? (
+      {availabilityLoading ? (
+        // Validando la disponibilidad de proveedores: no afirmar todavía que
+        // falta configurar uno.
+        <div className="flex items-center gap-3 border border-dashed border-muted-foreground/40 bg-muted/30 p-4 text-sm text-muted-foreground rounded-none">
+          <Spinner className="h-4 w-4 shrink-0" />
+          Validando proveedores disponibles...
+        </div>
+      ) : isRestricted && !hasConfiguredProviders ? (
+        // Confirmado: la cuenta restringe proveedores de plataforma y no
+        // tiene ninguno propio configurado.
         <NoLlmProvidersConfigured href={configureHref} />
       ) : (
       <div className="grid gap-4 md:grid-cols-2">

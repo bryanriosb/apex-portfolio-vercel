@@ -50,6 +50,13 @@ export function useAvailableLlmProviders() {
 
   const isRestricted = blockApexProviders
 
+  // Cargando la validación de disponibilidad (política + proveedores
+  // configurados). Distinto del catálogo de modelos: los consumidores deben
+  // mostrar un estado de "validando" y solo declarar que NO hay proveedores
+  // cuando esta bandera sea false.
+  const availabilityLoading =
+    policyLoading || (isRestricted && configuredLoading)
+
   const labelOptions = useMemo(
     () => buildLlmProviderOptions(allModels),
     [allModels]
@@ -87,7 +94,8 @@ export function useAvailableLlmProviders() {
 
   return {
     isRestricted,
-    isLoading: modelsLoading || policyLoading || (isRestricted && configuredLoading),
+    isLoading: modelsLoading || availabilityLoading,
+    availabilityLoading,
     configuredOptions,
     hasConfiguredProviders: configuredOptions.length > 0,
     allowedProviderValues,

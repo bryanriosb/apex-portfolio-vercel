@@ -30,6 +30,7 @@ import {
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import { useModels } from '@/hooks/use-models'
 import { LlmProvidersService } from '@/lib/services/agents/llm-providers-service'
+import { notifyLlmProvidersChanged } from '@/hooks/use-configured-llm-providers'
 import { getLlmProvidersColumns } from '@/components/agents/providers/LlmProvidersColumns'
 import { LlmProviderForm } from '@/components/agents/providers/LlmProviderForm'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
@@ -104,6 +105,8 @@ export default function LlmProvidersPage() {
           `Proveedor ${provider.is_active ? 'desactivado' : 'activado'} exitosamente`
         )
         loadData()
+        // Señal global: GlobalChat y selectores refrescan disponibilidad
+        notifyLlmProvidersChanged()
       } catch (err) {
         toast.error('No se pudo cambiar el estado del proveedor')
       }
@@ -125,6 +128,7 @@ export default function LlmProvidersPage() {
       setDeleteDialogOpen(false)
       setProviderToDelete(null)
       loadData()
+      notifyLlmProvidersChanged()
     } catch (err) {
       toast.error('Ocurrió un error al eliminar el proveedor')
     } finally {
@@ -149,6 +153,9 @@ export default function LlmProvidersPage() {
         setFormOpen(false)
         setEditingProvider(null)
         loadData()
+        // Señal global: habilita el PromptInput del GlobalChat y actualiza
+        // los selectores de proveedor/modelo sin recargar la página.
+        notifyLlmProvidersChanged()
       } catch (err) {
         toast.error(
           err instanceof Error
