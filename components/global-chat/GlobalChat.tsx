@@ -354,15 +354,13 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
 
   if (userLoading || businessLoading) {
     return (
-      <div className="flex w-full h-full overflow-hidden">
-        <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden relative">
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            {children}
-          </div>
-          <div className="shrink-0 border-t border-primary/20 py-2 px-4 bg-background w-full z-40 transition-all duration-300 opacity-50 pointer-events-none">
-            <div className="max-w-4xl mx-auto flex items-end gap-2 relative">
-              <div className="w-full h-[50px] bg-muted animate-pulse rounded-xl" />
-            </div>
+      <div className="grid w-full h-full overflow-hidden grid-rows-[minmax(0,1fr)_auto] grid-cols-[minmax(0,1fr)_auto]">
+        <div className="col-start-1 row-start-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
+          {children}
+        </div>
+        <div className="col-start-1 row-start-2 border-t border-primary/20 pt-2 px-2 sm:px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-background w-full z-40 transition-all duration-300 opacity-50 pointer-events-none">
+          <div className="max-w-4xl mx-auto flex items-end gap-2 relative">
+            <div className="w-full h-[50px] bg-muted animate-pulse rounded-xl" />
           </div>
         </div>
       </div>
@@ -370,16 +368,16 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
   }
 
   return (
-    <div className="flex w-full h-full overflow-hidden">
+    <div className="grid w-full h-full overflow-hidden grid-rows-[minmax(0,1fr)_auto] grid-cols-[minmax(0,1fr)_auto]">
       {/* Main Area */}
-      <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden relative">
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          {children}
-        </div>
+      <div className="col-start-1 row-start-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
+        {children}
+      </div>
 
-        {/* Persistent Footer Input */}
-        <div className="shrink-0 border-t border-primary/20 py-2 px-4 bg-background w-full z-40 transition-all duration-300">
-          <div className="max-w-4xl mx-auto flex items-end gap-2 relative">
+      {/* Persistent Footer Input: fila propia de la retícula, siempre visible y
+          usable incluso cuando el panel cubre el contenido en móvil */}
+      <div className="col-start-1 row-start-2 border-t border-primary/20 pt-2 px-2 sm:px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-background w-full z-40 transition-all duration-300">
+        <div className="max-w-4xl mx-auto flex items-end gap-2 relative">
             {/* Main Input Area */}
             <PromptInput onSubmit={handleSubmit} className="w-full shadow-lg rounded-xl overflow-hidden border relative">
               <div className="absolute top-3 right-3 z-10 flex items-center justify-center gap-2 pointer-events-auto">
@@ -439,7 +437,7 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                 />
               </PromptInputBody>
               <PromptInputFooter className="!bg-background/95 backdrop-blur border-t border-primary/10 py-2">
-                <PromptInputTools>
+                <PromptInputTools className="flex-1 overflow-x-auto scrollbar-none [&>*]:shrink-0">
                   <PromptInputSelect
                     value={agentMode}
                     onValueChange={(val) => setAgentMode(val as 'simple' | 'workflow')}
@@ -447,7 +445,7 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                   >
                     <PromptInputSelectTrigger
                       className={cn(
-                        'h-8 text-xs',
+                        'h-8 text-xs whitespace-nowrap',
                         !isConnected && 'opacity-50 cursor-not-allowed'
                       )}
                     >
@@ -510,7 +508,7 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
                     />
                   </div>
                 </PromptInputTools>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <Button
                     variant={isPanelOpen ? "default" : "outline"}
                     size="icon"
@@ -535,25 +533,39 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
             </PromptInput>
           </div>
         </div>
-      </div>
 
-      {/* Side Panel (Relative flow) */}
+      {/* Side Panel: en móvil ocupa la celda del contenido (pantalla completa
+          sobre el main, dejando el input siempre visible); en md+ columna
+          derecha en flujo con los anchos del diseño actual */}
       <div
         className={cn(
-          "shrink-0 flex flex-col bg-white border-l shadow-2xl h-full transition-[width] duration-300 ease-in-out overflow-hidden z-50",
+          "col-start-1 row-start-1 justify-self-end md:col-start-2 md:row-span-2 md:justify-self-auto",
+          "shrink-0 flex flex-col bg-white border-l shadow-2xl h-full min-h-0 transition-[width] duration-300 ease-in-out overflow-hidden z-50",
           isPanelOpen
             ? showHistory
-              ? "w-[776px] lg:w-[826px]"
-              : "w-[450px] lg:w-[500px]"
+              ? // Historial lado a lado solo desde xl (826px no caben antes);
+                // por debajo se muestra como capa deslizante sobre el chat
+                "w-full md:w-[450px] lg:w-[500px] xl:w-[826px]"
+              : "w-full md:w-[450px] lg:w-[500px]"
             : "w-0 border-l-0"
         )}
       >
         <div
           className={cn(
-            "flex h-full min-h-full overflow-hidden bg-white transition-[width] duration-300 ease-in-out",
-            showHistory ? "w-[776px] lg:w-[826px]" : "w-[450px] lg:w-[500px]"
+            "relative flex h-full min-h-full overflow-hidden bg-white transition-[width] duration-300 ease-in-out",
+            "w-screen md:w-[450px] lg:w-[500px]",
+            showHistory && "xl:w-[826px]"
           )}
         >
+          {/* Scrim: cierra el historial al tocar el chat cuando se muestra
+              como capa (por debajo de xl) */}
+          {showHistory && (
+            <div
+              className="absolute inset-0 z-20 bg-black/20 xl:hidden"
+              onClick={toggleHistory}
+              aria-hidden="true"
+            />
+          )}
           {/* Chat History Sidebar */}
           <ChatHistory
             userId={userId}
@@ -564,26 +576,30 @@ export function GlobalChat({ children }: { children?: React.ReactNode }) {
             onNewChat={handleNewChat}
             isOpen={showHistory}
             className={cn(
-              'shrink-0 transition-all duration-300 ease-in-out border-r',
-              showHistory ? 'w-80' : 'w-0 overflow-hidden border-r-0'
+              'shrink-0 border-r',
+              'absolute inset-y-0 left-0 z-30 w-[85vw] max-w-80 transition-transform duration-300 ease-in-out',
+              'xl:static xl:z-auto xl:translate-x-0 xl:transition-[width]',
+              showHistory
+                ? 'translate-x-0 xl:w-80'
+                : '-translate-x-full xl:w-0 xl:overflow-hidden xl:border-r-0'
             )}
           />
 
           {/* Main Chat Area */}
-          <div className="flex flex-col w-[450px] lg:w-[500px] shrink-0 h-full overflow-hidden dark:bg-muted relative">
+          <div className="flex flex-col w-screen md:w-[450px] lg:w-[500px] shrink-0 h-full overflow-hidden dark:bg-muted relative">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-primary/20 px-4 py-3 h-14 shrink-0 bg-background/95 backdrop-blur z-10">
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={closePanel} className="-ml-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Button variant="ghost" size="icon" onClick={closePanel} className="-ml-2 shrink-0">
                   <ChevronRightIcon className="size-5" />
                 </Button>
                 <div
                   className={cn(
-                    'h-2 w-2 rounded-full',
+                    'h-2 w-2 shrink-0 rounded-full',
                     isConnected ? 'bg-primary' : 'bg-red-500'
                   )}
                 />
-                <span className="text-sm font-medium">
+                <span className="text-sm font-medium truncate">
                   {isConnected
                     ? 'Asistente APEX'
                     : reconnectAttempt > 0
