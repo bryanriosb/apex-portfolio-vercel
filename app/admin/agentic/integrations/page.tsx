@@ -67,18 +67,32 @@ export default function IntegrationsPage() {
   const loadData = useCallback(async () => {
     if (!service) return
     setLoading(true)
+    // Se cargan por separado (no Promise.all) para saber cuál falla: el
+    // listado de conectores es estático en el backend y casi nunca falla,
+    // mientras que el de configuraciones consulta la BD por tenant. El
+    // mensaje real del backend (p. ej. "Missing x-business-account-id
+    // header") ahora llega hasta el toast.
     try {
-      const [configsData, connectorsData] = await Promise.all([
-        service.listConfigs(),
-        service.listConnectors(),
-      ])
+      const configsData = await service.listConfigs()
       setConfigs(configsData)
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? `No se pudieron cargar las integraciones: ${err.message}`
+          : 'No se pudieron cargar las integraciones'
+      )
+    }
+    try {
+      const connectorsData = await service.listConnectors()
       setConnectors(connectorsData.connectors || [])
     } catch (err) {
-      toast.error('No se pudo cargar la información de las integraciones')
-    } finally {
-      setLoading(false)
+      toast.error(
+        err instanceof Error
+          ? `No se pudieron cargar los conectores: ${err.message}`
+          : 'No se pudieron cargar los conectores'
+      )
     }
+    setLoading(false)
   }, [service])
 
   const loadConnectors = useCallback(async () => {

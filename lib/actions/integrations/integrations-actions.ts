@@ -17,29 +17,46 @@ import type {
 
 // Headers handled by interceptor
 
+/**
+ * Resultado serializable de una server action. Las actions NUNCA lanzan:
+ * Next.js censura en producción el mensaje de toda excepción lanzada desde
+ * una server action (queda solo el digest genérico "An error occurred in the
+ * Server Components render..."). El servicio desempaqueta en el cliente,
+ * donde el throw sí conserva el mensaje hasta el toast.
+ */
+export type IntegrationActionResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string }
+
 function extractApiError(error: unknown): string {
-  const axiosError = error as AxiosError<{ error?: string; message?: string }>
+  const axiosError = error as AxiosError<{ error?: string; message?: string } | string>
   if (axiosError.response?.data) {
     const data = axiosError.response.data
-    if (typeof data.error === 'string') return data.error
-    if (typeof data.message === 'string') return data.message
+    // Los 4xx de apex-ai pueden llegar como JSON {error|message} o texto plano.
+    if (typeof data === 'string' && data) return data
+    if (typeof data === 'object') {
+      if (typeof data.error === 'string') return data.error
+      if (typeof data.message === 'string') return data.message
+    }
   }
   if (error instanceof Error) return error.message
   return 'Error inesperado en la operación'
 }
 
-async function handleApiCall<T>(call: () => Promise<T>): Promise<T> {
+async function handleApiCall<T>(
+  call: () => Promise<T>
+): Promise<IntegrationActionResult<T>> {
   try {
-    return await call()
+    return { ok: true, data: await call() }
   } catch (error) {
-    throw new Error(extractApiError(error))
+    return { ok: false, error: extractApiError(error) }
   }
 }
 
 export async function listConnectorsAction(
   accessToken: string,
   businessAccountId: string
-): Promise<ListConnectorsResponse> {
+): Promise<IntegrationActionResult<ListConnectorsResponse>> {
   return handleApiCall(async () => {
     // Defensa en profundidad: aunque apex-ai valida el JWT, sin sesión el
     // interceptor usaría el fallback APEX_AI_SECRET; se exige sesión y que
@@ -54,7 +71,7 @@ export async function checkConnectorHealthAction(
   connectorName: string,
   accessToken: string,
   businessAccountId: string
-): Promise<HealthCheckResponse> {
+): Promise<IntegrationActionResult<HealthCheckResponse>> {
   return handleApiCall(async () => {
     await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.get(
@@ -69,7 +86,7 @@ export async function fetchConnectorRecordsAction(
   body: ConnectorOperationRequest,
   accessToken: string,
   businessAccountId: string
-): Promise<ConnectorOperationResponse> {
+): Promise<IntegrationActionResult<ConnectorOperationResponse>> {
   return handleApiCall(async () => {
     await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.post(
@@ -85,7 +102,7 @@ export async function createConnectorRecordsAction(
   body: ConnectorOperationRequest,
   accessToken: string,
   businessAccountId: string
-): Promise<ConnectorOperationResponse> {
+): Promise<IntegrationActionResult<ConnectorOperationResponse>> {
   return handleApiCall(async () => {
     await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.put(
@@ -101,7 +118,7 @@ export async function updateConnectorRecordsAction(
   body: ConnectorOperationRequest,
   accessToken: string,
   businessAccountId: string
-): Promise<ConnectorOperationResponse> {
+): Promise<IntegrationActionResult<ConnectorOperationResponse>> {
   return handleApiCall(async () => {
     await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.patch(
@@ -117,7 +134,7 @@ export async function deleteConnectorRecordsAction(
   body: ConnectorOperationRequest,
   accessToken: string,
   businessAccountId: string
-): Promise<ConnectorOperationResponse> {
+): Promise<IntegrationActionResult<ConnectorOperationResponse>> {
   return handleApiCall(async () => {
     await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.delete(
@@ -133,7 +150,7 @@ export async function deleteConnectorRecordsAction(
 export async function listIntegrationConfigsAction(
   accessToken: string,
   businessAccountId: string
-): Promise<IntegrationConfig[]> {
+): Promise<IntegrationActionResult<IntegrationConfig[]>> {
   return handleApiCall(async () => {
     await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.get('/integrations/config')
@@ -145,7 +162,7 @@ export async function getIntegrationConfigAction(
   id: string,
   accessToken: string,
   businessAccountId: string
-): Promise<IntegrationConfig> {
+): Promise<IntegrationActionResult<IntegrationConfig>> {
   return handleApiCall(async () => {
     await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.get(`/integrations/config/${id}`)
@@ -157,7 +174,7 @@ export async function createIntegrationConfigAction(
   data: IntegrationConfigInsert,
   accessToken: string,
   businessAccountId: string
-): Promise<IntegrationConfig> {
+): Promise<IntegrationActionResult<IntegrationConfig>> {
   return handleApiCall(async () => {
     await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.post('/integrations/config', data)
@@ -170,7 +187,7 @@ export async function updateIntegrationConfigAction(
   data: IntegrationConfigUpdate,
   accessToken: string,
   businessAccountId: string
-): Promise<IntegrationConfig> {
+): Promise<IntegrationActionResult<IntegrationConfig>> {
   return handleApiCall(async () => {
     await requireAccountAccess(businessAccountId)
     const response = await apiApexAiAuth.patch(
@@ -185,7 +202,7 @@ export async function deleteIntegrationConfigAction(
   id: string,
   accessToken: string,
   businessAccountId: string
-): Promise<void> {
+): Promise<IntegrationActionResult<void>> {
   return handleApiCall(async () => {
     await requireAccountAccess(businessAccountId)
     await apiApexAiAuth.delete(`/integrations/config/${id}`)

@@ -10,6 +10,7 @@ import {
   createIntegrationConfigAction,
   updateIntegrationConfigAction,
   deleteIntegrationConfigAction,
+  type IntegrationActionResult,
 } from '@/lib/actions/integrations/integrations-actions'
 import type {
   IntegrationConfig,
@@ -23,6 +24,16 @@ import type {
   ConnectorOperationResponse,
 } from '@/lib/services/integrations/integrations-types'
 
+/**
+ * Desempaqueta el result en el CLIENTE: aquí el throw sí conserva el mensaje
+ * (la censura de producción de Next.js solo afecta a excepciones lanzadas
+ * dentro de la server action).
+ */
+function unwrap<T>(result: IntegrationActionResult<T>): T {
+  if (!result.ok) throw new Error(result.error)
+  return result.data
+}
+
 export class IntegrationsService {
   private accessToken: string
   private businessAccountId: string
@@ -33,102 +44,102 @@ export class IntegrationsService {
   }
 
   async listConnectors(): Promise<ListConnectorsResponse> {
-    return listConnectorsAction(this.accessToken, this.businessAccountId)
+    return unwrap(await listConnectorsAction(this.accessToken, this.businessAccountId))
   }
 
   async checkHealth(connectorName: string): Promise<HealthCheckResponse> {
-    return checkConnectorHealthAction(
+    return unwrap(await checkConnectorHealthAction(
       connectorName,
       this.accessToken,
       this.businessAccountId
-    )
+    ))
   }
 
   async fetchRecords(
     connectorName: string,
     body: ConnectorOperationRequest
   ): Promise<ConnectorOperationResponse> {
-    return fetchConnectorRecordsAction(
+    return unwrap(await fetchConnectorRecordsAction(
       connectorName,
       body,
       this.accessToken,
       this.businessAccountId
-    )
+    ))
   }
 
   async createRecords(
     connectorName: string,
     body: ConnectorOperationRequest
   ): Promise<ConnectorOperationResponse> {
-    return createConnectorRecordsAction(
+    return unwrap(await createConnectorRecordsAction(
       connectorName,
       body,
       this.accessToken,
       this.businessAccountId
-    )
+    ))
   }
 
   async updateRecords(
     connectorName: string,
     body: ConnectorOperationRequest
   ): Promise<ConnectorOperationResponse> {
-    return updateConnectorRecordsAction(
+    return unwrap(await updateConnectorRecordsAction(
       connectorName,
       body,
       this.accessToken,
       this.businessAccountId
-    )
+    ))
   }
 
   async deleteRecords(
     connectorName: string,
     body: ConnectorOperationRequest
   ): Promise<ConnectorOperationResponse> {
-    return deleteConnectorRecordsAction(
+    return unwrap(await deleteConnectorRecordsAction(
       connectorName,
       body,
       this.accessToken,
       this.businessAccountId
-    )
+    ))
   }
 
   async listConfigs(): Promise<IntegrationConfig[]> {
-    return listIntegrationConfigsAction(this.accessToken, this.businessAccountId)
+    return unwrap(await listIntegrationConfigsAction(this.accessToken, this.businessAccountId))
   }
 
   async getConfig(id: string): Promise<IntegrationConfig> {
-    return getIntegrationConfigAction(
+    return unwrap(await getIntegrationConfigAction(
       id,
       this.accessToken,
       this.businessAccountId
-    )
+    ))
   }
 
   async createConfig(data: IntegrationConfigInsert): Promise<IntegrationConfig> {
-    return createIntegrationConfigAction(
+    return unwrap(await createIntegrationConfigAction(
       data,
       this.accessToken,
       this.businessAccountId
-    )
+    ))
   }
 
   async updateConfig(
     id: string,
     data: IntegrationConfigUpdate
   ): Promise<IntegrationConfig> {
-    return updateIntegrationConfigAction(
+    return unwrap(await updateIntegrationConfigAction(
       id,
       data,
       this.accessToken,
       this.businessAccountId
-    )
+    ))
   }
 
   async deleteConfig(id: string): Promise<void> {
-    return deleteIntegrationConfigAction(
+    return unwrap(await deleteIntegrationConfigAction(
       id,
       this.accessToken,
       this.businessAccountId
-    )
+    ))
   }
 }
