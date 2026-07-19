@@ -105,6 +105,8 @@ export const ui: Record<string, string> = {
   buscarTrabajos: 'Buscar por nombre o ID...',
   enVivo: 'En vivo',
   desconectado: 'Desconectado',
+  ejecucionEnVivo: 'Ejecución del workflow',
+  errorCargarGrafo: 'No se pudo cargar el grafo del workflow',
   nuevosEventosDisponibles: 'Hay actividad nueva',
   tipo: 'Tipo',
   modulo: 'Módulo',

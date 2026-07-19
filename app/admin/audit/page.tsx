@@ -182,7 +182,7 @@ export default function AuditPage() {
         getRowId={(row: AuditJobItem) => row.id}
         refreshKey="audit-jobs"
         renderExpandedRow={(row) => (
-          <AuditJobTraceView job={row.original as AuditJobItem} timezone={timezone} />
+          <AuditJobTraceView job={row.original as AuditJobItem} timezone={timezone} isConnected={isConnected} />
         )}
         emptyState={
           <div className="flex flex-col items-center justify-center gap-3 py-8">

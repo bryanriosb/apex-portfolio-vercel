@@ -541,3 +541,37 @@
     min-height: 14px;
   }
 }
+
+/* Estados de ejecución en vivo del workflow (WorkflowLiveView).
+   Se aplican al wrapper .react-flow__node para no modificar los nodos. */
+.workflow-live-view .react-flow__node.wf-live-idle {
+  opacity: 0.55;
+}
+.workflow-live-view .react-flow__node.wf-live-running {
+  animation: wf-live-pulse 1.6s ease-in-out infinite;
+}
+.workflow-live-view .react-flow__node.wf-live-completed {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.workflow-live-view .react-flow__node.wf-live-failed {
+  outline: 2px solid var(--destructive);
+  outline-offset: 2px;
+}
+@keyframes wf-live-pulse {
+  0%, 100% {
+    outline: 2px solid color-mix(in srgb, var(--primary) 35%, transparent);
+    outline-offset: 2px;
+  }
+  50% {
+    outline: 2px solid var(--primary);
+    outline-offset: 4px;
+  }
+}
+.wf-live-pulse-dot {
+  animation: wf-live-dot 1.2s ease-in-out infinite;
+}
+@keyframes wf-live-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}

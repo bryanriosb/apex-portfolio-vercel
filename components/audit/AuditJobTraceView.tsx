@@ -7,6 +7,7 @@ import { AlertTriangle, Activity, FileText, Fingerprint, MoveRight } from 'lucid
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
 import { JobObservabilityViewer } from '@/components/automation/JobObservabilityViewer'
+import { WorkflowLiveView } from '@/components/workflows/WorkflowLiveView'
 import { getApexJobAction } from '@/lib/actions/automation'
 import {
   safeParseJSON,
@@ -27,6 +28,7 @@ import {
 interface AuditJobTraceViewProps {
   job: AuditJobItem
   timezone: string
+  isConnected?: boolean
 }
 
 const formatTs = (val: string, timezone: string): string => {
@@ -162,8 +164,9 @@ function ApexJobResult({ jobId }: { jobId: string }) {
   )
 }
 
-export function AuditJobTraceView({ job, timezone }: AuditJobTraceViewProps) {
+export function AuditJobTraceView({ job, timezone, isConnected }: AuditJobTraceViewProps) {
   const isAgentic = job.source === 'AgentJob' || job.source === 'AgentWorkflowJob'
+  const isWorkflowJob = job.source === 'AgentWorkflowJob'
 
   const identifiers: Array<{ label: string; value?: string }> = [
     { label: t('ui.idTrabajo'), value: job.id },
@@ -174,6 +177,7 @@ export function AuditJobTraceView({ job, timezone }: AuditJobTraceViewProps) {
 
   return (
     <div className="flex flex-col gap-6 p-4 bg-muted/10 border-t border-border">
+      {isWorkflowJob && <WorkflowLiveView jobId={job.id} isConnected={isConnected} />}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="flex flex-col gap-2">
           <h4 className="text-sm font-semibold flex items-center gap-2 text-foreground border-b border-border pb-2">
