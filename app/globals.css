@@ -531,3 +531,13 @@
 [data-adk-ui-wrapper] .text-blue-800 {
   color: color-mix(in srgb, var(--primary) 50%, black) !important;
 }
+/* React Flow: en dispositivos táctiles los handles de 6px son imposibles
+   de manipular con el dedo; se amplían solo para punteros coarse. */
+@media (pointer: coarse) {
+  .react-flow__handle {
+    width: 14px;
+    height: 14px;
+    min-width: 14px;
+    min-height: 14px;
+  }
+}

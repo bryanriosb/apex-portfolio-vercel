@@ -125,8 +125,8 @@ export function WorkflowFlowEditor({ id }: WorkflowFlowEditorProps) {
 
   return (
     <div className="flex flex-col gap-4 h-full">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-2 sm:items-center sm:gap-4">
           <Link href="/admin/agentic/flows">
             <Button variant="ghost" size="sm" className="rounded-none gap-1">
               <ArrowLeft className="h-4 w-4" />
@@ -134,7 +134,7 @@ export function WorkflowFlowEditor({ id }: WorkflowFlowEditorProps) {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
               {isEditMode ? 'Editar Flujo' : 'Nuevo Flujo'}
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -144,13 +144,13 @@ export function WorkflowFlowEditor({ id }: WorkflowFlowEditorProps) {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/admin/agentic/flows">
+        <div className="flex items-center gap-2 sm:justify-end">
+          <Link href="/admin/agentic/flows" className="flex-1 sm:flex-none">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="rounded-none"
+              className="rounded-none w-full sm:w-auto"
               disabled={isSubmitting}
             >
               Cancelar
@@ -160,7 +160,7 @@ export function WorkflowFlowEditor({ id }: WorkflowFlowEditorProps) {
             type="submit"
             form="workflow-form"
             size="sm"
-            className="rounded-none"
+            className="rounded-none flex-1 sm:flex-none"
             disabled={isSubmitting}
           >
             {isSubmitting ? (
@@ -188,8 +188,8 @@ export function WorkflowFlowEditor({ id }: WorkflowFlowEditorProps) {
             control={form.control}
             name="graph_json"
             render={({ field }) => (
-              <FormItem className="flex-1 flex flex-col min-h-[600px]">
-                <div className="flex-1 min-h-0" style={{ minHeight: 560 }}>
+              <FormItem className="flex-1 flex flex-col min-h-[480px] md:min-h-[600px]">
+                <div className="flex-1 min-h-[440px] md:min-h-[560px]">
                   <FlowEditor
                     value={field.value}
                     onChange={(graph) => field.onChange(graph)}
