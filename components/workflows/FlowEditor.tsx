@@ -25,7 +25,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import { Bot, Cog, ChevronLeft, ChevronRight, LayoutTemplate, MousePointer2, Hand as HandIcon } from 'lucide-react'
+import { Bot, Cog, ChevronLeft, ChevronRight, LayoutTemplate, MousePointer2, Hand as HandIcon, X } from 'lucide-react'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { Canvas } from '@/components/ai-elements/canvas'
 import { Controls } from '@/components/ai-elements/controls'
 import { AgentNode } from './AgentNode'
@@ -236,6 +237,17 @@ function FlowEditorInner({ value, onChange, sidebarTop }: FlowEditorProps) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [canvasMode, setCanvasMode] = useState<'pan' | 'select'>('pan')
+  const isMobile = useIsMobile()
+
+  // En mobile el sidebar es un drawer superpuesto: inicia cerrado para
+  // priorizar el canvas. Solo se fuerza una vez al detectar el viewport.
+  const mobileInitRef = useRef(false)
+  useEffect(() => {
+    if (isMobile && !mobileInitRef.current) {
+      mobileInitRef.current = true
+      setSidebarOpen(false)
+    }
+  }, [isMobile])
 
   const { setCenter, getZoom } = useReactFlow()
 
@@ -532,12 +544,31 @@ function FlowEditorInner({ value, onChange, sidebarTop }: FlowEditorProps) {
   const channelCount = (graph.channels || []).length
 
   return (
-    <div className="flex w-full border bg-background overflow-hidden" style={{ height: '100%', minHeight: 600 }}>
-      {/* Inline sidebar — replaces Sheet (modal overlay) to avoid z-index and height issues */}
+    <div className="relative flex w-full border bg-background overflow-hidden h-full min-h-[420px] md:min-h-[600px]">
+      {/* Backdrop solo en mobile: el sidebar se superpone al canvas como drawer */}
       {sidebarOpen && (
-        <div className="flex flex-col w-[340px] min-w-[340px] border-r bg-sidebar overflow-hidden">
-          <div className="border-b px-4 py-3">
+        <div
+          className="absolute inset-0 z-10 bg-black/30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      {/* Inline sidebar — replaces Sheet (modal overlay) to avoid z-index and height issues.
+          En < md se comporta como drawer superpuesto para no robarle ancho al canvas. */}
+      {sidebarOpen && (
+        <div className="absolute inset-y-0 left-0 z-20 flex flex-col w-[min(85vw,340px)] border-r bg-sidebar overflow-hidden shadow-xl md:static md:z-auto md:w-[340px] md:min-w-[340px] md:shadow-none">
+          <div className="flex items-center justify-between border-b px-4 py-3">
             <span className="text-sm font-medium">Configuración del Grafo</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="rounded-none h-7 w-7 p-0 md:hidden"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Cerrar panel de configuración"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
           <div className="flex-1 overflow-y-auto space-y-4 p-4">
             {selectedNode && (
@@ -718,7 +749,10 @@ function FlowEditorInner({ value, onChange, sidebarTop }: FlowEditorProps) {
               {sidebarOpen ? (
                 <ChevronLeft className="h-3 w-3" />
               ) : (
-                <ChevronRight className="h-3 w-3" />
+                <>
+                  <ChevronRight className="h-3 w-3" />
+                  <span className="ml-1 md:hidden">Configuración</span>
+                </>
               )}
             </Button>
           </Panel>
@@ -735,7 +769,7 @@ function FlowEditorInner({ value, onChange, sidebarTop }: FlowEditorProps) {
                 Auto-Organizar
               </Button>
             </div>
-            <div className="flex gap-2 text-xs text-muted-foreground">
+            <div className="hidden sm:flex gap-2 text-xs text-muted-foreground">
               <Badge variant="outline">{nodeCount} nodos</Badge>
               <Badge variant="outline">{edgeCount} aristas</Badge>
               <Badge variant="outline">{channelCount} canales</Badge>
