@@ -8,6 +8,19 @@ import type {
   SkillWriteResponse,
 } from '@/lib/models/agents/skill'
 
+/**
+ * Resultado serializable de una server action de skills.
+ *
+ * Las actions NUNCA lanzan: Next.js censura en producción el mensaje de
+ * cualquier excepción lanzada desde una server action (queda solo el
+ * digest genérico), así que el error del API viajaría destruido. El
+ * servicio cliente desempaqueta el result y re-lanza en el navegador,
+ * donde el mensaje sí sobrevive hasta el toast.
+ */
+export type SkillActionResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string }
+
 function extractApiError(error: unknown): string {
   const axiosError = error as AxiosError<
     { error?: string; message?: string } | string
@@ -26,23 +39,29 @@ function extractApiError(error: unknown): string {
   return 'Error inesperado en la operación'
 }
 
-async function handleApiCall<T>(call: () => Promise<T>): Promise<T> {
+async function toResult<T>(
+  call: () => Promise<T>
+): Promise<SkillActionResult<T>> {
   try {
-    return await call()
+    return { ok: true, data: await call() }
   } catch (error) {
-    throw new Error(extractApiError(error))
+    return { ok: false, error: extractApiError(error) }
   }
 }
 
-export async function listSkillsAction(): Promise<SkillListItem[]> {
-  return handleApiCall(async () => {
+export async function listSkillsAction(): Promise<
+  SkillActionResult<SkillListItem[]>
+> {
+  return toResult(async () => {
     const response = await apiApexAiAuth.get('/skills')
     return response.data || []
   })
 }
 
-export async function getSkillAction(name: string): Promise<Skill> {
-  return handleApiCall(async () => {
+export async function getSkillAction(
+  name: string
+): Promise<SkillActionResult<Skill>> {
+  return toResult(async () => {
     const response = await apiApexAiAuth.get(
       `/skills/${encodeURIComponent(name)}`
     )
@@ -52,8 +71,8 @@ export async function getSkillAction(name: string): Promise<Skill> {
 
 export async function createSkillAction(
   skill: Pick<Skill, 'name' | 'content'>
-): Promise<SkillWriteResponse> {
-  return handleApiCall(async () => {
+): Promise<SkillActionResult<SkillWriteResponse>> {
+  return toResult(async () => {
     const response = await apiApexAiAuth.post('/skills', skill)
     return response.data
   })
@@ -62,8 +81,8 @@ export async function createSkillAction(
 export async function updateSkillAction(
   name: string,
   content: string
-): Promise<SkillWriteResponse> {
-  return handleApiCall(async () => {
+): Promise<SkillActionResult<SkillWriteResponse>> {
+  return toResult(async () => {
     const response = await apiApexAiAuth.put(
       `/skills/${encodeURIComponent(name)}`,
       { content }
@@ -72,8 +91,10 @@ export async function updateSkillAction(
   })
 }
 
-export async function deleteSkillAction(name: string): Promise<void> {
-  return handleApiCall(async () => {
+export async function deleteSkillAction(
+  name: string
+): Promise<SkillActionResult<void>> {
+  return toResult(async () => {
     await apiApexAiAuth.delete(`/skills/${encodeURIComponent(name)}`)
   })
 }
@@ -81,8 +102,8 @@ export async function deleteSkillAction(name: string): Promise<void> {
 export async function getSkillReferenceAction(
   name: string,
   filename: string
-): Promise<{ filename: string; content: string }> {
-  return handleApiCall(async () => {
+): Promise<SkillActionResult<{ filename: string; content: string }>> {
+  return toResult(async () => {
     const response = await apiApexAiAuth.get(
       `/skills/${encodeURIComponent(name)}/references/${encodeURIComponent(filename)}`
     )
@@ -94,8 +115,8 @@ export async function putSkillReferenceAction(
   name: string,
   filename: string,
   content: string
-): Promise<void> {
-  return handleApiCall(async () => {
+): Promise<SkillActionResult<void>> {
+  return toResult(async () => {
     await apiApexAiAuth.put(
       `/skills/${encodeURIComponent(name)}/references/${encodeURIComponent(filename)}`,
       { content }
@@ -106,8 +127,8 @@ export async function putSkillReferenceAction(
 export async function deleteSkillReferenceAction(
   name: string,
   filename: string
-): Promise<void> {
-  return handleApiCall(async () => {
+): Promise<SkillActionResult<void>> {
+  return toResult(async () => {
     await apiApexAiAuth.delete(
       `/skills/${encodeURIComponent(name)}/references/${encodeURIComponent(filename)}`
     )
