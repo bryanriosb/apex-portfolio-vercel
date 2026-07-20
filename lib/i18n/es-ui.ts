@@ -25,7 +25,7 @@ export const ui: Record<string, string> = {
   interacciones: 'Interacciones',
   errorRenderizandoDiagrama: 'Error renderizando diagrama',
   trabajoDeAgentes: 'Trabajo de Agentes',
-  trabajoDeWorkflow: 'Trabajo de Workflow',
+  trabajoDeWorkflow: 'Flujo de Agentes',
   ejecucionUnica: 'Ejecución Única',
   nombre: 'Nombre',
   descripcion: 'Descripción',

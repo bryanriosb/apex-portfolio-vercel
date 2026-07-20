@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/DataTable'
 import Loading from '@/components/ui/loading'
 import { toast } from 'sonner'
-import { MoreHorizontal, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react'
+import { BookMarked, MoreHorizontal, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -222,7 +222,7 @@ export default function SkillsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-primary" />
+            <BookMarked className="h-6 w-6 text-primary" />
             Habilidades
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -250,7 +250,7 @@ export default function SkillsPage() {
           }}
           emptyState={
             <div className="flex flex-col items-center justify-center py-12 gap-3">
-              <Sparkles className="h-10 w-10 text-muted-foreground/50" />
+              <BookMarked className="h-10 w-10 text-muted-foreground/50" />
               <div className="text-center">
                 <p className="font-medium">Sin habilidades</p>
                 <p className="text-sm text-muted-foreground">

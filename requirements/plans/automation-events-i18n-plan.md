@@ -5,6 +5,7 @@ Extender el WebSocket de automatización para manejar los 12 tipos de eventos de
 ## Scope
 
 **In:**
+
 - Tipos TypeScript para los 12 eventos server→client + enums del protocolo
 - Sistema de i18n centralizado (sin librería externa, `Record<string, string>` tipado)
 - Archivos de traducción: eventos, status, módulos (`collection` → `Cartera`), campos de dominio, UI labels
@@ -14,6 +15,7 @@ Extender el WebSocket de automatización para manejar los 12 tipos de eventos de
 - Actualizar `AutomationTicker` para mostrar todos los eventos con labels/iconos por tipo
 
 **Out:**
+
 - Cambios en el backend (Rust/WebSocket server)
 - Soporte para idiomas distintos a español
 - Componentes de UI nuevos
@@ -59,7 +61,7 @@ Extender el WebSocket de automatización para manejar los 12 tipos de eventos de
     - `ToolConnectionChanged` → `'Conexión Cambió'`
     - `CronTriggered` → `'Cron Disparado'`
     - `WorkflowLog` → `'Log de Workflow'`
-  - `jobTypes`: `{ AgentJob: 'Trabajo de Agente', AgentWorkflowJob: 'Trabajo de Workflow', ApexJob: 'Trabajo Apex' }`
+  - `jobTypes`: `{ AgentJob: 'Trabajo de Agente', AgentWorkflowJob: 'Flujo de Agentes', ApexJob: 'Trabajo APEX' }`
   - `toolTypes`: `{ Function: 'Función', McpLocal: 'MCP Local', McpRemote: 'MCP Remoto', Integration: 'Integración', IntegrationService: 'Servicio de Integración', Notification: 'Notificación', Ontology: 'Ontología', Artifact: 'Artifacto' }`
   - `nodeTypes`: `{ Agent: 'Agente', HITL: 'Aprobación Humana', Transform: 'Transformación', Assembler: 'Ensamblador', Function: 'Función' }`
   - `connectionStatus`: `{ Connected: 'Conectado', Disconnected: 'Desconectado', TokenRefreshed: 'Token Refrescado', AuthFailed: 'Error de Autenticación' }`
@@ -224,6 +226,7 @@ components/automation/
 ## Open questions
 
 Ninguna — resueltas por el usuario:
+
 1. `category` llega en los eventos del backend → se usa para clasificar
 2. No se implementa mecanismo nuevo de eventos → se extiende el existente
 3. Todos los tipos de eventos se emitirán y mostrarán en `AutomationTicker`

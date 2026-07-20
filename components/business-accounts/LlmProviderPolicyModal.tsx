@@ -90,7 +90,7 @@ export function LlmProviderPolicyModal({
               </Label>
               <p className="text-xs text-muted-foreground">
                 Solo se ofrecerán los proveedores LLM que la cuenta haya
-                configurado en Proveedores IA.
+                configurado en Proveedores LLM.
               </p>
             </div>
             <Switch

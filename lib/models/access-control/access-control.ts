@@ -83,3 +83,23 @@ export interface RbacAuditEntry {
   business_account_id: string | null
   row_data: Record<string, unknown>
 }
+
+/** Persona resuelta (actor o usuario destino) para mostrar en auditoría. */
+export interface RbacAuditPerson {
+  id: string
+  name: string | null
+  email: string | null
+}
+
+/**
+ * Diccionarios id → nombre legible que acompañan a los eventos de auditoría.
+ * Permiten traducir los UUID crudos de `row_data`/`actor` a algo que una
+ * persona no técnica pueda leer (AC-2).
+ */
+export interface RbacAuditLookups {
+  roles: Record<string, string>
+  permissions: Record<string, string>
+  businesses: Record<string, string>
+  accounts: Record<string, string>
+  users: Record<string, RbacAuditPerson>
+}

@@ -24,6 +24,7 @@ import {
   Wrench,
   Sparkles,
   KeyRound,
+  BookMarked,
 } from 'lucide-react'
 import { USER_ROLES, type UserRole } from './roles'
 
@@ -189,7 +190,7 @@ export const SIDE_AGENCY_MENU_ITEMS: MenuItem[] = [
   {
     title: 'Habilidades',
     url: '/admin/agentic/skills',
-    icon: Sparkles,
+    icon: BookMarked,
     moduleCode: 'ai_assistant',
     allowedRoles: [
       USER_ROLES.COMPANY_ADMIN,
@@ -234,7 +235,7 @@ export const SIDE_AGENCY_MENU_ITEMS: MenuItem[] = [
     allowedRoles: [USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN],
     items: [
       {
-        title: 'Proveedores IA',
+        title: 'Proveedores LLM',
         url: '/admin/agentic/settings/llm-providers',
       },
     ],

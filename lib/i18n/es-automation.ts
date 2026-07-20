@@ -27,8 +27,8 @@ export const events: Record<string, string> = {
 
 export const jobTypes: Record<string, string> = {
   AgentJob: 'Trabajo de Agente',
-  AgentWorkflowJob: 'Trabajo de Workflow',
-  ApexJob: 'Trabajo Apex',
+  AgentWorkflowJob: 'Flujo de Agentes',
+  ApexJob: 'Trabajo APEX',
 };
 
 export const apexJobTypes: Record<string, string> = {

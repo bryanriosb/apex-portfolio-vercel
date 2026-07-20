@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { LLM_PROVIDERS_ROUTE } from '@/lib/models/agents/llm-provider-policy'
 
 interface NoLlmProvidersConfiguredProps {
-  /** Ruta de configuración; por defecto la sección de proveedores IA. */
+  /** Ruta de configuración; por defecto la sección de Proveedores LLM. */
   href?: string
   /** Variante compacta para espacios reducidos (p. ej. el chat global). */
   compact?: boolean

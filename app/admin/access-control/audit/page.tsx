@@ -15,11 +15,23 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { fetchRbacAuditAction } from '@/lib/actions/access-control/audit'
-import { formatDateTime, shortId } from '@/components/access-control/format'
+import { formatDateTime } from '@/components/access-control/format'
+import { AuditRowData } from '@/components/access-control/AuditRowData'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { useActiveBusinessStore } from '@/lib/store/active-business-store'
 import { USER_ROLES } from '@/const/roles'
-import type { RbacAuditEntry } from '@/lib/models/access-control/access-control'
+import type {
+  RbacAuditEntry,
+  RbacAuditLookups,
+} from '@/lib/models/access-control/access-control'
+
+const EMPTY_LOOKUPS: RbacAuditLookups = {
+  roles: {},
+  permissions: {},
+  businesses: {},
+  accounts: {},
+  users: {},
+}
 
 const PAGE_SIZE = 100
 const MAX_LIMIT = 500
@@ -57,6 +69,7 @@ export default function AuditPage() {
     : undefined
 
   const [entries, setEntries] = useState<RbacAuditEntry[]>([])
+  const [lookups, setLookups] = useState<RbacAuditLookups>(EMPTY_LOOKUPS)
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [limit, setLimit] = useState(PAGE_SIZE)
@@ -80,6 +93,7 @@ export default function AuditPage() {
         return
       }
       setEntries(result.data)
+      setLookups(result.lookups)
     },
     [accountId]
   )
@@ -181,23 +195,39 @@ export default function AuditPage() {
                       <TableCell>{operationBadge(entry.operation)}</TableCell>
                       <TableCell>
                         {entry.actor ? (
-                          <code
-                            className="text-xs bg-muted px-1.5 py-0.5 rounded"
-                            title={entry.actor}
-                          >
-                            {shortId(entry.actor)}
-                          </code>
+                          (() => {
+                            const actor = lookups.users[entry.actor]
+                            const label =
+                              actor?.name || actor?.email || entry.actor
+                            return (
+                              <div className="flex flex-col" title={entry.actor}>
+                                <span className="text-sm">{label}</span>
+                                {actor?.name && actor?.email && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {actor.email}
+                                  </span>
+                                )}
+                              </div>
+                            )
+                          })()
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span
+                            className="text-muted-foreground"
+                            title="Cambio realizado por el sistema"
+                          >
+                            Sistema
+                          </span>
                         )}
                       </TableCell>
                     </TableRow>
                     {isOpen && (
                       <TableRow className="hover:bg-transparent">
-                        <TableCell colSpan={5} className="bg-muted/30">
-                          <pre className="text-xs bg-muted rounded-md p-3 overflow-x-auto max-h-64">
-                            {JSON.stringify(entry.row_data, null, 2)}
-                          </pre>
+                        <TableCell colSpan={5} className="bg-muted/30 p-4">
+                          <AuditRowData
+                            tableName={entry.table_name}
+                            rowData={entry.row_data}
+                            lookups={lookups}
+                          />
                         </TableCell>
                       </TableRow>
                     )}

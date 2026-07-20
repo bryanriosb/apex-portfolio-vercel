@@ -262,7 +262,7 @@ export default function LlmProvidersPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <KeyRound className="h-6 w-6 text-primary" />
-            Proveedores IA
+            Proveedores LLM
           </h1>
           <p className="text-sm text-muted-foreground">
             Define los proveedores LLM y sus claves API globales que usarán tus
