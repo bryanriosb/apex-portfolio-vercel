@@ -28,7 +28,9 @@ import {
   AlertTriangle,
   Loader2,
   MailIcon,
+  Copy,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import PlanService from '@/lib/services/plan/plan-service'
@@ -448,6 +450,27 @@ export function BusinessAccountDetailModal({
                 Información del Sistema
               </h4>
               <div className="rounded-lg border p-4 grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <span className="text-muted-foreground text-sm block">
+                    ID de la Cuenta
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-muted px-2 py-0.5 rounded text-xs">
+                      {account.id}
+                    </code>
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        navigator.clipboard.writeText(account.id)
+                        toast.success('ID copiado al portapapeles')
+                      }}
+                      aria-label="Copiar ID de la cuenta"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
                 <div>
                   <span className="text-muted-foreground text-sm block">
                     Creación

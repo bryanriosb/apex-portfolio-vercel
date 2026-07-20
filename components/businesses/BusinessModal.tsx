@@ -39,7 +39,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { X, Image as ImageIcon } from 'lucide-react'
+import { X, Image as ImageIcon, Copy } from 'lucide-react'
+import { toast } from 'sonner'
 import BusinessStorageService from '@/lib/services/business/business-storage-service'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import BusinessAccountService from '@/lib/services/business-account/business-account-service'
@@ -344,6 +345,25 @@ export function BusinessModal({
               ? 'Modifica la información de la sucursal'
               : 'Completa la información de la nueva sucursal'}
           </DialogDescription>
+          {business?.id && (
+            <div className="flex items-center gap-2 pt-1">
+              <span className="text-muted-foreground text-xs">ID:</span>
+              <code className="bg-muted px-2 py-0.5 rounded text-xs">
+                {business.id}
+              </code>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  navigator.clipboard.writeText(business.id)
+                  toast.success('ID copiado al portapapeles')
+                }}
+                aria-label="Copiar ID de la sucursal"
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
         </DialogHeader>
 
         <Form {...form}>

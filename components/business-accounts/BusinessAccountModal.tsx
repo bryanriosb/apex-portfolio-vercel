@@ -42,6 +42,7 @@ import type {
 import { Loader2, Plus, X } from 'lucide-react'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { USER_ROLES } from '@/const/roles'
+import { BLOCK_APEX_PROVIDERS_KEY } from '@/lib/models/agents/llm-provider-policy'
 import Loading from '../ui/loading'
 
 const formSchema = z.object({
@@ -71,6 +72,10 @@ interface SettingEntry {
   value: string
 }
 
+const DEFAULT_SETTINGS: SettingEntry[] = [
+  { key: BLOCK_APEX_PROVIDERS_KEY, value: 'false' },
+]
+
 interface BusinessAccountModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -86,6 +91,7 @@ export function BusinessAccountModal({
 }: BusinessAccountModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [settings, setSettings] = useState<SettingEntry[]>([])
+  const [initialSettings, setInitialSettings] = useState<SettingEntry[]>([])
   const [initialValues, setInitialValues] =
     useState<BusinessAccountFormValues | null>(null)
   const isEdit = !!account
@@ -116,6 +122,7 @@ export function BusinessAccountModal({
   })
 
   useEffect(() => {
+    if (!open) return
     if (account) {
       const values = {
         company_name: account.company_name,
@@ -136,18 +143,19 @@ export function BusinessAccountModal({
       form.reset(values)
       setInitialValues(values)
 
-      // Convertir settings de objeto a array de key-value pairs
-      if (account.settings) {
-        const settingsArray = Object.entries(account.settings).map(
-          ([key, value]) => ({
-            key,
-            value: String(value),
-          })
-        )
-        setSettings(settingsArray)
-      } else {
-        setSettings([])
+      // Convertir settings de objeto a array de key-value pairs,
+      // asegurando que block_apex_llm_providers siempre esté presente
+      const settingsArray = Object.entries(account.settings ?? {}).map(
+        ([key, value]) => ({
+          key,
+          value: String(value),
+        })
+      )
+      if (!settingsArray.some((s) => s.key === BLOCK_APEX_PROVIDERS_KEY)) {
+        settingsArray.unshift({ key: BLOCK_APEX_PROVIDERS_KEY, value: 'false' })
       }
+      setSettings(settingsArray)
+      setInitialSettings(settingsArray)
     } else {
       const emptyValues = {
         company_name: '',
@@ -167,9 +175,10 @@ export function BusinessAccountModal({
       }
       form.reset(emptyValues)
       setInitialValues(null)
-      setSettings([])
+      setSettings(DEFAULT_SETTINGS)
+      setInitialSettings(DEFAULT_SETTINGS)
     }
-  }, [account, form])
+  }, [account, form, open])
 
   const addSetting = () => {
     setSettings([...settings, { key: '', value: '' }])
@@ -185,12 +194,24 @@ export function BusinessAccountModal({
     value: string
   ) => {
     const newSettings = [...settings]
-    newSettings[index][field] = value
+    // Nuevo objeto para no mutar la entrada compartida con initialSettings
+    newSettings[index] = { ...newSettings[index], [field]: value }
     setSettings(newSettings)
   }
 
   // Observar cambios en el formulario
   const formValues = form.watch()
+
+  // Comparar settings ignorando entradas sin clave
+  const serializeSettings = (entries: SettingEntry[]) =>
+    JSON.stringify(
+      entries
+        .filter((s) => s.key.trim() !== '')
+        .map(({ key, value }) => [key, value])
+    )
+
+  const settingsChanged =
+    serializeSettings(settings) !== serializeSettings(initialSettings)
 
   // Detectar si hay cambios en los campos editables
   const hasChanges = useMemo(() => {
@@ -213,8 +234,9 @@ export function BusinessAccountModal({
       )
     }
 
-    // Si es company_admin, revisar todos los campos
+    // Si es company_admin, revisar todos los campos, incluidos settings
     return (
+      settingsChanged ||
       formValues.company_name !== initialValues.company_name ||
       formValues.tax_id !== initialValues.tax_id ||
       formValues.legal_name !== initialValues.legal_name ||
@@ -229,7 +251,7 @@ export function BusinessAccountModal({
       formValues.subscription_plan !== initialValues.subscription_plan ||
       formValues.status !== initialValues.status
     )
-  }, [formValues, initialValues, isBusinessAdmin, isEdit])
+  }, [formValues, initialValues, isBusinessAdmin, isEdit, settingsChanged])
 
   // En modo creación: validar campos obligatorios
   // En modo edición: validar que haya cambios
