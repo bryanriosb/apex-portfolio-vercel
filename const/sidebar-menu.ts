@@ -281,10 +281,6 @@ export const SIDE_SYSTEM_MENU_ITEMS: MenuItem[] = [
         title: 'Sucursales',
         url: '/admin/businesses',
       },
-      {
-        title: 'Usuarios',
-        url: '/admin/users',
-      },
     ],
   },
   {
@@ -294,6 +290,10 @@ export const SIDE_SYSTEM_MENU_ITEMS: MenuItem[] = [
     skipPlanCheck: true, // Menú del sistema (RBAC), no depende del plan
     allowedRoles: [USER_ROLES.COMPANY_ADMIN, USER_ROLES.BUSINESS_ADMIN],
     items: [
+      {
+        title: 'Usuarios',
+        url: '/admin/users',
+      },
       {
         title: 'Roles',
         url: '/admin/access-control/roles',
