@@ -52,6 +52,7 @@ export const ADMIN_ROUTE_ACCESS: Record<string, readonly UserRole[]> = {
   '/admin/plans': [USER_ROLES.COMPANY_ADMIN],
   '/admin/businesses': ADMINS,
   '/admin/business-accounts': ADMINS,
+  '/admin/users': ADMINS,
 
   '/admin/settings': ADMINS,
   '/admin/settings/trial': [USER_ROLES.COMPANY_ADMIN],

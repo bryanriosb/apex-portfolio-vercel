@@ -281,6 +281,10 @@ export const SIDE_SYSTEM_MENU_ITEMS: MenuItem[] = [
         title: 'Sucursales',
         url: '/admin/businesses',
       },
+      {
+        title: 'Usuarios',
+        url: '/admin/users',
+      },
     ],
   },
   {
